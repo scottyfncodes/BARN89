@@ -47,6 +47,11 @@ function roadBounds(r: RoadDef) {
 
 function areaBounds(a: AreaDef) {
   const s = a.shape;
+  if (s.type === 'poly') {
+    const xs = s.points.map((p) => p[0]);
+    const ys = s.points.map((p) => p[1]);
+    return { minX: Math.min(...xs) - 20, minY: Math.min(...ys) - 20, maxX: Math.max(...xs) + 20, maxY: Math.max(...ys) + 20 };
+  }
   if (s.type === 'rect') return { minX: s.x - 20, minY: s.y - 20, maxX: s.x + s.w + 20, maxY: s.y + s.h + 20 };
   return { minX: s.x - s.rx - 20, minY: s.y - s.ry - 20, maxX: s.x + s.rx + 20, maxY: s.y + s.ry + 20 };
 }
@@ -54,7 +59,10 @@ function areaBounds(a: AreaDef) {
 function areaPath(ctx: Ctx, a: AreaDef, inset = 0): void {
   const s = a.shape;
   ctx.beginPath();
-  if (s.type === 'rect') ctx.roundRect(s.x + inset, s.y + inset, s.w - inset * 2, s.h - inset * 2, Math.max(0, (s.r ?? 0) - inset));
+  if (s.type === 'poly') {
+    s.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+  } else if (s.type === 'rect') ctx.roundRect(s.x + inset, s.y + inset, s.w - inset * 2, s.h - inset * 2, Math.max(0, (s.r ?? 0) - inset));
   else ctx.ellipse(s.x, s.y, Math.max(1, s.rx - inset), Math.max(1, s.ry - inset), 0, 0, Math.PI * 2);
 }
 
@@ -66,6 +74,8 @@ const AREA_FILL: Record<AreaDef['kind'], string> = {
   meadow: C.meadow,
   water: C.water,
   woods: C.woods,
+  clay: '#c8703f',
+  asphalt: '#66666b',
 };
 
 /**
@@ -82,7 +92,7 @@ export class TerrainTiles {
 
   constructor(
     private readonly map: RanchMap,
-    private readonly maxTiles = 48,
+    public maxTiles = 48,
   ) {
     this.roadBox = map.roads.map(roadBounds);
     this.areaBox = map.areas.map(areaBounds);
@@ -250,7 +260,9 @@ function isGrassy(map: RanchMap, x: number, y: number): boolean {
   for (const a of map.areas) {
     if (a.kind === 'lawn' || a.kind === 'meadow' || a.kind === 'woods') continue;
     const s = a.shape;
-    if (s.type === 'rect') {
+    if (s.type === 'poly') {
+      if (pointInPoly(x, y, s.points)) return false;
+    } else if (s.type === 'rect') {
       if (x > s.x - 4 && x < s.x + s.w + 4 && y > s.y - 4 && y < s.y + s.h + 4) return false;
     } else {
       const dx = (x - s.x) / (s.rx + 6);
@@ -276,6 +288,16 @@ function isGrassy(map: RanchMap, x: number, y: number): boolean {
     if (x > b.x - 6 && x < b.x + b.w + 6 && y > b.y - b.wall && y < b.y + b.h + 6) return false;
   }
   return true;
+}
+
+function pointInPoly(x: number, y: number, pts: readonly Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 function drawRoad(ctx: Ctx, r: RoadDef): void {
@@ -430,6 +452,37 @@ function drawArea(ctx: Ctx, a: AreaDef, x0: number, y0: number, size: number): v
         ctx.fillRect(gx * 14 + hash2(gx, gy, 22) * 14, gy * 14 + hash2(gx, gy, 23) * 14, 1.6, 1.6);
       }
     }
+  } else if (a.kind === 'asphalt' && s.type === 'rect') {
+    // Buffalo Gap Rd: shoulders, white edge lines, dashed yellow centre line.
+    ctx.fillStyle = '#d8cfae';
+    ctx.fillRect(s.x, s.y, 10, s.h);
+    ctx.fillRect(s.x + s.w - 10, s.y, 10, s.h);
+    ctx.fillStyle = '#f4f1e8';
+    ctx.fillRect(s.x + 14, s.y, 3, s.h);
+    ctx.fillRect(s.x + s.w - 17, s.y, 3, s.h);
+    ctx.fillStyle = '#f2c53d';
+    const cx = s.x + s.w / 2;
+    for (let y = Math.floor(y0 / 60) * 60; y < y0 + size; y += 60) ctx.fillRect(cx - 2, y, 4, 32);
+    for (let gy = Math.floor(y0 / 12); gy < Math.ceil((y0 + size) / 12); gy++) {
+      for (let gx = Math.floor(s.x / 12); gx < Math.ceil((s.x + s.w) / 12); gx++) {
+        const h = hash2(gx, gy, 71);
+        if (h < 0.75) continue;
+        ctx.fillStyle = h > 0.9 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+        ctx.fillRect(gx * 12 + hash2(gx, gy, 72) * 12, gy * 12 + hash2(gx, gy, 73) * 12, 2, 2);
+      }
+    }
+  } else if (a.kind === 'clay') {
+    // West Texas red dirt: speckles and a few pale cracks.
+    for (let gy = Math.floor(y0 / 15); gy < Math.ceil((y0 + size) / 15); gy++) {
+      for (let gx = Math.floor(x0 / 15); gx < Math.ceil((x0 + size) / 15); gx++) {
+        const h = hash2(gx, gy, 81);
+        if (h < 0.5) continue;
+        ctx.fillStyle = h > 0.8 ? 'rgba(120,50,20,0.35)' : 'rgba(255,190,140,0.35)';
+        ctx.beginPath();
+        ctx.arc(gx * 15 + hash2(gx, gy, 82) * 15, gy * 15 + hash2(gx, gy, 83) * 15, 1.2 + h, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   } else if (a.kind === 'dirt') {
     for (let gy = Math.floor(y0 / 16); gy < Math.ceil((y0 + size) / 16); gy++) {
       for (let gx = Math.floor(x0 / 16); gx < Math.ceil((x0 + size) / 16); gx++) {
@@ -489,7 +542,7 @@ function drawArea(ctx: Ctx, a: AreaDef, x0: number, y0: number, size: number): v
         ctx.fill();
       }
     }
-  } else if (a.kind === 'meadow') {
+  } else if (a.kind === 'meadow' && s.type !== 'poly') {
     const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 500);
     g.addColorStop(0, 'rgba(190,225,110,0.35)');
     g.addColorStop(1, 'rgba(190,225,110,0)');

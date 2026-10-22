@@ -87,13 +87,13 @@ async function portrait() {
   // Collision: ride north into the barn from just below it.
   await kc(page, () => {
     const g = window.__kc.game;
-    g.player.x = g.player.px = 1020;
-    g.player.y = g.player.py = 2830;
+    g.player.x = g.player.px = 1670;
+    g.player.y = g.player.py = 2850;
     window.__kc.renderer.snap();
   });
   await drag(page, 120, 520, 0, -70, 1500);
   const pb = await kc(page, () => ({ x: window.__kc.game.player.x, y: window.__kc.game.player.y }));
-  check('barn blocks movement', pb.y > 2760, `y=${pb.y.toFixed(0)}`);
+  check('barn blocks movement', pb.y > 2740, `y=${pb.y.toFixed(0)}`);
   await page.screenshot({ path: `${OUT}/03-barn-collision.png` });
 
   // Boundaries: ride far west into the tree line.
