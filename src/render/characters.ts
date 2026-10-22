@@ -238,7 +238,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
   ctx.translate(x + 3, y + 2);
   ctx.rotate(moving ? Math.sin(s.walkPhase) * 0.12 : 0);
   roundRectPath(ctx, -4, -2, 8, 15, 4);
-  fillStroke(ctx, C.denim, C.ink, 1.4);
+  fillStroke(ctx, '#f5caa6', C.ink, 1.4);
   ctx.beginPath();
   ctx.moveTo(-4.5, 11);
   ctx.lineTo(4.5, 11);
@@ -247,7 +247,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
   ctx.quadraticCurveTo(11, 22.5, 8, 22.5);
   ctx.lineTo(-5, 22.5);
   ctx.closePath();
-  fillStroke(ctx, C.boot, C.ink, 1.4);
+  fillStroke(ctx, '#e9a7b8', C.ink, 1.4);
   ctx.fillStyle = C.gold;
   ctx.fillRect(-4, 13, 8, 1.6);
   ctx.restore();
@@ -262,7 +262,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
     ctx.moveTo(x + bx, y - 26);
     ctx.quadraticCurveTo(x + bx - 6, y - 18, x + bx - 7 + braidSw, y - 10);
     ctx.stroke();
-    ctx.strokeStyle = C.hair;
+    ctx.strokeStyle = '#e8cc8a';
     ctx.lineWidth = 4;
     ctx.stroke();
     ctx.strokeStyle = C.ink;
@@ -278,26 +278,13 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
   ctx.lineTo(x + 5, y - 19);
   ctx.quadraticCurveTo(x + 9, y - 12, x + 8, y + 1);
   ctx.closePath();
-  fillStroke(ctx, C.shirt, C.ink, 1.6);
-  ctx.beginPath();
-  ctx.moveTo(x - 7, y);
-  ctx.quadraticCurveTo(x - 8.5, y - 10, x - 5, y - 18);
-  ctx.lineTo(x - 2, y - 18);
-  ctx.lineTo(x - 2, y);
-  ctx.closePath();
-  ctx.fillStyle = C.vest;
-  ctx.fill();
-  ctx.strokeStyle = '#5e3a20';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    ctx.moveTo(x - 6.5 + i * 1.4, y);
-    ctx.lineTo(x - 7 + i * 1.4, y + 3);
+  fillStroke(ctx, '#fbf3e6', C.ink, 1.6);
+  for (const [fx, fy, fc] of [[-3, -14, '#e2486a'], [3, -8, '#f2b33a'], [-4, -4, '#f28aa0'], [4, -16, '#5f9e6e']] as [number, number, string][]) {
+    ctx.beginPath();
+    ctx.arc(x + fx, y + fy, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = fc;
+    ctx.fill();
   }
-  ctx.stroke();
-  // Belt buckle.
-  ctx.fillStyle = C.gold;
-  ctx.fillRect(x - 1, y - 2, 4, 3);
 
   // Arms.
   const shoulder = { x: x + 3, y: y - 15 };
@@ -332,20 +319,12 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
     ctx.moveTo(shoulder.x, shoulder.y);
     ctx.lineTo(h.x, h.y);
     ctx.stroke();
-    ctx.strokeStyle = C.shirt;
+    ctx.strokeStyle = '#f5caa6';
     ctx.lineWidth = 3.6;
     ctx.stroke();
     ellipse(ctx, h.x, h.y, 2.6, 2.6);
     fillStroke(ctx, C.skin, C.ink, 1.1);
   }
-
-  // Bandana.
-  ctx.beginPath();
-  ctx.moveTo(x - 5, y - 19);
-  ctx.lineTo(x + 6, y - 19);
-  ctx.lineTo(x + 2, y - 13);
-  ctx.closePath();
-  fillStroke(ctx, C.bandana, C.ink, 1.1);
 
   // Head.
   const hx = x + 1.5;
@@ -360,7 +339,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
   ctx.lineTo(hx + 8, hy - 8);
   ctx.lineTo(hx - 8, hy - 8);
   ctx.closePath();
-  ctx.fillStyle = C.hair;
+  ctx.fillStyle = '#e8cc8a';
   ctx.fill();
   // Face.
   ctx.fillStyle = C.ink;

@@ -34,8 +34,8 @@ function buildings(): BuildingDef[] {
     { id: 'whiteShed', style: 'shed', x: 410, y: 1150, w: 190, h: 130, wall: 70, roof: '#e9ecef', walls: '#f6f3ea' },
     { id: 'eastShed', style: 'shed', x: 1550, y: 1290, w: 110, h: 80, wall: 56, roof: '#c9ced4', walls: '#a94336' },
     { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
-    { id: 'stable', style: 'shed', x: 1480, y: 2075, w: 400, h: 155, wall: 84, roof: '#9fb0bf', walls: '#b8382c', label: 'STABLE' },
-    { id: 'barn89', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8d9cab', walls: '#b8382c', label: 'BARN 89' },
+    { id: 'stable', style: 'barn', x: 1480, y: 2075, w: 400, h: 155, wall: 84, roof: '#8f9bb0', walls: '#b8382c' },
+    { id: 'barn89', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8f9bb0', walls: '#b8382c', label: 'BARN 89' },
     { id: 'coop', style: 'coop', x: 370, y: 280, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
   ];
 }

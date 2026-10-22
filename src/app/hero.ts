@@ -61,87 +61,102 @@ export function drawHero(canvas: HTMLCanvasElement, clock: number, reduced: bool
     ctx.fill();
   }
 
-  // Barn 89.
+  // Barn 89: red metal barn, grey standing-seam roof, white trim, string lights.
   const bx = W / 2;
   const by = 160;
+  const bw = 150;
+  const wallTopY = by - 62;
   ctx.lineJoin = 'round';
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 2.2;
+  // Gable end wall.
   ctx.fillStyle = C.barnRed;
   ctx.beginPath();
-  ctx.moveTo(bx - 70, by);
-  ctx.lineTo(bx - 70, by - 58);
-  ctx.lineTo(bx - 50, by - 90);
-  ctx.lineTo(bx, by - 112);
-  ctx.lineTo(bx + 50, by - 90);
-  ctx.lineTo(bx + 70, by - 58);
-  ctx.lineTo(bx + 70, by);
+  ctx.moveTo(bx - bw / 2, by);
+  ctx.lineTo(bx - bw / 2, wallTopY);
+  ctx.lineTo(bx, wallTopY - 28);
+  ctx.lineTo(bx + bw / 2, wallTopY);
+  ctx.lineTo(bx + bw / 2, by);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  // Roof.
-  ctx.fillStyle = '#8d9cab';
-  ctx.beginPath();
-  ctx.moveTo(bx - 78, by - 56);
-  ctx.lineTo(bx - 54, by - 94);
-  ctx.lineTo(bx, by - 118);
-  ctx.lineTo(bx + 54, by - 94);
-  ctx.lineTo(bx + 78, by - 56);
-  ctx.lineTo(bx + 70, by - 56);
-  ctx.lineTo(bx + 48, by - 88);
-  ctx.lineTo(bx, by - 108);
-  ctx.lineTo(bx - 48, by - 88);
-  ctx.lineTo(bx - 70, by - 56);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // Board siding.
+  ctx.save();
+  ctx.clip();
   ctx.strokeStyle = 'rgba(70,15,10,0.3)';
-  ctx.lineWidth = 1.2;
-  for (let x = bx - 62; x < bx + 70; x += 9) {
+  ctx.lineWidth = 1.1;
+  for (let x = bx - bw / 2 + 6; x < bx + bw / 2; x += 6) {
     ctx.beginPath();
-    ctx.moveTo(x, by - 4);
-    ctx.lineTo(x, by - 56 - (1 - Math.abs(x - bx) / 70) * 40);
+    ctx.moveTo(x, by);
+    ctx.lineTo(x, wallTopY - 30);
     ctx.stroke();
   }
-  // Doors with white X bracing.
-  for (const side of [-1, 1]) {
-    const dx = side < 0 ? bx - 34 : bx;
-    ctx.fillStyle = C.barnRed;
-    ctx.fillRect(dx, by - 46, 34, 46);
-    ctx.strokeStyle = C.white;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(dx + 2, by - 44, 30, 42);
-    ctx.beginPath();
-    ctx.moveTo(dx + 2, by - 44);
-    ctx.lineTo(dx + 32, by - 2);
-    ctx.moveTo(dx + 32, by - 44);
-    ctx.lineTo(dx + 2, by - 2);
-    ctx.stroke();
-  }
+  ctx.restore();
+  // White corner and gable trim.
+  ctx.fillStyle = C.white;
   ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  for (const x of [bx - bw / 2, bx + bw / 2 - 7]) {
+    ctx.fillRect(x, wallTopY, 7, by - wallTopY);
+    ctx.strokeRect(x, wallTopY, 7, by - wallTopY);
+  }
+  // Roof edge (grey metal, white fascia).
+  ctx.fillStyle = '#8f9bb0';
+  ctx.beginPath();
+  ctx.moveTo(bx - bw / 2 - 8, wallTopY + 3);
+  ctx.lineTo(bx, wallTopY - 33);
+  ctx.lineTo(bx + bw / 2 + 8, wallTopY + 3);
+  ctx.lineTo(bx + bw / 2 + 8, wallTopY - 3);
+  ctx.lineTo(bx, wallTopY - 40);
+  ctx.lineTo(bx - bw / 2 - 8, wallTopY - 3);
+  ctx.closePath();
+  ctx.fill();
   ctx.lineWidth = 2;
-  ctx.strokeRect(bx - 34, by - 46, 68, 46);
+  ctx.stroke();
+  ctx.strokeStyle = C.white;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(bx - bw / 2 - 5, wallTopY + 1);
+  ctx.lineTo(bx, wallTopY - 34);
+  ctx.lineTo(bx + bw / 2 + 5, wallTopY + 1);
+  ctx.stroke();
+  // Big sliding door, open, with the white door panel pushed aside.
+  ctx.fillStyle = '#2e1d14';
+  ctx.fillRect(bx - 30, by - 50, 60, 50);
+  ctx.fillStyle = '#e7c35d';
+  ctx.beginPath();
+  ctx.moveTo(bx - 26, by);
+  ctx.quadraticCurveTo(bx - 8, by - 18, bx + 6, by - 10);
+  ctx.quadraticCurveTo(bx + 18, by - 20, bx + 28, by);
+  ctx.fill();
+  ctx.fillStyle = '#e9ecef';
+  ctx.fillRect(bx + 28, by - 50, 24, 50);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.8;
+  ctx.strokeRect(bx + 28, by - 50, 24, 50);
+  ctx.strokeRect(bx - 30, by - 50, 60, 50);
+  ctx.fillStyle = C.white;
+  ctx.fillRect(bx - 34, by - 55, 90, 5);
+  ctx.strokeRect(bx - 34, by - 55, 90, 5);
   // Name board.
   ctx.fillStyle = C.white;
-  ctx.fillRect(bx - 34, by - 82, 68, 20);
-  ctx.strokeRect(bx - 34, by - 82, 68, 20);
+  ctx.fillRect(bx - 34, by - 84, 68, 20);
+  ctx.strokeRect(bx - 34, by - 84, 68, 20);
   ctx.fillStyle = C.barnRed;
   ctx.font = '900 15px Rockwell, "Roboto Slab", Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('BARN 89', bx, by - 71.5);
+  ctx.fillText('BARN 89', bx, by - 73.5);
   // String lights across the front, a couple of bulbs long gone.
   ctx.strokeStyle = '#4a3b30';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(bx - 70, by - 56);
-  ctx.quadraticCurveTo(bx, by - 30, bx + 70, by - 56);
+  ctx.moveTo(bx - bw / 2, wallTopY + 2);
+  ctx.quadraticCurveTo(bx, wallTopY + 28, bx + bw / 2, wallTopY + 2);
   ctx.stroke();
   for (let i = 1; i < 12; i++) {
     const f = i / 12;
-    const x = bx - 70 + f * 140;
-    const y = by - 56 + 2 * f * (1 - f) * 26;
+    const x = bx - bw / 2 + f * bw;
+    const y = wallTopY + 2 + 2 * f * (1 - f) * 26;
     const out = i === 4 || i === 9;
     const tw = 0.6 + 0.4 * Math.sin(t * 3 + i);
     ctx.beginPath();

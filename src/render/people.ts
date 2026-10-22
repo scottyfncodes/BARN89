@@ -48,15 +48,41 @@ function shade(hex: string, k: number): string {
   return `rgb(${Math.min(255, r)},${Math.min(255, g)},${Math.min(255, b)})`;
 }
 
-function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string): void {
+function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string, boots: boolean, glitter: boolean): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
   ctx.beginPath();
   ctx.roundRect(-3.6, -1, 7.2, len, 3.4);
   fillStroke(ctx, pants, 1.4);
-  ellipse(ctx, 2.2, len - 0.5, 5.4, 3.1);
-  fillStroke(ctx, shoes, 1.3);
+  if (boots) {
+    // Western boot: shaft up the shin, pointed toe, little heel.
+    ctx.beginPath();
+    ctx.moveTo(-4, len - 10);
+    ctx.lineTo(4.2, len - 10);
+    ctx.lineTo(4, len - 3);
+    ctx.lineTo(8.5, len - 1.5);
+    ctx.quadraticCurveTo(9.5, len + 1.6, 6.5, len + 1.6);
+    ctx.lineTo(-4.2, len + 1.6);
+    ctx.closePath();
+    fillStroke(ctx, shoes, 1.3);
+    ctx.fillStyle = shade(shoes.startsWith('#') ? shoes : '#7b4a2a', 0.7);
+    ctx.fillRect(-4.2, len + 0.2, 3, 1.6);
+    if (glitter) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (const [gx, gy] of [[-2, len - 8], [1.5, len - 5], [-1, len - 2], [3, len - 1], [5.5, len]]) ctx.fillRect(gx, gy, 1.2, 1.2);
+    } else {
+      ctx.strokeStyle = 'rgba(255,240,210,0.6)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(-2, len - 8);
+      ctx.quadraticCurveTo(0, len - 5, 2.5, len - 8);
+      ctx.stroke();
+    }
+  } else {
+    ellipse(ctx, 2.2, len - 0.5, 5.4, 3.1);
+    fillStroke(ctx, shoes, 1.3);
+  }
   ctx.restore();
 }
 
@@ -292,9 +318,11 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
 
   // Back hair, back arm, legs.
   drawHair(ctx, L, hx, hy, p, true);
-  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(L.shirt, 0.82), L.skin);
-  leg(ctx, -1, hipY, swing, 22 + bob, shade(L.pants, 0.8), shade(L.shoes, 0.8));
-  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes);
+  const sleeve = L.sleeveless ? L.skin : L.shirt;
+  const boots = !!L.cowboyBoots;
+  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(sleeve, 0.85), L.skin);
+  leg(ctx, -1, hipY, swing, 22 + bob, shade(L.pants, 0.85), shade(L.shoes, 0.8), boots, !!L.glitter);
+  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes, boots, !!L.glitter);
 
   // Torso.
   ctx.beginPath();
@@ -304,6 +332,43 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   ctx.quadraticCurveTo(9.6, shY + 8, 8.4, hipY + 2);
   ctx.closePath();
   fillStroke(ctx, L.shirt, 1.6);
+  if (L.dress) {
+    // Skirt flaring to the knee.
+    const sw = Math.sin(p.walkPhase) * (moving ? 1.5 : 0);
+    ctx.beginPath();
+    ctx.moveTo(-7.5, hipY - 1);
+    ctx.lineTo(-11 + sw, hipY + 11);
+    ctx.quadraticCurveTo(0.5, hipY + 14, 12 + sw, hipY + 11);
+    ctx.lineTo(8.4, hipY - 1);
+    ctx.closePath();
+    fillStroke(ctx, L.shirt, 1.6);
+    if (L.dress.pattern === 'floral' && L.dress.colors) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(-7.5, shY);
+      ctx.lineTo(7, shY);
+      ctx.lineTo(12 + sw, hipY + 11);
+      ctx.quadraticCurveTo(0.5, hipY + 14, -11 + sw, hipY + 11);
+      ctx.closePath();
+      ctx.clip();
+      const spots: [number, number][] = [[-4, shY + 4], [3, shY + 9], [-2, shY + 14], [5, hipY - 2], [-7, hipY + 4], [1, hipY + 6], [8, hipY + 8], [-4, hipY + 10]];
+      spots.forEach(([fx, fy], i) => {
+        ctx.fillStyle = L.dress!.colors![i % L.dress!.colors!.length];
+        ctx.beginPath();
+        ctx.arc(fx, fy, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    } else {
+      // Chambray seams.
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0.5, shY + 2);
+      ctx.lineTo(0.5, hipY + 12);
+      ctx.stroke();
+    }
+  }
   if (L.check) {
     ctx.save();
     ctx.clip();
@@ -349,9 +414,23 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     ctx.lineTo(5, hipY + 2);
     ctx.stroke();
   }
-  // Belt.
-  ctx.fillStyle = shade(L.pants, 0.6);
-  ctx.fillRect(-7.5, hipY, 16, 2.6);
+  if (!L.dress) {
+    // Belt.
+    ctx.fillStyle = shade(L.pants, 0.6);
+    ctx.fillRect(-7.5, hipY, 16, 2.6);
+  }
+  if (L.necklace) {
+    ctx.strokeStyle = '#c9ced4';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-2.5, shY);
+    ctx.lineTo(1.5, shY + 5);
+    ctx.lineTo(5, shY);
+    ctx.stroke();
+    ctx.fillStyle = '#e6e9ec';
+    ctx.fillRect(1, shY + 5, 1.2, 4);
+    ctx.fillRect(0, shY + 6, 3.2, 1.1);
+  }
   if (L.bandana) {
     ctx.beginPath();
     ctx.moveTo(-4.5, shY);
@@ -428,7 +507,7 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
 
   // Front arm and anything held.
   if (p.hold === 'axe') drawAxe(ctx, front.x, front.y, axeA);
-  arm(ctx, sh.x + 2, sh.y, front.x, front.y, L.shirt, L.skin);
+  arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin);
   drawHeld(ctx, p.hold ?? null, front.x, front.y);
 }
 
