@@ -54,7 +54,7 @@ export const RIDES: Record<RideId, RideDef> = {
   rider: {
     id: 'rider',
     owner: 'megan',
-    name: "Megan's riding mower",
+    name: "Mom's riding mower",
     race: 'race-3',
     raceTitle: 'Lawn Mower Race',
     speed: 300,
@@ -62,12 +62,12 @@ export const RIDES: Record<RideId, RideDef> = {
     stand: 'grandpa',
     rivalSpeed: 228,
     starTimes: [28, 37],
-    unlock: { game: 'rounds', stars: 2, label: "Megan's Morning Rounds" },
+    unlock: { game: 'rounds', stars: 2, label: "Mom's Morning Rounds" },
   },
   dirtbike: {
     id: 'dirtbike',
     owner: 'jason',
-    name: "Jason's dirt bike",
+    name: "Dad's dirt bike",
     race: 'race-4',
     raceTitle: 'Dirt Bike Race',
     speed: 480,
