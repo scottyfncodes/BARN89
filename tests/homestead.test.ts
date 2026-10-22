@@ -529,6 +529,11 @@ describe('races on the Loop', () => {
     expect(asMegan.raceRival()?.who).toBe('grandpa');
     asMegan.startRace('dirtbike');
     expect(asMegan.raceRival()?.who).toBe('jason');
+    const asGrandpa = new Homestead(shared, { explorer: 'grandpa', ornaments: [], discoveries: [], huntFound: [] });
+    asGrandpa.startRace('golfcart');
+    expect(asGrandpa.raceRival()?.who).toBe('natalie');
+    asMegan.startRace('golfcart');
+    expect(asMegan.raceRival()?.who).toBe('grandpa');
   });
 
   it('a corner cut a little fine still counts the next gate', () => {

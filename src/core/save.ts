@@ -20,6 +20,8 @@ export interface Cosmetics {
   truck: boolean;
   rider: boolean;
   dirtbike: boolean;
+  /** Grandpa in his golf cart (when he's exploring). */
+  golfcart: boolean;
 }
 
 export interface SaveData {
@@ -64,7 +66,7 @@ export function freshSave(): SaveData {
     hunt: { found: [], done: false },
     barnPlan: null,
     sundays: 0,
-    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false },
+    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false, golfcart: false },
     seen: [],
     names: {},
   };

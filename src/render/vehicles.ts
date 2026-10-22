@@ -747,13 +747,123 @@ export function drawDirtBike(ctx: Ctx, x: number, y: number, faceX: number, fron
   ctx.restore();
 }
 
+/**
+ * Grandpa's golf cart, side on: a cream body on little wheels, a canopy on two posts and his
+ * golf bag strapped on the back. The driver sits between the passes; `front` adds the body,
+ * canopy, front post and wheels.
+ */
+export function drawGolfCart(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = C.ink;
+  const body = '#f2ead6';
+  const canopy = '#2f5f3a';
+  if (!front) {
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 30, 4.8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = C.shadow;
+    ctx.fill();
+    // Golf bag on the back, clubs poking out.
+    ctx.lineWidth = 2;
+    for (const [cx, top] of [[-27, -44], [-24, -47], [-21, -43]]) {
+      ctx.beginPath();
+      ctx.moveTo(cx, -30);
+      ctx.lineTo(cx, top);
+      ctx.strokeStyle = '#9aa5ad';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx + 1.5, top, 2.6, 1.6, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#5d636b';
+      ctx.fill();
+    }
+    ctx.strokeStyle = C.ink;
+    ctx.beginPath();
+    ctx.roundRect(-30, -34, 12, 24, 4);
+    ctx.fillStyle = '#b8382c';
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    // Rear canopy post and the seat back.
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-14, -18);
+    ctx.lineTo(-14, -82);
+    ctx.stroke();
+    ctx.strokeStyle = '#c9ced4';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+    ctx.beginPath();
+    ctx.roundRect(-14, -38, 7, 20, 3);
+    ctx.fillStyle = '#4a3a30';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Body: low sides, a rounded nose.
+  ctx.beginPath();
+  ctx.moveTo(-18, -22);
+  ctx.lineTo(10, -22);
+  ctx.quadraticCurveTo(26, -22, 27, -10);
+  ctx.lineTo(27, -6);
+  ctx.lineTo(-20, -6);
+  ctx.closePath();
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // Seat cushion, steering wheel.
+  ctx.beginPath();
+  ctx.roundRect(-14, -24, 18, 5, 2);
+  ctx.fillStyle = '#4a3a30';
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(10, -22);
+  ctx.lineTo(6, -34);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(5.5, -35, 4.5, 1.5, -0.4, 0, Math.PI * 2);
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // Front canopy post, and the canopy over everyone's heads.
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(18, -20);
+  ctx.lineTo(14, -82);
+  ctx.stroke();
+  ctx.strokeStyle = '#c9ced4';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  ctx.beginPath();
+  ctx.roundRect(-20, -88, 40, 7, 3);
+  ctx.fillStyle = canopy;
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(-18, -87, 36, 2);
+  knobbyWheel(ctx, -12, -6, 6, spin, '#e9e2d0');
+  knobbyWheel(ctx, 17, -6, 6, spin, '#e9e2d0');
+  ctx.restore();
+}
+
 /** How far up the rider sits (or stands) on each ride. */
-export const RIDE_SEAT: Record<RideId, number> = { scooter: 6, truck: 17, rider: 13, dirtbike: 9 };
+export const RIDE_SEAT: Record<RideId, number> = { scooter: 6, truck: 17, rider: 13, dirtbike: 9, golfcart: 13 };
 
 /** Any of the family's rides, in two passes either side of the rider (see each ride). */
 export function drawRide(ctx: Ctx, id: RideId, x: number, y: number, faceX: number, front: boolean, spin: number): void {
   if (id === 'scooter') drawScooter(ctx, x, y, faceX, front, spin);
   else if (id === 'truck') drawMonsterTruck(ctx, x, y, faceX, front, spin);
   else if (id === 'rider') drawRidingMower(ctx, x, y, faceX, front, spin);
+  else if (id === 'golfcart') drawGolfCart(ctx, x, y, faceX, front, spin);
   else drawDirtBike(ctx, x, y, faceX, front, spin);
 }

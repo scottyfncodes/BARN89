@@ -135,7 +135,7 @@ describe('progression', () => {
 describe('rides and races', () => {
   it('each race opens up along with its ride', () => {
     const s = freshSave();
-    for (const id of ['race-1', 'race-2', 'race-3', 'race-4']) expect(isUnlocked(s, id)).toBe(false);
+    for (const id of ['race-1', 'race-2', 'race-3', 'race-4', 'race-5']) expect(isUnlocked(s, id)).toBe(false);
     s.stars['kitten-1'] = 3;
     expect(isUnlocked(s, 'race-1')).toBe(true);
     expect(isUnlocked(s, 'race-2')).toBe(false);
@@ -151,7 +151,11 @@ describe('rides and races', () => {
     // Jason's dirt bike: three stars in Woodpile.
     s.stars['woodpile-1'] = 3;
     expect(isUnlocked(s, 'race-4')).toBe(true);
-    for (const id of ['truck', 'rider', 'dirtbike']) expect(rewardUnlocked(s, REWARDS.find((r) => r.id === id)!), id).toBe(true);
+    // Grandpa's golf cart: three stars in Putt-Putt.
+    expect(isUnlocked(s, 'race-5')).toBe(false);
+    s.stars['putt-1'] = 3;
+    expect(isUnlocked(s, 'race-5')).toBe(true);
+    for (const id of ['truck', 'rider', 'dirtbike', 'golfcart']) expect(rewardUnlocked(s, REWARDS.find((r) => r.id === id)!), id).toBe(true);
   });
 
   it('old saves pick up the new ride switches, off', () => {
@@ -159,5 +163,6 @@ describe('rides and races', () => {
     expect(s.cosmetics.scooter).toBe(true);
     expect(s.cosmetics.truck).toBe(false);
     expect(s.cosmetics.dirtbike).toBe(false);
+    expect(s.cosmetics.golfcart).toBe(false);
   });
 });

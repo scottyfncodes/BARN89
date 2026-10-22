@@ -118,6 +118,7 @@ export const ACTIVITIES: Activity[] = [
       { id: 'race-2', game: 'race', name: 'Monster Truck Race', blurb: "Jay's mini monster truck. Slow to get going, flies off the ramps." },
       { id: 'race-3', game: 'race', name: 'Lawn Mower Race', blurb: "Megan's riding mower against Grandpa. Top speed: dignified." },
       { id: 'race-4', game: 'race', name: 'Dirt Bike Race', blurb: "Jason's dirt bike. The fastest thing on the place." },
+      { id: 'race-5', game: 'race', name: 'Golf Cart Race', blurb: "Grandpa's golf cart. Steady, comfortable, and he knows every corner." },
     ],
   },
 ];
@@ -239,6 +240,7 @@ export const REWARDS: Reward[] = [
   { id: 'truck', name: RIDES.truck.name, desc: 'Jay drives it all over the homestead whenever he is the one exploring. Monster truck races open up too.', how: 'ride', kind: 'vehicle' },
   { id: 'rider', name: RIDES.rider.name, desc: 'Megan putters around the homestead on it whenever she is the one exploring. Lawn mower races open up too.', how: 'ride', kind: 'vehicle' },
   { id: 'dirtbike', name: RIDES.dirtbike.name, desc: 'Jason rides it round the homestead whenever he is the one exploring. Dirt bike races open up too.', how: 'ride', kind: 'vehicle' },
+  { id: 'golfcart', name: RIDES.golfcart.name, desc: 'Grandpa drives it round the homestead whenever he is the one exploring. Golf cart races open up too.', how: 'ride', kind: 'vehicle' },
   { id: 'hat-beanie', name: 'Barn cat beanie', desc: 'Pet every barn cat on the homestead.', how: 'pets', kind: 'hat', hat: 'beanie' },
   { id: 'bulbs', name: 'Fixed string lights', desc: "Finish Grandpa's Treasure Hunt. Every old bulb at Barn 89 shines again.", how: 'hunt', kind: 'decor' },
 ];
