@@ -7,22 +7,31 @@ import { C } from '../render/palette';
 import { drawPerson, paintPortrait, type PersonAction } from '../render/people';
 import type { BuildingSprites, TreeSprites } from '../render/sprites';
 import type { TerrainTiles } from '../render/terrain';
-import { drawMotorcycle, drawMower, drawScooter, type MowerPaint } from '../render/vehicles';
+import type { RideId } from '../content/rides';
+import { drawMotorcycle, drawMower, drawRide, RIDE_SEAT, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
 import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
-import { TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
-import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, ROUNDS_TASKS, type OrnamentDef } from './missions';
+import { AIR_TIME, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
+import type { Critter } from './critters';
+import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
 type Ctx = CanvasRenderingContext2D;
 
 /** Where Grandpa keeps his little porch tree; found ornaments get hung on it. */
 export const PORCH_TREE = { x: 1562, y: 716 };
+/** The tire swing hanging off the big tree on the north lawn. */
+export const TIRE_SWING = { x: 1248, y: 330 };
+/** Chimney tops on the main house and Grandpa's (see the farmhouse sprite). */
+const CHIMNEYS = [
+  { x: 1041, y: 659 },
+  { x: 1683, y: 400 },
+];
 
 export class HubView extends WorldView {
   hat: HatKind | undefined;
   mowerPaint: MowerPaint = 'red';
-  /** Natalie's riding her e-scooter. */
-  scooter = false;
+  /** What the explorer is riding (Natalie's scooter, Jay's truck, Megan's mower, Jason's bike). */
+  ride: RideId | null = null;
   /** Screen rect kept clear of the HUD for edge markers. */
   guideRect = { left: 0, top: 0, right: 0, bottom: 0 };
   /** Cats already petted (faint heart under them). */
@@ -75,15 +84,40 @@ export class HubView extends WorldView {
       case 'roundsDone':
         this.confetti();
         break;
+      case 'splash':
+        this.burst('spark', e.x, e.y - 4, '#a6e0ef', e.big ? 120 : 80, e.big ? 9 : 5);
+        this.ring(e.x, e.y, e.big ? 30 : 20, '#d8f2fa');
+        break;
+      case 'hop':
+        this.burst('dust', e.x, e.y, '#d8c49a', 70, 6);
+        break;
       default:
         break;
     }
   }
 
+  private dustT = 0;
+  private swing = { a: 0, v: 0 };
+
   update(dt: number, mode: 'title' | 'play'): void {
-    const p = this.hub.player;
+    const h = this.hub;
+    const p = h.player;
     if (mode === 'title') this.drift(dt, 1250, 1500, 520, 900);
     else this.follow(p.x, p.y, p.vx, p.vy, dt);
+    // A dust trail behind a ride going flat out (not while it's in the air).
+    const sp = Math.hypot(p.vx, p.vy);
+    this.dustT -= dt;
+    if (this.ride && sp > 200 && h.airT <= 0 && this.dustT <= 0 && !h.gathered) {
+      this.dustT = 0.07;
+      this.push({ kind: 'dust', x: p.x - (p.vx / sp) * 18 + (Math.random() - 0.5) * 8, y: p.y + 1, vx: -p.vx * 0.08, vy: -10, life: 0.55, max: 0.55, size: 5 + Math.random() * 4, color: h.onPath ? '#e2cc9c' : '#cfe3a8' });
+    }
+    // The tire swing: brush past it and it swings, then settles.
+    const s = this.swing;
+    const d = dist(p, TIRE_SWING);
+    if (d < 34 && sp > 40) s.v += (p.vx / 260) * dt * 6;
+    s.v += -s.a * 9 * dt;
+    s.v *= Math.exp(-dt * 0.6);
+    s.a += s.v * dt;
     this.updateParticles(dt);
   }
 
@@ -95,12 +129,27 @@ export class HubView extends WorldView {
     const clock = h.clock;
     const me = FAMILY[h.explorer].look;
     const sp = Math.hypot(p.vx, p.vy);
-    const riding = this.scooter && !h.gathered;
+    const riding = !h.gathered ? this.ride : null;
     // Bouncing on the trampoline: lifted off the mat, with a shadow left on it.
     const lift = h.trampolineLift();
+    // Airborne off a ramp.
+    const air = riding ? h.airLift() : 0;
+    const spin = p.walkPhase * 2;
     const drawMe = (ctx: Ctx, ghost: boolean) => {
-      // On the scooter: feet on the deck, hands on the bars, wheels turning.
-      if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, false, p.walkPhase * 2);
+      // Seen through a tree or a roof, a ride shows as itself (a see-through rider would show through its body).
+      if (ghost && riding) {
+        drawRide(ctx, riding, px, py - air, p.faceX, false, spin);
+        drawRide(ctx, riding, px, py - air, p.faceX, true, spin);
+        return;
+      }
+      if (air > 0 && !ghost) {
+        ctx.beginPath();
+        ctx.ellipse(px, py + 1, 24 - air * 0.25, 4.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fill();
+      }
+      // On a ride: aboard, hands on the bars (or the wheel), wheels turning.
+      if (riding && !ghost) drawRide(ctx, riding, px, py - air, p.faceX, false, spin);
       if (lift > 0 && !ghost) {
         ctx.beginPath();
         ctx.ellipse(px, py - TRAMPOLINE.mat, 11 - (lift - TRAMPOLINE.mat) * 0.08, 3.5, 0, 0, Math.PI * 2);
@@ -109,18 +158,18 @@ export class HubView extends WorldView {
       }
       drawPerson(ctx, me, {
         x: px,
-        y: riding ? py - 6 : py - lift,
+        y: riding ? py - air - RIDE_SEAT[riding] : py - lift,
         faceX: p.faceX,
         speed01: riding ? 0 : clamp(sp / p.maxSpeed, 0, 1),
         walkPhase: p.walkPhase * 0.85,
         clock,
-        action: p.throwT > 0 ? 'throw' : riding ? 'point' : h.bigJumpT > 0 ? 'cheer' : 'none',
+        action: p.throwT > 0 ? 'throw' : riding ? (air > 8 ? 'cheer' : 'point') : h.bigJumpT > 0 ? 'cheer' : 'none',
         actionT: p.throwT / 0.5,
         hat: this.hat,
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
-        ghost: ghost || riding || lift > 0,
+        ghost: ghost || !!riding || lift > 0,
       });
-      if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, true, 0);
+      if (riding && !ghost) drawRide(ctx, riding, px, py - air, p.faceX, true, spin);
     };
     const m = h.mission;
 
@@ -150,7 +199,15 @@ export class HubView extends WorldView {
             ctx.setLineDash([]);
           }
         }
+        // Rain puddles.
+        for (const q of PUDDLES) if (inBox(q, v, 40)) drawPuddle(ctx, q.x, q.y, q.rx, q.ry, clock);
+        // Dirt kickers on the Loop.
+        for (const r of RAMPS) if (inBox(r, v, 60)) drawRamp(ctx, r.x, r.y, r.dir);
         if (m?.kind === 'race') {
+          // Arrows on the ground along the next stretch of the Loop.
+          const from = m.gate === 0 ? RACE_START : RACE_COURSE[m.gate - 1];
+          const ahead = [from, ...RACE_COURSE.slice(m.gate, m.gate + 3)];
+          drawTrackArrows(ctx, ahead, clock, v);
           // The next gate glows; the one after is faint, so you can see where you're headed.
           for (let i = m.gate; i < Math.min(RACE_COURSE.length, m.gate + 2); i++) {
             const g = RACE_COURSE[i];
@@ -232,15 +289,24 @@ export class HubView extends WorldView {
           if (!inBox({ x, y }, v, 40)) continue;
           const L = FAMILY[n.who].look;
           if (n.outing === 'moto' && moto && moto.phase !== 'gather') continue;
-          if (n.outing === 'race') {
-            // Your rival, on a scooter of their own.
+          if (n.outing === 'race' && m?.kind === 'race') {
+            // Your rival, on the same kind of ride.
             const fx = n.faceX;
+            const rd = m.ride;
+            const up = m.rivalAir > 0 ? Math.sin(Math.PI * (1 - m.rivalAir / AIR_TIME)) * 34 : 0;
+            const sp = m.countdown > 0 ? 0 : clock * 14;
             items.push({
               y,
               draw: () => {
-                drawScooter(ctx, x, y, fx, false, clock * 12);
-                drawPerson(ctx, L, { x, y: y - 6, faceX: fx, speed01: 0, walkPhase: 0, clock: clock + n.home.x, action: 'point', ghost: true });
-                drawScooter(ctx, x, y, fx, true, 0);
+                if (up > 0) {
+                  ctx.beginPath();
+                  ctx.ellipse(x, y + 1, 22, 4, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                  ctx.fill();
+                }
+                drawRide(ctx, rd, x, y - up, fx, false, sp);
+                drawPerson(ctx, L, { x, y: y - up - RIDE_SEAT[rd], faceX: fx, speed01: 0, walkPhase: 0, clock: clock + n.home.x, action: up > 8 ? 'cheer' : 'point', ghost: true });
+                drawRide(ctx, rd, x, y - up, fx, true, sp);
               },
             });
             continue;
@@ -403,6 +469,14 @@ export class HubView extends WorldView {
               }),
           });
         }
+        // Birds, rabbits and butterflies.
+        for (const c of h.critters) {
+          if (c.state === 'away' || !inBox(c, v, 30)) continue;
+          const x = lerp(c.px, c.x, alpha);
+          const y = lerp(c.py, c.y, alpha);
+          items.push({ y: c.kind === 'butterfly' ? y + 30 : y, draw: () => drawCritter(ctx, c, x, y, clock) });
+        }
+        if (inBox(TIRE_SWING, v, 80)) items.push({ y: TIRE_SWING.y, draw: () => drawTireSwing(ctx, TIRE_SWING.x, TIRE_SWING.y, this.swing.a) });
         for (const o of ORNAMENTS) {
           if (h.ornaments.has(o.id) || !inBox(o, v, 30)) continue;
           items.push({ y: o.y, draw: () => drawOrnament(ctx, o, clock) });
@@ -442,6 +516,7 @@ export class HubView extends WorldView {
         if (!h.family.moto?.player) drawMe(ctx, true);
       },
       overlay: (ctx, v) => {
+        for (const c of CHIMNEYS) if (inBox(c, v, 120)) drawSmoke(ctx, c.x, c.y, clock);
         for (const c of h.cats) {
           if (c.emote === 'none' || !inBox(c, v, 20)) continue;
           const lift = (c.personality === 'sleepy' && c.state === 'rest' ? 14 : 26) + c.lift;
@@ -774,11 +849,11 @@ function drawSnake(ctx: Ctx, x: number, y: number, dx: number, dy: number, phase
 
 /** Two posts and a checkered banner: the scooter race start and finish. */
 function drawStartLine(ctx: Ctx, x: number, y: number, clock: number): void {
-  const half = 46;
+  const half = 66;
   ctx.save();
   ctx.translate(x, y);
   // Checkered line on the grass.
-  for (let i = -6; i < 6; i++)
+  for (let i = -9; i < 9; i++)
     for (let j = 0; j < 2; j++) {
       ctx.fillStyle = (i + j) % 2 ? 'rgba(255,255,255,0.85)' : 'rgba(43,42,48,0.75)';
       ctx.fillRect(i * 7.6, -4 + j * 4, 7.6, 4);
@@ -800,7 +875,7 @@ function drawStartLine(ctx: Ctx, x: number, y: number, clock: number): void {
   ctx.closePath();
   ctx.save();
   ctx.clip();
-  for (let i = -8; i < 8; i++)
+  for (let i = -12; i < 12; i++)
     for (let j = 0; j < 3; j++) {
       ctx.fillStyle = (i + j) % 2 ? '#fffaf0' : '#2b2a30';
       ctx.fillRect(i * 6, -56 + j * 6 + sag * 0.5, 6, 6);
@@ -1061,5 +1136,266 @@ export function drawHuntItem(ctx: Ctx, id: string, x: number, y: number, clock: 
   }
   const g = (clock * 0.9) % 1;
   if (g < 0.2) star(ctx, 6, -12, 5 * Math.sin((g / 0.2) * Math.PI), '#ffffff');
+  ctx.restore();
+}
+
+/** A little dirt kicker ramp, its lip facing along `dir` (the way the Loop runs). */
+function drawRamp(ctx: Ctx, x: number, y: number, dir: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  // Seen from above-ish: a packed-dirt wedge with planks, squashed vertically like the ground.
+  ctx.scale(1, 0.62);
+  ctx.rotate(dir);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 30, 24, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(-22, -18, 40, 36, 5);
+  ctx.fillStyle = '#b07a46';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,35,15,0.55)';
+  ctx.lineWidth = 1.6;
+  for (const px of [-12, -2, 8]) {
+    ctx.beginPath();
+    ctx.moveTo(px, -16);
+    ctx.lineTo(px, 16);
+    ctx.stroke();
+  }
+  // The raised lip.
+  ctx.beginPath();
+  ctx.moveTo(18, -18);
+  ctx.lineTo(18, 18);
+  ctx.strokeStyle = '#7a4f28';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Chevrons along the next few stretches of the race, drifting the way you're going. */
+function drawTrackArrows(ctx: Ctx, pts: { x: number; y: number }[], clock: number, v: Box): void {
+  const step = 64;
+  let carry = (clock * 60) % step;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    for (let d = carry; d < len; d += step) {
+      const x = a.x + Math.cos(ang) * d;
+      const y = a.y + Math.sin(ang) * d;
+      if (!inBox({ x, y }, v, 20)) continue;
+      // Fade the far stretches.
+      const fade = i === 0 ? 0.85 : i === 1 ? 0.6 : 0.35;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(1, 0.7);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(-6, -9);
+      ctx.lineTo(4, 0);
+      ctx.lineTo(-6, 9);
+      ctx.strokeStyle = `rgba(255,243,176,${fade})`;
+      ctx.lineWidth = 4.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+    carry = (carry - len) % step;
+    if (carry < 0) carry += step;
+  }
+}
+
+/** A muddy rain puddle with a glint of sky in it. */
+function drawPuddle(ctx: Ctx, x: number, y: number, rx: number, ry: number, clock: number): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, rx + 4, ry + 3, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(110,80,45,0.45)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#7fa9b8';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x - rx * 0.3, y - ry * 0.25, rx * 0.35, ry * 0.25, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220,240,248,0.6)';
+  ctx.fill();
+  // A slow ripple.
+  const k = (clock * 0.35 + x * 0.01) % 1;
+  ctx.beginPath();
+  ctx.ellipse(x + rx * 0.2, y + ry * 0.1, rx * 0.2 + k * rx * 0.5, ry * 0.2 + k * ry * 0.5, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k)})`;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Wood smoke curling up out of a chimney. */
+function drawSmoke(ctx: Ctx, x: number, y: number, clock: number): void {
+  ctx.save();
+  for (let i = 0; i < 5; i++) {
+    const k = (clock * 0.22 + i / 5) % 1;
+    const px = x + Math.sin(k * 5 + i) * 6 + k * 26;
+    const py = y - k * 90;
+    ctx.beginPath();
+    ctx.arc(px, py, 5 + k * 12, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(235,235,235,${0.5 * (1 - k)})`;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** An old tire on a rope, hanging from the big tree's lowest branch. */
+function drawTireSwing(ctx: Ctx, x: number, y: number, a: number): void {
+  const len = 70;
+  const tx = x + Math.sin(a) * len;
+  const ty = y - 12 - Math.cos(a) * 6;
+  ctx.save();
+  // Shadow on the grass, following the tire.
+  ctx.beginPath();
+  ctx.ellipse(tx, y + 2, 14, 4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x, y - 12 - len);
+  ctx.lineTo(tx, ty - 10);
+  ctx.strokeStyle = '#c9b48a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(tx, ty, 12, 9, a * 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 9;
+  ctx.stroke();
+  ctx.strokeStyle = '#33333a';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+const BUTTERFLY = ['#f2c53d', '#f6f0e2', '#f08a24'];
+const RABBIT = ['#a68a6d', '#8f7a66', '#b59a7a'];
+
+function drawCritter(ctx: Ctx, c: Critter, x: number, y: number, clock: number): void {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  if (c.kind === 'butterfly') {
+    const flap = Math.abs(Math.sin(clock * 14 + c.tint * 2));
+    ctx.translate(x, y);
+    ctx.scale(1.7, 1.7);
+    ctx.translate(-x, -y);
+    const by = y - c.z / 1.7;
+    ctx.beginPath();
+    ctx.ellipse(x, y + 1, 3, 1, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fill();
+    ctx.fillStyle = BUTTERFLY[c.tint % 3];
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 0.8;
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(x + s * 3 * flap, by - 1, 3.2 * flap + 0.6, 2.6, s * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = C.ink;
+    ctx.fillRect(x - 0.6, by - 3, 1.2, 5);
+    ctx.restore();
+    return;
+  }
+  if (c.kind === 'bird') {
+    const up = c.z;
+    const flying = up > 1 || c.state === 'flee';
+    if (up > 2) {
+      ctx.beginPath();
+      ctx.ellipse(x, y + 1, 4, 1.4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fill();
+    }
+    ctx.translate(x, y - up);
+    ctx.scale(c.faceX, 1);
+    // A little brown sparrow.
+    if (!flying) {
+      ctx.beginPath();
+      ctx.ellipse(0, 2.5, 4, 1.2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fill();
+    }
+    const peck = !flying && Math.sin(clock * 3 + c.phase * 7) > 0.7 ? 2 : 0;
+    ctx.beginPath();
+    ctx.ellipse(0, -3, 4.2, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = c.tint === 1 ? '#8a6a4a' : '#7a5c40';
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(3.4, -5 + peck, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(5.4, -5 + peck);
+    ctx.lineTo(7.2, -4.4 + peck);
+    ctx.lineTo(5.4, -4 + peck);
+    ctx.fillStyle = '#e8a33d';
+    ctx.fill();
+    // Wings: folded, or beating.
+    ctx.beginPath();
+    if (flying) {
+      const w = Math.sin(clock * 30) * 5;
+      ctx.moveTo(-1, -4);
+      ctx.lineTo(-4, -8 - w);
+      ctx.lineTo(2, -5);
+    } else {
+      ctx.ellipse(-1, -3, 2.6, 1.6, 0.2, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = '#5d4630';
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // A cottontail: sits up, or bolts in long hops.
+  const run = c.state !== 'idle';
+  const hop = run ? Math.abs(Math.sin(clock * 16)) * 6 : 0;
+  ctx.globalAlpha = c.state === 'flee' ? Math.max(0, Math.min(1, c.t / 0.5)) : 1;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, 7, 2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fill();
+  ctx.translate(x, y - hop);
+  ctx.scale(c.faceX, 1);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = RABBIT[c.tint % 3];
+  ctx.beginPath();
+  ctx.ellipse(-1, -5, run ? 7.5 : 6, run ? 4 : 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(5, run ? -7 : -9, 3.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // Ears.
+  for (const ex of [3.5, 6]) {
+    ctx.beginPath();
+    ctx.ellipse(ex, run ? -12 : -15, 1.3, 4, run ? 0.9 : 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // White cotton tail.
+  ctx.beginPath();
+  ctx.arc(-7, -5, 2.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#fffaf0';
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(6.4, run ? -7.6 : -9.6, 0.8, 0, Math.PI * 2);
+  ctx.fillStyle = C.ink;
+  ctx.fill();
   ctx.restore();
 }

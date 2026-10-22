@@ -39,7 +39,7 @@ export function updatePlayer(p: Player, input: InputState, world: CollisionWorld
   const tx = ix * p.maxSpeed;
   const ty = iy * p.maxSpeed;
   // Accelerate briskly, brake a little faster than that so stopping near kittens is precise.
-  const rate = mag > 0.05 ? 9 : 12;
+  const rate = p.accel ? (mag > 0.05 ? p.accel : p.accel * 1.3) : mag > 0.05 ? 9 : 12;
   p.vx = damp(p.vx, tx, rate, dt);
   p.vy = damp(p.vy, ty, rate, dt);
   if (Math.abs(p.vx) < 0.5 && mag < 0.05) p.vx = 0;

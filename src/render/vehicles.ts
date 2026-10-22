@@ -1,4 +1,5 @@
 import type { PersonLook } from '../content/cast';
+import type { RideId } from '../content/rides';
 import { C } from './palette';
 
 type Ctx = CanvasRenderingContext2D;
@@ -428,4 +429,331 @@ export function drawMotorcycle(ctx: Ctx, x: number, y: number, faceX: number, fr
   ctx.lineWidth = 3;
   ctx.stroke();
   ctx.restore();
+}
+
+/** A chunky wheel with tread lugs and a hub that turns with `spin`. */
+function knobbyWheel(ctx: Ctx, x: number, y: number, r: number, spin: number, hub = '#c9ced4'): void {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#26262b';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // Lugs round the rim.
+  ctx.strokeStyle = '#4a4a52';
+  ctx.lineWidth = Math.max(1.2, r * 0.22);
+  ctx.beginPath();
+  const n = r > 8 ? 10 : 8;
+  for (let i = 0; i < n; i++) {
+    const a = spin + (i / n) * Math.PI * 2;
+    ctx.moveTo(x + Math.cos(a) * (r - 1.6), y + Math.sin(a) * (r - 1.6));
+    ctx.lineTo(x + Math.cos(a) * (r - 0.2), y + Math.sin(a) * (r - 0.2));
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.42, 0, Math.PI * 2);
+  ctx.fillStyle = hub;
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + Math.cos(spin) * r * 0.42, y + Math.sin(spin) * r * 0.42);
+  ctx.lineTo(x - Math.cos(spin) * r * 0.42, y - Math.sin(spin) * r * 0.42);
+  ctx.stroke();
+}
+
+/**
+ * Jay's mini monster truck, side on, facing `faceX`: huge tyres, a little lifted body with a
+ * roll bar. The driver goes between the passes; `front` adds the door, cage and near tyres.
+ */
+export function drawMonsterTruck(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = C.ink;
+  const body = '#2f7fd6';
+  const dark = '#1d4f8a';
+  if (!front) {
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 30, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = C.shadow;
+    ctx.fill();
+    // Far-side tyres peek out above and behind the near ones.
+    for (const wx of [-15, 16]) {
+      ctx.beginPath();
+      ctx.arc(wx + 2, -13, 11, 0, Math.PI * 2);
+      ctx.fillStyle = '#1c1c20';
+      ctx.fill();
+    }
+    // Chassis and springs.
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-15, -12);
+    ctx.lineTo(-10, -22);
+    ctx.lineTo(10, -22);
+    ctx.lineTo(16, -12);
+    ctx.stroke();
+    // Seat back behind the driver.
+    ctx.beginPath();
+    ctx.roundRect(-12, -42, 7, 18, 2);
+    ctx.fillStyle = '#2b2a30';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Body: a stubby pickup tub, number on the door.
+  ctx.beginPath();
+  ctx.moveTo(-25, -22);
+  ctx.lineTo(-25, -35);
+  ctx.lineTo(-6, -35);
+  ctx.lineTo(-4, -32);
+  ctx.lineTo(16, -32);
+  ctx.lineTo(25, -27);
+  ctx.lineTo(25, -21);
+  ctx.closePath();
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = dark;
+  ctx.fillRect(-24, -25, 48, 3);
+  ctx.beginPath();
+  ctx.arc(4, -27, 4.6, 0, Math.PI * 2);
+  ctx.fillStyle = '#fffaf0';
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = C.ink;
+  ctx.font = '900 5.5px ui-rounded, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('89', 4, -26.8);
+  // Roll bar over the seat, windscreen frame up front.
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(-9, -35);
+  ctx.lineTo(-8, -54);
+  ctx.lineTo(8, -54);
+  ctx.lineTo(13, -33);
+  ctx.stroke();
+  ctx.strokeStyle = '#9aa5ad';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // Headlight.
+  ctx.beginPath();
+  ctx.arc(23, -27, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff3b0';
+  ctx.fill();
+  knobbyWheel(ctx, -15, -11, 11, spin);
+  knobbyWheel(ctx, 16, -11, 11, spin);
+  ctx.restore();
+}
+
+/**
+ * Megan's riding mower (a little lawn tractor), side on. The driver sits between the passes;
+ * `front` adds the hood, steering wheel, fender and wheels.
+ */
+export function drawRidingMower(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = C.ink;
+  const body = '#4f8f3a';
+  if (!front) {
+    ctx.beginPath();
+    ctx.ellipse(1, 1, 26, 4.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = C.shadow;
+    ctx.fill();
+    // Cutting deck slung underneath.
+    ctx.beginPath();
+    ctx.roundRect(-10, -7, 24, 5, 2);
+    ctx.fillStyle = '#5d636b';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // High seat back.
+    ctx.beginPath();
+    ctx.roundRect(-17, -34, 6, 16, 2.5);
+    ctx.fillStyle = '#f2e6c8';
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Hood and grille.
+  ctx.beginPath();
+  ctx.moveTo(-2, -12);
+  ctx.lineTo(-2, -24);
+  ctx.quadraticCurveTo(14, -27, 23, -19);
+  ctx.lineTo(23, -12);
+  ctx.closePath();
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = '#2f5f22';
+  ctx.lineWidth = 1;
+  for (const gx of [18, 20.5]) {
+    ctx.beginPath();
+    ctx.moveTo(gx, -20);
+    ctx.lineTo(gx, -13);
+    ctx.stroke();
+  }
+  // Steering column and wheel.
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(1, -23);
+  ctx.lineTo(-3, -32);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(-3.5, -33, 4.5, 1.6, -0.3, 0, Math.PI * 2);
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // Seat pan and the fender over the back wheel.
+  ctx.beginPath();
+  ctx.roundRect(-17, -21, 15, 5, 2);
+  ctx.fillStyle = '#f2e6c8';
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  knobbyWheel(ctx, -11, -8, 8.5, spin, '#f2c53d');
+  knobbyWheel(ctx, 17, -5, 5, spin, '#f2c53d');
+  ctx.beginPath();
+  ctx.arc(-11, -8, 11, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = body;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Jason's dirt bike, side on: tall, skinny, knobby tyres and orange plastics. The rider goes
+ * between the passes; `front` adds the tank, fork, bars and front fender.
+ */
+export function drawDirtBike(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = C.ink;
+  const plastic = '#f08a24';
+  if (front) {
+    // Tank and number plate.
+    ctx.beginPath();
+    ctx.moveTo(-4, -30);
+    ctx.quadraticCurveTo(6, -34, 12, -28);
+    ctx.lineTo(8, -24);
+    ctx.lineTo(-3, -25);
+    ctx.closePath();
+    ctx.fillStyle = plastic;
+    ctx.fill();
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+    // Fork and bars.
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(22, -10);
+    ctx.lineTo(14, -34);
+    ctx.stroke();
+    ctx.strokeStyle = '#c9ced4';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(14, -35);
+    ctx.lineTo(9, -38);
+    ctx.stroke();
+    // High front fender and the plate.
+    ctx.beginPath();
+    ctx.moveTo(15, -23);
+    ctx.quadraticCurveTo(25, -26, 31, -21);
+    ctx.lineWidth = 3.4;
+    ctx.stroke();
+    ctx.strokeStyle = plastic;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.roundRect(13, -34, 6, 7, 1.5);
+    ctx.fillStyle = '#fffaf0';
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 28, 4.2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  knobbyWheel(ctx, -19, -10, 10, spin);
+  knobbyWheel(ctx, 22, -10, 10, spin);
+  // Swingarm, frame and engine.
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(-19, -10);
+  ctx.lineTo(-3, -14);
+  ctx.moveTo(-3, -14);
+  ctx.lineTo(-6, -28);
+  ctx.lineTo(10, -26);
+  ctx.lineTo(4, -12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(-4, -20, 11, 9, 2.5);
+  ctx.fillStyle = '#5d636b';
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // Exhaust tucked up high.
+  ctx.beginPath();
+  ctx.moveTo(0, -18);
+  ctx.quadraticCurveTo(-12, -22, -22, -24);
+  ctx.lineWidth = 3.4;
+  ctx.stroke();
+  ctx.strokeStyle = '#c9ced4';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Long flat seat and the tail.
+  ctx.beginPath();
+  ctx.moveTo(-6, -30);
+  ctx.lineTo(-26, -27);
+  ctx.lineTo(-30, -24);
+  ctx.lineTo(-8, -26);
+  ctx.closePath();
+  ctx.fillStyle = plastic;
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(-20, -32, 16, 4, 2);
+  ctx.fillStyle = '#2b2a30';
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** How far up the rider sits (or stands) on each ride. */
+export const RIDE_SEAT: Record<RideId, number> = { scooter: 6, truck: 17, rider: 13, dirtbike: 9 };
+
+/** Any of the family's rides, in two passes either side of the rider (see each ride). */
+export function drawRide(ctx: Ctx, id: RideId, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  if (id === 'scooter') drawScooter(ctx, x, y, faceX, front, spin);
+  else if (id === 'truck') drawMonsterTruck(ctx, x, y, faceX, front, spin);
+  else if (id === 'rider') drawRidingMower(ctx, x, y, faceX, front, spin);
+  else drawDirtBike(ctx, x, y, faceX, front, spin);
 }

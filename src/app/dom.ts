@@ -22,6 +22,7 @@ export const ICONS = {
   grass: `<svg viewBox="0 0 24 24"><path d="M3 21c1-6 2-9 4-12M8 21c0-6 1-11 4-16M13 21c0-5 1-8 3-11M18 21c0-4 1-6 3-8" fill="none" stroke="#4f8a33" stroke-width="2.6" stroke-linecap="round"/><path d="M2 21h20" stroke="#3b2a20" stroke-width="2" stroke-linecap="round"/></svg>`,
   flag: `<svg viewBox="0 0 24 24"><path d="M7 21V3" stroke="#3b2a20" stroke-width="2" stroke-linecap="round"/><path d="M7 3.5l11 4-11 4z" fill="#b8382c" stroke="#3b2a20" stroke-width="1.6" stroke-linejoin="round"/><ellipse cx="9" cy="21" rx="6" ry="1.8" fill="#6cc152" stroke="#3b2a20" stroke-width="1.4"/></svg>`,
   log: `<svg viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="11" rx="3" fill="#9a6b42" stroke="#3b2a20" stroke-width="1.7"/><ellipse cx="18" cy="12.5" rx="3.5" ry="5.5" fill="#e2b77a" stroke="#3b2a20" stroke-width="1.7"/><ellipse cx="18" cy="12.5" rx="1.4" ry="2.4" fill="none" stroke="#b07a44" stroke-width="1.2"/></svg>`,
+  bale: `<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="#e8c76a" stroke="#3b2a20" stroke-width="1.7"/><path d="M8 6v12M16 6v12" stroke="#9a6b42" stroke-width="1.6"/><path d="M5 10h1.5M11 13h2M18 9.5h1" stroke="#b8963f" stroke-width="1.3" stroke-linecap="round"/></svg>`,
 };
 
 /** Small toast at the top of the screen. */

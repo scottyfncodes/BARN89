@@ -8,6 +8,8 @@ import { paintMap, type MapHit } from './app/mapScreen';
 import { MowerScene } from './app/mowerScene';
 import type { GameScene, SceneContext, SceneResult } from './app/scene';
 import { PuttScene } from './app/puttScene';
+import { PuzzleScene } from './app/puzzleScene';
+import { PUZZLE_ROUNDS } from './games/puzzle/puzzle';
 import { WoodScene } from './app/woodScene';
 import { PUTT_ROUNDS } from './games/putt/putt';
 import { Sfx } from './audio/sfx';
@@ -24,11 +26,13 @@ import {
   ORNAMENT_COUNT,
   REWARDS,
   rewardUnlocked,
-  SCOOTER_STARS,
+  RIDE_IDS,
+  rideUnlocked,
   totalStars,
   unlockedRewards,
   type GameId,
 } from './content/activities';
+import { RIDES, rideForRace, rideOf, type RideId } from './content/rides';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
@@ -38,7 +42,7 @@ import { MOW_LEVELS } from './games/mower/levels';
 import { WOOD_ROUNDS } from './games/woodpile/woodpile';
 import { Homestead, LONG_TABLE, type HubEvent } from './hub/homestead';
 import { HubView } from './hub/hubView';
-import { HUNT_ITEMS, LOCKBOX_CODE, RACE_GATES, RACE_LAPS, RACE_STAR_TIMES, ROUNDS_TASKS } from './hub/missions';
+import { HUNT_ITEMS, LOCKBOX_CODE, RACE_GATES, RACE_LAPS, ROUNDS_TASKS } from './hub/missions';
 import { drawDog, drawDonkey } from './render/animals';
 import { drawKittenFigure } from './render/characters';
 import { cleanName, NAME_MAX, NAMEABLE, NAMED_BY_FAMILY, nameFor } from './content/names';
@@ -121,31 +125,47 @@ function explorerHat(): HatKind | undefined {
 }
 
 function applyLook(): void {
+  grantRides();
   const u = unlockedRewards(store.data);
   const c = store.data.cosmetics;
   if (c.mower !== 'red' && !u.has(`mower-${c.mower}`)) c.mower = 'red';
   if (c.ride && !u.has('ride-deputy')) c.ride = false;
-  if (c.scooter && !u.has('scooter')) c.scooter = false;
-  // Natalie's scooter goes about half again as fast as walking; in a race, everyone rides one.
-  const scooting = hub.mission?.kind === 'race' || (c.scooter && store.data.explorer === 'natalie');
-  hub.raceOpen = isUnlocked(store.data, 'race-1');
-  hubView.scooter = scooting;
-  hub.player.maxSpeed = scooting ? 390 : 260;
+  for (const id of RIDE_IDS) if (c[id] && !u.has(id)) c[id] = false;
+  // The explorer rides their own ride when it's switched on; in a race, everyone rides the race's.
+  const m = hub.mission;
+  const own = rideOf(store.data.explorer);
+  const ride: RideId | null = m?.kind === 'race' ? m.ride : own && c[own.id] && u.has(own.id) ? own.id : null;
+  hub.raceOpen = RIDE_IDS.some((id) => rideUnlocked(store.data, id));
+  hub.ride = ride;
+  hubView.ride = ride;
+  hub.speedBase = ride ? RIDES[ride].speed : 260;
+  hub.player.maxSpeed = hub.speedBase;
+  hub.player.accel = ride ? RIDES[ride].accel : undefined;
   hubView.decor = decor();
   hubView.hat = explorerHat();
   hubView.mowerPaint = c.mower;
   hubView.untried = new Set(ACTIVITIES.filter((a) => activityStars(store.data, a.id).got === 0).map((a) => a.id));
 }
 
+/**
+ * A newly unlocked ride goes straight into use, once (after that its switch in Rewards is the
+ * player's). Also covers saves that already had the stars before the ride existed.
+ */
+function grantRides(): void {
+  let changed = false;
+  for (const id of RIDE_IDS) {
+    if (!rideUnlocked(store.data, id) || store.data.seen.includes(`ride-${id}`)) continue;
+    store.data.seen.push(`ride-${id}`);
+    store.data.cosmetics[id] = true;
+    changed = true;
+  }
+  if (changed) store.save();
+}
+
 /** Announce rewards that became available since `before`. */
 function announceUnlocks(before: Set<string>): string[] {
   const after = unlockedRewards(store.data);
   const fresh = REWARDS.filter((r) => after.has(r.id) && !before.has(r.id));
-  // A brand-new scooter goes straight into use.
-  if (fresh.some((r) => r.id === 'scooter')) {
-    store.data.cosmetics.scooter = true;
-    store.save();
-  }
   applyLook();
   return fresh.map((r) => r.name);
 }
@@ -230,7 +250,9 @@ function syncScreens(): void {
   show($('mission'), inHub && !!m && !covered);
   show($('prompt'), inHub && !covered && !!hub.nearStation && !m);
   show($('act-btn'), inHub && !covered && !!hub.action);
-  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene)));
+  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene)));
+  // Puzzles take raw touches: drag a bale, tap a pipe.
+  controls.pointerMode = mode === 'game' && game instanceof PuzzleScene && !covered && !paused && !resultsUp;
   if (covered || mode !== 'game' || paused) {
     hint.set(null);
     if (mode === 'game') controls.reset();
@@ -513,6 +535,16 @@ function onHubEvent(e: HubEvent): void {
     case 'sunday':
       openSunday();
       break;
+    case 'splash':
+      sfx.splash();
+      break;
+    case 'flutter':
+      sfx.flutter();
+      break;
+    case 'hop':
+      sfx.whistle();
+      if (store.addTo('seen', 'ramp')) toast.show('<b>Air time!</b>Hit the dirt ramps on the Loop with some speed.', 2.6);
+      break;
     case 'boing':
       sfx.whistle();
       if (store.addTo('seen', 'trampoline')) toast.show('<b>Boing!</b>Tap <b>Jump!</b> for a big one. Cats are still banned.', 3);
@@ -536,7 +568,7 @@ function onHubEvent(e: HubEvent): void {
     }
     case 'raceGo':
       sfx.whistle();
-      toast.show('<b>Go!</b>Follow the glowing gates.', 1.6);
+      toast.show('<b>Go!</b>Follow the arrows and the glowing gates.', 1.6);
       break;
     case 'raceGate':
       sfx.tick();
@@ -547,11 +579,12 @@ function onHubEvent(e: HubEvent): void {
       break;
     case 'raceDone': {
       sfx.victory();
-      const [s3, s2] = RACE_STAR_TIMES;
+      const ride = RIDES[e.ride];
+      const [s3, s2] = ride.starTimes;
       // Fast gets stars; winning is what gets the third.
       let stars = e.seconds <= s3 ? 3 : e.seconds <= s2 ? 2 : 1;
       if (!e.won) stars = Math.min(stars, 2);
-      showResults('race-1', {
+      showResults(ride.race, {
         stars,
         score: Math.max(0, Math.round(3000 - e.seconds * 40 + (e.won ? 500 : 0))),
         title: e.won ? 'You win!' : `${e.rival} wins this time`,
@@ -625,7 +658,7 @@ function updateMissionHud(): void {
     const rival = FAMILY[m.rival].name;
     const status =
       m.rivalDone !== null ? `${rival} is home already. Finish strong!` : m.countdown > 0 ? `Racing ${rival}. Ready...` : m.rivalGate > m.gate ? `${rival} is ahead.` : m.rivalGate < m.gate ? `You're ahead of ${rival}.` : `Neck and neck with ${rival}.`;
-    $('mission-title').textContent = 'Scooter Race';
+    $('mission-title').textContent = RIDES[m.ride].raceTitle;
     $('mission-body').innerHTML = `<p class="clue">Lap ${lap} of ${RACE_LAPS} · Gate ${gate} of ${per}. ${status}</p>`;
     show($('mission-hint'), false);
   } else if (m.kind === 'rounds') {
@@ -892,6 +925,12 @@ function buildBoard(): void {
   ].join('');
 }
 
+/** What's left to unlock a ride, e.g. "2/3 Yard Boss stars". */
+function rideNeed(id: RideId): string {
+  const u = RIDES[id].unlock;
+  return `${Math.min(u.stars, activityStars(store.data, u.game).got)}/${u.stars} ${u.label} stars`;
+}
+
 function buildRewards(): void {
   const s = store.data;
   const stars = totalStars(s);
@@ -908,8 +947,8 @@ function buildRewards(): void {
         ? `${starSvg(false, 14)} ${r.stars} stars`
         : r.how === 'pets'
           ? `${s.pets.length}/${CAT_COUNT} cats petted`
-          : r.how === 'kitten'
-            ? `${Math.min(SCOOTER_STARS, activityStars(s, 'kitten').got)}/${SCOOTER_STARS} Kitten Cowgirl stars`
+          : r.how === 'ride'
+            ? rideNeed(r.id as RideId)
             : 'Secret';
     let control = '';
     if (got) {
@@ -918,7 +957,10 @@ function buildRewards(): void {
         const paint = r.id.replace('mower-', '');
         control = `<button class="toggle ${c.mower === paint ? 'on' : ''}" data-mower="${paint}">${c.mower === paint ? 'In use' : 'Use'}</button>`;
       } else if (r.kind === 'ride') control = `<button class="toggle ${c.ride ? 'on' : ''}" data-flag="ride">${c.ride ? 'On' : 'Off'}</button>`;
-      else if (r.kind === 'scooter') control = `<button class="toggle ${c.scooter ? 'on' : ''}" data-flag="scooter">${c.scooter ? 'On' : 'Off'}</button>`;
+      else if (r.kind === 'vehicle') {
+        const on = c[r.id as RideId];
+        control = `<button class="toggle ${on ? 'on' : ''}" data-flag="${r.id}">${on ? 'On' : 'Off'}</button>`;
+      }
       else if (r.id === 'evening' || r.id === 'holiday') control = `<button class="toggle ${c[r.id] ? 'on' : ''}" data-flag="${r.id}">${c[r.id] ? 'On' : 'Off'}</button>`;
       else control = '<span class="have">Done</span>';
     }
@@ -948,7 +990,7 @@ function buildRewards(): void {
   ul.querySelectorAll<HTMLElement>('[data-flag]').forEach((b) =>
     b.addEventListener('click', () => {
       sfx.click();
-      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday' | 'scooter';
+      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday' | RideId;
       c[f] = !c[f];
       store.save();
       applyLook();
@@ -1014,7 +1056,7 @@ function buildIntroChallenges(): void {
     b.className = `chal-btn ${c.id === introChallenge ? 'on' : ''} ${un ? '' : 'locked'}`;
     b.disabled = !un;
     b.setAttribute('aria-pressed', String(c.id === introChallenge));
-    const lockedWhy = c.game === 'race' ? `Comes with Natalie's e-scooter: ${SCOOTER_STARS} stars in Kitten Cowgirl` : `Get 1 star on ${a.challenges[i - 1]?.name} to unlock`;
+    const lockedWhy = c.game === 'race' ? `Comes with ${rideForRace(c.id).name}: ${rideNeed(rideForRace(c.id).id)}` : `Get 1 star on ${a.challenges[i - 1]?.name} to unlock`;
     b.innerHTML = `<b>${c.name}</b><span>${un ? starRow(store.data.stars[c.id] ?? 0, 3, 14) : lockedWhy}</span><small>${c.blurb}</small>`;
     b.addEventListener('click', () => {
       sfx.click();
@@ -1166,6 +1208,7 @@ function makeScene(id: string): GameScene | null {
   if (c.game === 'mower') return new MowerScene(ctx, MOW_LEVELS.find((l) => l.id === id)!, shared);
   if (c.game === 'woodpile') return new WoodScene(ctx, WOOD_ROUNDS.find((r) => r.id === id)!);
   if (c.game === 'putt') return new PuttScene(ctx, PUTT_ROUNDS.find((r) => r.id === id)!);
+  if (c.game === 'puzzle') return new PuzzleScene(ctx, PUZZLE_ROUNDS.find((r) => r.id === id)!);
   return null;
 }
 
@@ -1192,7 +1235,7 @@ function startChallenge(id: string): void {
       hubView.snap();
       toast.show('<b>Go!</b>Six chores, any order. The clock is running.', 3);
     } else if (c.game === 'race') {
-      hub.startRace();
+      hub.startRace(rideForRace(id).id);
       applyLook();
       hubView.snap();
       toast.show('<b>On your marks...</b>Two laps. Ride through every glowing gate.', 2.6);
@@ -1428,7 +1471,9 @@ requestAnimationFrame(frame);
 // Test/debug hook for automated browser checks. Harmless for players.
 (window as unknown as { __b89: unknown }).__b89 = {
   hub,
+  hubView,
   store,
+  applyLook,
   get mode() {
     return mode;
   },

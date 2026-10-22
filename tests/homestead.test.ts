@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVITIES } from '../src/content/activities';
 import { PLAYER_RADIUS } from '../src/games/kitten/player';
-import { Homestead, NPC_ROUTINES, ROOF_PERCH, TRAMPOLINE, TREEHOUSE_PERCHES, type HubEvent } from '../src/hub/homestead';
+import { Homestead, NPC_ROUTINES, PATH_BOOST, ROOF_PERCH, TRAMPOLINE, TREEHOUSE_PERCHES, type HubEvent } from '../src/hub/homestead';
 import { MOTO_PARKED, MOTO_ROUTE, MOW_LAP, MOWER_PARKED, PUTTING_GREEN, SPORT_SPOTS } from '../src/hub/family';
-import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATES, RACE_START, RACE_STAR_TIMES, ROUNDS_TASKS } from '../src/hub/missions';
+import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS } from '../src/hub/missions';
+import { RIDE_IDS, RIDES, type RideId } from '../src/content/rides';
 import { PORCH_TREE } from '../src/hub/hubView';
 import { NavGrid } from '../src/world/navgrid';
 import { sharedWorld } from '../src/world/shared';
@@ -414,10 +415,12 @@ describe("Jason's motorcycle", () => {
   });
 });
 
-describe('scooter races', () => {
+describe('races on the Loop', () => {
   /** Rides the course: straight at each gate, following the nav grid round anything in the way. */
-  function raceBot(h: Homestead, maxSeconds = 120): HubEvent | undefined {
-    h.player.maxSpeed = 390;
+  function raceBot(h: Homestead, ride: RideId, maxSeconds = 120): HubEvent | undefined {
+    h.ride = ride;
+    h.player.maxSpeed = RIDES[ride].speed;
+    h.player.accel = RIDES[ride].accel;
     let done: HubEvent | undefined;
     let path: { x: number; y: number }[] | null = null;
     let pathGate = -1;
@@ -439,38 +442,70 @@ describe('scooter races', () => {
       const dy = goal.y - p.y;
       const d = Math.hypot(dx, dy) || 1;
       h.step({ ...still, moveX: dx / d, moveY: dy / d }, DT, false);
-      done = h.drainEvents().find((e) => e.type === 'raceDone') ?? done;
+      for (const e of h.drainEvents()) if (e.type === 'raceDone') done = e;
     }
     return done;
   }
 
-  it('the start line and every gate are on open ground you can reach', () => {
-    const start = RACE_START;
-    expect(shared.world.isFree(start.x, start.y, 14)).toBe(true);
-    for (const g of RACE_GATES) {
-      expect(shared.world.isFree(g.x, g.y, 14), `${g.x},${g.y}`).toBe(true);
-      expect(walkerNav.reachable(start, g)).toBe(true);
+  it('the Loop is one circuit on open ground, every stretch clear to ride straight down', () => {
+    expect(RACE_GATES[RACE_GATES.length - 1]).toBe(RACE_START);
+    for (let i = 0; i < RACE_GATES.length; i++) {
+      const a = RACE_GATES[i];
+      const b = RACE_GATES[(i + 1) % RACE_GATES.length];
+      expect(shared.world.isFree(a.x, a.y, 14), `${a.x},${a.y}`).toBe(true);
+      expect(shared.world.clearPath(a.x, a.y, b.x, b.y, PLAYER_RADIUS), `${a.x},${a.y} to ${b.x},${b.y}`).toBe(true);
     }
+    // The ramps sit on the track.
+    for (const r of RAMPS) expect(RACE_GATES.some((g, i) => {
+      const n = RACE_GATES[(i + 1) % RACE_GATES.length];
+      const t = ((r.x - g.x) * (n.x - g.x) + (r.y - g.y) * (n.y - g.y)) / ((n.x - g.x) ** 2 + (n.y - g.y) ** 2);
+      return t > 0 && t < 1 && Math.hypot(g.x + (n.x - g.x) * t - r.x, g.y + (n.y - g.y) * t - r.y) < 4;
+    })).toBe(true);
   });
 
-  it('a good ride beats the rival and earns three stars; the rival beats a slow one', () => {
+  for (const id of RIDE_IDS) {
+    it(`${id}: a good ride beats the rival for three stars; the rival beats a slow one`, () => {
+      const ride = RIDES[id];
+      const h = fresh();
+      h.raceOpen = true;
+      h.startRace(id);
+      expect(h.raceRival()?.who).toBe(ride.owner === 'natalie' ? 'jay' : ride.owner);
+      run(h, 3.2);
+      const done = raceBot(h, id);
+      expect(done?.type).toBe('raceDone');
+      if (done?.type !== 'raceDone') return;
+      expect(done.ride).toBe(id);
+      expect(done.won).toBe(true);
+      expect(done.seconds).toBeLessThan(ride.starTimes[0]);
+      // Not by a mile, though: the three-star time still takes a clean ride.
+      expect(done.seconds).toBeGreaterThan(ride.starTimes[0] * 0.75);
+      // Dawdling at the start: the rival gets home first.
+      const slow = fresh();
+      slow.startRace(id);
+      run(slow, 3.2 + 10);
+      const late = raceBot(slow, id);
+      expect(late?.type === 'raceDone' && late.won).toBe(false);
+    });
+  }
+
+  it('ramps put you in the air on a ride, never on foot', () => {
     const h = fresh();
-    h.raceOpen = true;
-    h.startRace();
-    expect(h.raceRival()?.who).toBe('jay');
-    run(h, 3.2);
-    expect(h.mission?.kind === 'race' && h.mission.countdown <= 0).toBe(true);
-    const done = raceBot(h);
-    expect(done?.type).toBe('raceDone');
-    if (done?.type !== 'raceDone') return;
-    expect(done.won).toBe(true);
-    expect(done.seconds).toBeLessThan(RACE_STAR_TIMES[0]);
-    // Dawdling at the start: the rival gets home first.
-    const slow = fresh();
-    slow.startRace();
-    run(slow, 30);
-    const late = raceBot(slow);
-    expect(late?.type === 'raceDone' && late.won).toBe(false);
+    const r = RAMPS[0];
+    h.teleport(r.x, r.y - 60);
+    h.ride = 'truck';
+    h.player.maxSpeed = RIDES.truck.speed;
+    let hop = false;
+    for (let i = 0; i < 60 && !hop; i++) {
+      h.step({ ...still, moveY: 1 }, DT, false);
+      hop = h.drainEvents().some((e) => e.type === 'hop');
+    }
+    expect(hop).toBe(true);
+    run(h, 0.3);
+    expect(h.airLift()).toBeGreaterThan(10);
+    const w = fresh();
+    w.teleport(r.x, r.y - 60);
+    for (let i = 0; i < 60; i++) w.step({ ...still, moveY: 1 }, DT, false);
+    expect(w.drainEvents().some((e) => e.type === 'hop')).toBe(false);
   });
 
   it("you're held at the line until go, then the rival heads home after", () => {
@@ -483,10 +518,33 @@ describe('scooter races', () => {
     expect(h.npcs.every((n) => n.outing !== 'race')).toBe(true);
   });
 
-  it('when racing as someone else, Natalie is the rival', () => {
-    const h = new Homestead(shared, { explorer: 'jay', ornaments: [], discoveries: [], huntFound: [] });
+  it('you race whoever owns the ride, or a stand-in when it is yours', () => {
+    const asJay = new Homestead(shared, { explorer: 'jay', ornaments: [], discoveries: [], huntFound: [] });
+    asJay.startRace('scooter');
+    expect(asJay.raceRival()?.who).toBe('natalie');
+    asJay.startRace('truck');
+    expect(asJay.raceRival()?.who).toBe('jason');
+    const asMegan = new Homestead(shared, { explorer: 'megan', ornaments: [], discoveries: [], huntFound: [] });
+    asMegan.startRace('rider');
+    expect(asMegan.raceRival()?.who).toBe('grandpa');
+    asMegan.startRace('dirtbike');
+    expect(asMegan.raceRival()?.who).toBe('jason');
+  });
+
+  it('a corner cut a little fine still counts the next gate', () => {
+    const h = fresh();
     h.startRace();
-    expect(h.raceRival()?.who).toBe('natalie');
+    run(h, 3.2);
+    const m = h.mission!;
+    if (m.kind !== 'race') return;
+    // Straight to the second gate, skipping the first.
+    h.teleport(RACE_COURSE[1].x, RACE_COURSE[1].y);
+    run(h, 0.05);
+    expect(m.gate).toBe(2);
+    // But never two at once.
+    h.teleport(RACE_COURSE[4].x, RACE_COURSE[4].y);
+    run(h, 0.05);
+    expect(m.gate).toBe(2);
   });
 });
 
@@ -693,5 +751,49 @@ describe("Grandpa's flower beds", () => {
     expect(watered).toBe(true);
     const beds = shared.map.props.filter((p) => p.kind === 'flowers' && Math.hypot(p.x - 1700, p.y - 560) < 340);
     expect(beds.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('getting around', () => {
+  it('paths and roads are a little quicker on foot', () => {
+    const h = fresh();
+    h.teleport(1060, 1330);
+    expect(h.isOnPath(h.player.x, h.player.y)).toBe(true);
+    run(h, 0.1);
+    expect(h.player.maxSpeed).toBeCloseTo(260 * PATH_BOOST);
+    h.teleport(1500, 1000);
+    run(h, 0.1);
+    expect(h.isOnPath(h.player.x, h.player.y)).toBe(false);
+    expect(h.player.maxSpeed).toBe(260);
+  });
+
+  it('running through a puddle makes a splash', () => {
+    const h = fresh();
+    const q = PUDDLES[0];
+    h.teleport(q.x - 60, q.y);
+    let splash = false;
+    for (let i = 0; i < 60 && !splash; i++) {
+      h.step({ ...still, moveX: 1 }, DT, false);
+      splash = h.drainEvents().some((e) => e.type === 'splash');
+    }
+    expect(splash).toBe(true);
+  });
+
+  it('birds and rabbits take off when you come close, and come back later', () => {
+    const h = fresh();
+    const bird = h.critters.find((c) => c.kind === 'bird')!;
+    h.teleport(bird.home.x - 200, bird.home.y + 20);
+    run(h, 0.5);
+    expect(bird.state).toBe('idle');
+    h.teleport(bird.x - 40, bird.y);
+    run(h, 0.2);
+    expect(bird.state).toBe('flee');
+    h.teleport(200, 2900);
+    run(h, 40);
+    expect(bird.state).toBe('idle');
+    expect(Math.hypot(bird.x - bird.home.x, bird.y - bird.home.y)).toBeLessThan(80);
+    // Butterflies stay with their flowers.
+    const fly = h.critters.find((c) => c.kind === 'butterfly')!;
+    expect(Math.hypot(fly.x - fly.home.x, fly.y - fly.home.y)).toBeLessThan(45);
   });
 });

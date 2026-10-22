@@ -82,6 +82,12 @@ function props(): PropDef[] {
     // You can jump on it (see Homestead.onTrampoline), so it isn't solid.
     { kind: 'trampoline', x: 810, y: 1012, w: 40 },
     { kind: 'bench', x: 1060, y: 935, w: 40 },
+    // The Loop's start and finish, by the treehouse.
+    { kind: 'sign', x: 935, y: 1150, text: 'THE LOOP' },
+    // Signposts where the paths meet.
+    { kind: 'fingerpost', x: 862, y: 548, text: "<BARNS|GRANDPA'S>" },
+    { kind: 'fingerpost', x: 1292, y: 1716, text: 'ARENA>|<ROUND PEN' },
+    { kind: 'fingerpost', x: 1432, y: 2212, text: 'BARN 89>|<CORRAL' },
     // Jason's big white truck, beside the main house.
     { kind: 'pickup', x: 548, y: 790, w: 108, angle: Math.PI / 2, color: 'white', solid: true },
     // Grandpa's (Jimmy's) dark charcoal truck, on his drive by the shop.
@@ -264,6 +270,10 @@ export function createRanchMap(): RanchMap {
       { kind: 'footpath', width: 32, points: [[1000, 1100], [1060, 1330], [1200, 1500], [1330, 1650], [1420, 1690]] },
       // Track along the north edge of the arena to the east shed.
       { kind: 'footpath', width: 28, points: [[1330, 1650], [1450, 1400], [1600, 1380], [1690, 1420]] },
+      // The Loop (the race track): dirt tracks joining the footpath and the access road into one
+      // circuit, down the arena fence to the barns and across behind the main house.
+      { kind: 'dirt', width: 40, points: [[1330, 1650], [1360, 1900], [1380, 2150], [1380, 2262]] },
+      { kind: 'dirt', width: 40, points: [[312, 1062], [470, 1060], [640, 1065], [820, 1075], [1000, 1106]] },
       // Path round the corral and behind the barns.
       { kind: 'footpath', width: 28, points: [[1190, 2300], [1150, 2520], [1250, 2700], [1500, 2800], [1700, 2860]] },
     ],
@@ -313,6 +323,9 @@ export function createRanchMap(): RanchMap {
       { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
       { id: 'treehouse', x: 1150, y: 1010, r: 80, title: 'The Treehouse', text: 'Up the ladder: a lookout window with the best view of the front lawn on the whole place.' },
       { id: 'blueStar', x: 1805, y: 700, r: 70, title: 'Blue Star', text: "This was Apple's workshop. She and Grandpa fixed up and painted antique furniture here for her business, Blue Star." },
+      { id: 'loop', x: 950, y: 1160, r: 70, title: 'The Loop', text: 'Two laps round the middle of the place, on anything with wheels. Everybody remembers their own best time differently.' },
+      { id: 'tireSwing', x: 1250, y: 360, r: 70, title: 'Tire Swing', text: 'The rope has been replaced twice. The tire is the original.' },
+      { id: 'puddles', x: 930, y: 1950, r: 60, title: 'Puddle', text: 'Faster through the middle. Muddier, too.' },
       { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
     ],
     collectibles: [

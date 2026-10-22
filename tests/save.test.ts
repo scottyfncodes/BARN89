@@ -100,8 +100,8 @@ describe('progression', () => {
     const s = freshSave();
     for (const c of ALL_CHALLENGES) s.stars[c.id] = 3;
     expect(totalStars(s)).toBe(MAX_STARS);
-    // Every star reward, plus Natalie's scooter (it comes with Kitten Cowgirl stars).
-    expect(unlockedRewards(s).size).toBe(REWARDS.filter((r) => r.stars !== undefined || r.how === 'kitten').length);
+    // Every star reward, plus all four rides (they come with stars in their owners' games).
+    expect(unlockedRewards(s).size).toBe(REWARDS.filter((r) => r.stars !== undefined || r.how === 'ride').length);
   });
 
   it('gives secret rewards for petting every cat and finishing the hunt', () => {
@@ -132,11 +132,32 @@ describe('progression', () => {
   });
 });
 
-describe('scooter races', () => {
-  it('open up along with the scooter', () => {
+describe('rides and races', () => {
+  it('each race opens up along with its ride', () => {
     const s = freshSave();
-    expect(isUnlocked(s, 'race-1')).toBe(false);
+    for (const id of ['race-1', 'race-2', 'race-3', 'race-4']) expect(isUnlocked(s, id)).toBe(false);
     s.stars['kitten-1'] = 3;
     expect(isUnlocked(s, 'race-1')).toBe(true);
+    expect(isUnlocked(s, 'race-2')).toBe(false);
+    // Jay's monster truck: three stars in Yard Boss.
+    s.stars['mower-1'] = 2;
+    s.stars['mower-2'] = 1;
+    expect(isUnlocked(s, 'race-2')).toBe(true);
+    // Megan's riding mower: two stars in Morning Rounds.
+    s.stars['rounds-1'] = 1;
+    expect(isUnlocked(s, 'race-3')).toBe(false);
+    s.stars['rounds-1'] = 2;
+    expect(isUnlocked(s, 'race-3')).toBe(true);
+    // Jason's dirt bike: three stars in Woodpile.
+    s.stars['woodpile-1'] = 3;
+    expect(isUnlocked(s, 'race-4')).toBe(true);
+    for (const id of ['truck', 'rider', 'dirtbike']) expect(rewardUnlocked(s, REWARDS.find((r) => r.id === id)!), id).toBe(true);
+  });
+
+  it('old saves pick up the new ride switches, off', () => {
+    const s = normalize({ cosmetics: { scooter: true } });
+    expect(s.cosmetics.scooter).toBe(true);
+    expect(s.cosmetics.truck).toBe(false);
+    expect(s.cosmetics.dirtbike).toBe(false);
   });
 });
