@@ -153,17 +153,18 @@ export const FAMILY_ORDER: FamilyId[] = ['megan', 'jason', 'jay', 'natalie', 'gr
 export interface DogDef {
   id: string;
   name: string;
-  kind: 'collie' | 'lab';
+  kind: 'collie' | 'lab' | 'terrier';
   base: string;
   patch: string;
   blurb: string;
   /** Drawing scale (1 = medium dog). */
   size?: number;
+  collar?: string;
 }
 
 export const DOGS: DogDef[] = [
-  { id: 'scout', name: 'Scout', kind: 'collie', base: '#2b2a30', patch: '#f7f3ec', blurb: 'Will fetch until the sun goes down. Then a little longer.' },
-  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.25, blurb: 'Eighty pounds of black Lab. Will lean on you. Will find the chew toy.' },
+  { id: 'scout', name: 'Scout', kind: 'terrier', base: '#2b2622', patch: '#f2efe8', size: 0.95, collar: '#2f5fb8', blurb: 'Scruffy, wiry, about thirty-five pounds of nose. Has found every snake on the property.' },
+  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.25, collar: '#8a8f96', blurb: 'Eighty pounds of black Lab. Will lean on you. Will find the chew toy.' },
 ];
 
 export interface DonkeyDef {

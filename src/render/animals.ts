@@ -59,6 +59,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   const lie = s.pose === 'lie';
   const bodyY = lie ? -7 : sit ? -13 : -16 - bob;
   const fluffy = d.kind === 'collie';
+  const terrier = d.kind === 'terrier';
 
   // Tail.
   const wag = Math.sin(s.clock * (8 + s.wag * 12)) * (4 + s.wag * 7);
@@ -83,6 +84,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   if (lie) {
     ellipse(ctx, 0, bodyY, 16, 6.5);
     fillStroke(ctx, d.base, 1.5);
+    if (terrier) wiryCoat(ctx, d, 0, bodyY, 16, 6.5);
     limb(ctx, 10, -3, -1.5, 9, 4.5, d.base);
   } else if (sit) {
     // Haunch and straight front legs.
@@ -97,6 +99,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     limb(ctx, -9, bodyY + 4, sw, 13 + bob, 4.5, d.base);
     ellipse(ctx, 0, bodyY, 15, 7.5);
     fillStroke(ctx, d.base, 1.6);
+    if (terrier) wiryCoat(ctx, d, 0, bodyY, 15, 7.5);
     if (d.kind === 'collie') {
       ellipse(ctx, 8, bodyY + 2, 7, 5.5);
       ctx.fillStyle = d.patch;
@@ -113,7 +116,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   fillStroke(ctx, d.base, 1.5);
   // Snout.
   ellipse(ctx, hx + 7, hy + 2.5, 5.5, 3.6);
-  fillStroke(ctx, d.kind === 'collie' ? d.patch : d.patch, 1.3);
+  fillStroke(ctx, terrier ? d.base : d.patch, 1.3);
   ellipse(ctx, hx + 11.6, hy + 1.2, 1.8, 1.5);
   ctx.fillStyle = C.ink;
   ctx.fill();
@@ -134,6 +137,28 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ctx.lineTo(hx + 1.5, hy - 6);
     ctx.closePath();
     fillStroke(ctx, d.base, 1.2);
+  } else if (terrier) {
+    // Two upright, pointed ears.
+    for (const [ex, lean] of [[-4.5, -1], [-0.5, 1.5]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.moveTo(hx + ex - 2.5, hy - 5);
+      ctx.lineTo(hx + ex + lean, hy - 15);
+      ctx.lineTo(hx + ex + 3, hy - 5.5);
+      ctx.closePath();
+      fillStroke(ctx, d.base, 1.2);
+    }
+    // Whiskery beard and eyebrows.
+    ctx.strokeStyle = shadeHex(d.base, 1.6);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const bx = hx + 4 + i * 1.6;
+      ctx.moveTo(bx, hy + 4.5);
+      ctx.lineTo(bx - 0.6 + (i % 2), hy + 8.5 + (i % 3));
+    }
+    ctx.moveTo(hx + 1.5, hy - 4);
+    ctx.lineTo(hx + 5.5, hy - 5.5);
+    ctx.stroke();
   } else {
     // Floppy ear.
     ctx.beginPath();
@@ -160,13 +185,51 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   }
   // Collar.
   if (!lie) {
-    ctx.strokeStyle = d.kind === 'collie' ? '#d9434f' : '#8a8f96';
+    ctx.strokeStyle = d.collar ?? (d.kind === 'collie' ? '#d9434f' : '#8a8f96');
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(hx - 5, hy + 4);
     ctx.lineTo(hx - 1, hy + 6.5);
     ctx.stroke();
   }
+}
+
+function shadeHex(hex: string, k: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v: number) => Math.min(255, Math.round(v * k));
+  return `rgb(${c((n >> 16) & 255)},${c((n >> 8) & 255)},${c(n & 255)})`;
+}
+
+/** Scruffy terrier coat: brindle streaks, wiry tufts along the back, white chest blaze. */
+function wiryCoat(ctx: Ctx, d: DogDef, x: number, y: number, rx: number, ry: number): void {
+  ctx.save();
+  ellipse(ctx, x, y, rx, ry);
+  ctx.clip();
+  ctx.globalAlpha = 0.45;
+  ctx.strokeStyle = shadeHex(d.base, 1.45);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  for (const [ox, len] of [[-9, 0.5], [-3, 0.35], [4, 0.45], [9, 0.3]]) {
+    ctx.moveTo(x + ox, y - ry);
+    ctx.quadraticCurveTo(x + ox + 3, y - ry * (1 - len), x + ox + 1, y - ry * (1 - len * 2));
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  ctx.strokeStyle = d.base;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  // A few wiry tufts at the shoulders and rump, not a full fringe.
+  for (const i of [-4, -3, 3, 4]) {
+    const tx = x + i * 2.8;
+    const ty = y - ry * Math.sqrt(Math.max(0, 1 - ((i * 2.8) / rx) ** 2));
+    ctx.moveTo(tx, ty + 1.5);
+    ctx.lineTo(tx - 1.2, ty - 2);
+  }
+  ctx.stroke();
+  ellipse(ctx, x + rx * 0.8, y + ry * 0.45, 2.6, 3);
+  ctx.fillStyle = d.patch;
+  ctx.fill();
 }
 
 export function drawDog(ctx: Ctx, d: DogDef, s: DogLook): void {
