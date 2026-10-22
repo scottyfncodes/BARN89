@@ -327,7 +327,14 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     const k = p.actionT ?? 0;
     front = { x: sh.x - 8 + (1 - k) * 24, y: sh.y - 14 + (1 - k) * 14 };
   }
-  if (p.hold === 'basket' || p.hold === 'pail') front = { x: sh.x + 8, y: sh.y + 12 };
+  if (p.hold === 'basket' || p.hold === 'pail') {
+    front = { x: sh.x + 8, y: sh.y + 12 };
+    // Scattering feed from the basket: the free hand does the tossing.
+    if (action === 'throw') {
+      const k = Math.sin((1 - (p.actionT ?? 0)) * Math.PI);
+      back = { x: sh.x + 2 + k * 13, y: sh.y + 10 - k * 12 };
+    }
+  }
   const axeA = p.axe ?? 0.6;
   if (p.hold === 'axe') {
     front = { x: sh.x + Math.cos(axeA) * 15, y: sh.y + Math.sin(axeA) * 15 };

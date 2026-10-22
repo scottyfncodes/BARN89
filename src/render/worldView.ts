@@ -216,7 +216,8 @@ export class WorldView {
   follow(x: number, y: number, vx: number, vy: number, dt: number, zoomMul = 1, look = 0.32): void {
     if (this.overview) return this.fitAll();
     this.cam.zoom = damp(this.cam.zoom, this.baseZoom() * zoomMul, 2.5, dt);
-    const lookY = vy * look + (this.insets.top - this.insets.bottom) / 2 / this.cam.zoom;
+    // Centre the target in the space between whatever is pinned to the top and the bottom.
+    const lookY = vy * look + (this.insets.bottom - this.insets.top) / 2 / this.cam.zoom;
     this.cam.x = damp(this.cam.x, x + vx * look, 4.2, dt);
     this.cam.y = damp(this.cam.y, y - 20 + lookY, 4.2, dt);
     this.clampCam();
@@ -455,7 +456,7 @@ export class WorldView {
         items.push({ y: s.y, draw: () => drawFencePiece(ctx, fp) });
       }
     }
-    if (this.ambient.chickens) this.addChickens(items, v, clock);
+    if (this.ambient.chickens) this.addChickens(items, v, clock, f);
     if (this.ambient.donkeys) this.addDonkeys(items, v, clock);
     spec.actors?.(items, v);
     items.sort((a, b) => a.y - b.y);
@@ -509,7 +510,7 @@ export class WorldView {
     }
   }
 
-  private addChickens(items: DrawItem[], v: Box, t: number): void {
+  private addChickens(items: DrawItem[], v: Box, t: number, focus: { x: number; y: number } | null): void {
     const pen = this.map.pens.find((p) => p.role === 'chickens');
     if (!pen) return;
     if (pen.x + pen.r < v.x0 || pen.x - pen.r > v.x1 || pen.y + pen.r < v.y0 || pen.y - pen.r > v.y1 + 30) return;
@@ -517,10 +518,26 @@ export class WorldView {
     for (let i = 0; i < 5; i++) {
       const a = t * 0.22 * (i % 2 ? 1 : -1) + i * 1.3 + Math.sin(t * 0.7 + i) * 0.4;
       const r = (pen.r - 30) * (0.35 + 0.6 * hash2(i, 1, 5));
-      const x = pen.x + Math.cos(a) * r;
-      const y = pen.y + 10 + Math.sin(a) * r * 0.8;
-      const peck = Math.sin(t * 4 + i * 3) > 0.7;
-      const dir = Math.cos(a + Math.PI / 2) * (i % 2 ? 1 : -1) > 0 ? 1 : -1;
+      let x = pen.x + Math.cos(a) * r;
+      let y = pen.y + 10 + Math.sin(a) * r * 0.8;
+      let peck = Math.sin(t * 4 + i * 3) > 0.7;
+      let dir = Math.cos(a + Math.PI / 2) * (i % 2 ? 1 : -1) > 0 ? 1 : -1;
+      // Walk up to the wire and they shuffle off to the far side, deeply unimpressed.
+      const fd = focus ? Math.hypot(x - focus.x, y - focus.y) : Infinity;
+      if (focus && fd < 90) {
+        const k = (90 - fd) / 90;
+        x += ((x - focus.x) / (fd || 1)) * k * 34;
+        y += ((y - focus.y) / (fd || 1)) * k * 26;
+        const cx = x - pen.x;
+        const cy = (y - pen.y - 10) / 0.8;
+        const cr = Math.hypot(cx, cy);
+        if (cr > pen.r - 22) {
+          x = pen.x + (cx / cr) * (pen.r - 22);
+          y = pen.y + 10 + (cy / cr) * (pen.r - 22) * 0.8;
+        }
+        peck = false;
+        dir = x > focus.x ? 1 : -1;
+      }
       items.push({ y, draw: () => drawChicken(ctx, x, y, dir, peck, i === 3) });
     }
   }

@@ -88,6 +88,10 @@ let lastMission = '';
 let mapHits: MapHit[] = [];
 let introActivity: GameId = 'kitten';
 let introChallenge = '';
+/** Where the explorer stood when they went off to play a minigame; they come back to it. */
+let returnSpot: { x: number; y: number } | null = null;
+/** Whose game was just played well enough to earn a star (they're pleased about it). */
+let cheerFor: FamilyId | null = null;
 const dial = [0, 0];
 const top = (): string | undefined => stack[stack.length - 1];
 
@@ -130,6 +134,21 @@ function announceUnlocks(before: Set<string>): string[] {
 }
 
 // --- Layout ------------------------------------------------------------------------------------
+/** Safe-area insets in CSS pixels (notch, home indicator), read from a probe styled with env(). */
+function safeInsets(): { top: number; right: number; bottom: number; left: number } {
+  const s = getComputedStyle($('safe-probe'));
+  return { top: parseFloat(s.paddingTop) || 0, right: parseFloat(s.paddingRight) || 0, bottom: parseFloat(s.paddingBottom) || 0, left: parseFloat(s.paddingLeft) || 0 };
+}
+
+/** A quick fade up from dark when the scene changes. Instant, so it never delays a tap. */
+function reveal(): void {
+  if (reducedMotion) return;
+  const el = $('curtain');
+  el.classList.add('on');
+  void el.offsetWidth;
+  el.classList.remove('on');
+}
+
 function insetTop(): number {
   const el = mode === 'game' ? hud.root : $('hub-hud');
   if (el.hidden) return 0;
@@ -144,14 +163,21 @@ function resize(): void {
   canvas.style.height = `${h}px`;
   const dpr = window.devicePixelRatio || 1;
   const inset = insetTop();
+  const safe = safeInsets();
+  let toastTop = inset;
   if (mode === 'game' && game) game.resize(w, h, dpr, inset);
   else {
     hubView.resize(w, h, dpr);
     const missionBottom = $('mission').hidden ? inset : $('mission').getBoundingClientRect().bottom;
     const dialog = top() === 'sunday' ? document.querySelector('#sunday .dialog')!.getBoundingClientRect().height + 16 : 0;
-    hubView.insets = { top: mode === 'hub' ? missionBottom : 0, bottom: dialog || ($('prompt').hidden ? 0 : $('prompt').getBoundingClientRect().height) };
-    hubView.guideRect = { left: 0, top: missionBottom + 6, right: w, bottom: h };
+    const bottom = dialog || ($('prompt').hidden ? 0 : $('prompt').getBoundingClientRect().height);
+    hubView.insets = { top: mode === 'hub' ? missionBottom : 0, bottom };
+    // Edge markers stay clear of the notch, the home indicator and the prompt card.
+    hubView.guideRect = { left: safe.left, top: missionBottom + 6, right: w - safe.right, bottom: h - Math.max(safe.bottom, bottom ? bottom + 14 + safe.bottom : 0) };
+    toastTop = missionBottom;
   }
+  // Toasts sit just under whatever is pinned to the top (HUD, chore card), never on top of it.
+  document.documentElement.style.setProperty('--toast-top', `${Math.round(Math.max(toastTop, safe.top) + 8)}px`);
   if (top() === 'map') openMap();
 }
 window.addEventListener('resize', resize);
@@ -334,6 +360,7 @@ function enterHub(): void {
   stack.length = 0;
   applyLook();
   hubView.snap();
+  reveal();
   sfx.startMusic();
   playT = 0;
   syncScreens();
@@ -928,10 +955,14 @@ function startChallenge(id: string): void {
   const c = challengeDef(id);
   if (!isUnlocked(store.data, id)) return;
   currentChallenge = id;
+  // Remember where they were standing (only when setting off from the homestead itself).
+  if (mode === 'hub') returnSpot = c.game === 'rounds' || c.game === 'hunt' ? null : { x: hub.player.x, y: hub.player.y };
   stack.length = 0;
   resultsUp = false;
   paused = false;
+  cheerFor = null;
   toast.clear();
+  reveal();
   if (c.game === 'rounds' || c.game === 'hunt') {
     game?.exit();
     game = null;
@@ -947,7 +978,10 @@ function startChallenge(id: string): void {
     }
     lastMission = '';
     sfx.startMusic();
+    updateMissionHud();
     syncScreens();
+    // Frame the explorer below the chore card now that it's on screen.
+    hubView.snap();
     return;
   }
   game?.exit();
@@ -988,14 +1022,21 @@ function leaveGame(): void {
   paused = false;
   resultsUp = false;
   hub.endMission();
+  const wasMinigame = mode === 'game';
   mode = 'hub';
   stack.length = 0;
-  if (c) {
+  // Back where they set off from. Chores and the hunt already happen out on the homestead.
+  if (wasMinigame && c) {
     const a = activity(c.game);
-    hub.teleport(a.station.x, a.station.y + 70);
+    const spot = returnSpot ?? { x: a.station.x, y: a.station.y + 70 };
+    hub.teleport(spot.x, spot.y);
   }
+  returnSpot = null;
+  if (cheerFor) hub.celebrate(cheerFor);
+  cheerFor = null;
   applyLook();
   hubView.snap();
+  if (wasMinigame) reveal();
   sfx.setEngine(-1);
   sfx.startMusic();
   lastStation = null;
@@ -1050,6 +1091,7 @@ function showResults(id: string, r: SceneResult, before = unlockedRewards(store.
   const idx = a.challenges.findIndex((x) => x.id === id);
   const next = a.challenges[idx + 1];
   const nextNew = !!next && prevStars === 0 && r.stars > 0;
+  if (r.stars > 0) cheerFor = a.who;
 
   $('results-title').textContent = r.title;
   $('results-sub').textContent = r.sub;
