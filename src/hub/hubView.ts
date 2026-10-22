@@ -1,20 +1,20 @@
 import { ACTIVITIES } from '../content/activities';
-import { FAMILY, type HatKind } from '../content/cast';
+import { FAMILY, type FamilyId, type HatKind } from '../content/cast';
 import { clamp, dist, lerp } from '../core/math';
 import { drawDog, drawDonkey } from '../render/animals';
 import { drawEmote, drawKittenFigure, star } from '../render/characters';
 import { C } from '../render/palette';
-import { drawPerson, type HeldItem } from '../render/people';
+import { drawPerson, paintPortrait, type HeldItem, type PersonAction } from '../render/people';
 import type { BuildingSprites, TreeSprites } from '../render/sprites';
 import type { TerrainTiles } from '../render/terrain';
 import { drawMower, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
-import type { HubEvent, Homestead } from './homestead';
+import { NPC_ROUTINES, type HubEvent, type Homestead, type Npc } from './homestead';
 import { HUNT_ITEMS, ORNAMENTS, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
 type Ctx = CanvasRenderingContext2D;
 
-const NPC_HOLD: Partial<Record<string, HeldItem>> = { megan: 'basket' };
+const NPC_HOLD: Partial<Record<string, HeldItem>> = { megan: 'basket', jason: 'axe' };
 /** Where Grandpa keeps his little porch tree; found ornaments get hung on it. */
 export const PORCH_TREE = { x: 1562, y: 716 };
 
@@ -36,8 +36,11 @@ export class HubView extends WorldView {
     this.snapTo(hub.player.x, hub.player.y);
   }
 
+  /** Jump the camera to the explorer, framed the way follow() settles (clear of the HUD and cards). */
   snap(): void {
     this.snapTo(this.hub.player.x, this.hub.player.y);
+    this.cam.y += (this.insets.bottom - this.insets.top) / 2 / this.cam.zoom - 20;
+    this.clampCam();
   }
 
   handleEvent(e: HubEvent): void {
@@ -150,20 +153,24 @@ export class HubView extends WorldView {
         const ctx = this.ctx;
         items.push({ y: py, draw: () => drawMe(ctx, false) });
         for (const n of h.npcs) {
-          if (!inBox(n, v, 40)) continue;
+          const x = lerp(n.px, n.x, alpha);
+          const y = lerp(n.py, n.y, alpha);
+          if (!inBox({ x, y }, v, 40)) continue;
           const L = FAMILY[n.who].look;
+          const moving = Math.hypot(n.x - n.px, n.y - n.py) > 0.05;
           items.push({
-            y: n.y,
+            y,
             draw: () =>
               drawPerson(ctx, L, {
-                x: n.x,
-                y: n.y,
+                x,
+                y,
                 faceX: n.faceX,
-                speed01: 0,
-                walkPhase: 0,
+                speed01: moving ? 0.3 : 0,
+                walkPhase: n.walkPhase,
                 clock: clock + n.home.x,
-                action: n.waveT > 0 ? 'wave' : 'none',
-                hold: NPC_HOLD[n.who] ?? null,
+                // Tools stay put at the breakfast table.
+                hold: h.gathered ? null : (NPC_HOLD[n.who] ?? null),
+                ...npcGesture(n),
               }),
           });
         }
@@ -187,7 +194,7 @@ export class HubView extends WorldView {
                 x,
                 y,
                 faceX: d.faceX,
-                pose: d.state === 'rest' ? 'lie' : moving ? (fast ? 'run' : 'walk') : 'sit',
+                pose: d.state === 'rest' ? 'lie' : moving ? (fast ? 'run' : 'walk') : d.state === 'sniff' ? 'stand' : 'sit',
                 phase: d.phase,
                 clock: clock + d.side,
                 wag: d.wag,
@@ -199,7 +206,7 @@ export class HubView extends WorldView {
           const x = lerp(d.px, d.x, alpha);
           const y = lerp(d.py, d.y, alpha);
           if (!inBox({ x, y }, v, 60)) continue;
-          const walking = d.state === 'wander' || d.state === 'come';
+          const walking = d.state === 'wander' || d.state === 'come' || d.state === 'greet';
           items.push({
             y,
             draw: () =>
@@ -302,6 +309,7 @@ export class HubView extends WorldView {
         }
       },
       screen: (ctx, left, top, z) => {
+        if (!m && !h.gathered) this.familyMarkers(ctx, left, top, z);
         if (m?.kind === 'rounds') {
           for (const t of ROUNDS_TASKS) {
             if (m.done.has(t.id) || (t.needs && !m.done.has(t.needs))) continue;
@@ -338,6 +346,89 @@ export class HubView extends WorldView {
 
   /** Activities with no stars yet get a little star over the character. */
   untried = new Set<string>();
+
+  private faces = new Map<FamilyId, HTMLCanvasElement>();
+
+  /**
+   * Little portraits at the screen edge pointing toward family members just out of view, so
+   * there's always someone to go and find. Only the nearest two, and only fairly close by.
+   */
+  private familyMarkers(ctx: Ctx, left: number, top: number, z: number): void {
+    const p = this.hub.player;
+    const near = this.hub.npcs
+      .map((n) => ({ n, d: dist(n, p) }))
+      .filter((e) => e.d < MARKER_RANGE)
+      .sort((a, b) => a.d - b.d);
+    let shown = 0;
+    for (const { n, d } of near) {
+      if (shown >= 2) break;
+      // Even half in view, they're easy enough to spot without an arrow on top of them.
+      const sx = (n.x - left) * z;
+      const sy = (n.y - top) * z;
+      if (sx > -30 && sx < this.vw + 30 && sy > -20 && sy < this.vh + 70) continue;
+      const a = ACTIVITIES.find((x) => x.who === n.who);
+      ctx.save();
+      ctx.globalAlpha = clamp((MARKER_RANGE - d) / 380, 0.4, 0.92);
+      const face = this.face(n.who);
+      const drawn = this.edgeMarker(
+        ctx,
+        left,
+        top,
+        z,
+        n.x,
+        n.y - 30,
+        this.guideRect,
+        (c) => {
+          c.save();
+          c.beginPath();
+          c.arc(0, 0, 13, 0, Math.PI * 2);
+          c.clip();
+          c.drawImage(face, -13, -13, 26, 26);
+          c.restore();
+        },
+        a && this.untried.has(a.id) ? C.gold : '#fff8e9',
+      );
+      ctx.restore();
+      if (drawn) shown++;
+    }
+  }
+
+  private face(who: FamilyId): HTMLCanvasElement {
+    let c = this.faces.get(who);
+    if (!c) {
+      c = document.createElement('canvas');
+      paintPortrait(c, FAMILY[who].look);
+      this.faces.set(who, c);
+    }
+    return c;
+  }
+}
+
+/** How far away (world units) a family member can be and still get an edge marker. */
+const MARKER_RANGE = 1000;
+
+/** What a family member's hands are doing right now: celebrating, waving hello, or their routine. */
+function npcGesture(n: Npc): { action: PersonAction; actionT?: number; axe?: number } {
+  if (n.cheerT > 0) return { action: 'cheer' };
+  if (n.waveT > 0) return { action: 'wave' };
+  if (n.busyT <= 0) return { action: 'none' };
+  const R = NPC_ROUTINES[n.who];
+  const k = 1 - n.busyT / R.gestureT;
+  switch (R.gesture) {
+    case 'toss':
+      return { action: 'throw', actionT: 1 - k };
+    case 'swing': {
+      // Lift the axe up behind the head, then bring it down easy.
+      const e = k < 0.55 ? k / 0.55 : 1 - (k - 0.55) / 0.45;
+      return { action: 'none', axe: 0.6 + (-2.1 - 0.6) * e * e * (3 - 2 * e) };
+    }
+    case 'point':
+      return { action: 'point' };
+    case 'wave':
+      return { action: 'wave' };
+    default:
+      return { action: 'none' };
+  }
 }
 
 function inBox(p: { x: number; y: number }, v: Box, pad: number): boolean {

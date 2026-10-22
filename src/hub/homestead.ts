@@ -17,11 +17,54 @@ export interface Npc {
   who: FamilyId;
   x: number;
   y: number;
+  px: number;
+  py: number;
   home: Vec;
   faceX: number;
   waveT: number;
   near: boolean;
+  /** Where they're ambling to between bits of business, if anywhere. */
+  target: Vec | null;
+  /** Seconds until the next bit of business. */
+  idleT: number;
+  /** Seconds left on the current gesture (see NPC_ROUTINES). */
+  busyT: number;
+  /** Seconds left celebrating after you played their game. */
+  cheerT: number;
+  walkPhase: number;
 }
+
+/**
+ * What each family member does while waiting at their spot: how far they amble, and the small
+ * gesture that fits where they stand. Everyone stops and turns to you when you walk up.
+ */
+export interface NpcRoutine {
+  /** How far from their spot they wander (0 stays put). */
+  roam: number;
+  /** Seconds between bits of business. */
+  gap: [number, number];
+  gesture: 'toss' | 'swing' | 'point' | 'look' | 'wave';
+  /** Seconds the gesture lasts. */
+  gestureT: number;
+  /** Which way they face for the gesture (0 keeps whatever way they're facing). */
+  gestureFace: number;
+}
+
+export const NPC_ROUTINES: Record<FamilyId, NpcRoutine> = {
+  // Scattering feed for the chickens beside her.
+  megan: { roam: 44, gap: [3, 6], gesture: 'toss', gestureT: 0.6, gestureFace: -1 },
+  // A practice swing or two at the woodpile.
+  jason: { roam: 0, gap: [4, 7], gesture: 'swing', gestureT: 1.4, gestureFace: 0 },
+  // Walking a lap around his mower.
+  jay: { roam: 40, gap: [3, 7], gesture: 'look', gestureT: 1.2, gestureFace: 0 },
+  // Keeping an eye on the arena for loose cats.
+  natalie: { roam: 46, gap: [3, 6], gesture: 'point', gestureT: 1.1, gestureFace: 0 },
+  // On his porch, waving at the trucks on Buffalo Gap Rd.
+  grandpa: { roam: 0, gap: [6, 11], gesture: 'wave', gestureT: 1.6, gestureFace: 1 },
+};
+
+/** Within this distance family members stop what they're doing and turn to you. */
+export const NPC_ATTEND = 150;
 
 export interface HubDog {
   def: DogDef;
@@ -33,8 +76,11 @@ export interface HubDog {
   vy: number;
   faceX: number;
   phase: number;
-  state: 'follow' | 'fetch' | 'return' | 'rest';
+  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff';
   ball: boolean;
+  /** While sniffing: the interesting spot, and how long left with nose to the ground. */
+  sniffAt: Vec | null;
+  sniffT: number;
   wag: number;
   side: number;
   path: Vec[] | null;
@@ -50,7 +96,7 @@ export interface HubDonkey {
   faceX: number;
   phase: number;
   target: Vec;
-  state: 'wander' | 'graze' | 'come' | 'eat' | 'sulk';
+  state: 'wander' | 'graze' | 'come' | 'eat' | 'sulk' | 'greet' | 'watch';
   t: number;
   brayT: number;
 }
@@ -150,6 +196,18 @@ const CAT_HOMES: { id: keyof typeof COATS; name: string; personality: Personalit
   { id: 'waffles', name: 'Waffles', personality: 'hungry', spots: [{ x: 540, y: 470 }, { x: 640, y: 380 }] },
 ];
 
+/** How long each kind of cat stays put before wandering over to its other favourite spot. */
+const CAT_REST: Record<Personality, [number, number]> = {
+  sleepy: [90, 160],
+  shy: [30, 60],
+  hungry: [20, 40],
+  curious: [14, 30],
+  distractible: [10, 22],
+};
+
+/** How long the dogs put up with you standing still before going off to sniff something. */
+const SNIFF_AFTER: Record<string, number> = { scout: 8, annie: 18 };
+
 const PET_LINES: Record<Personality, string[]> = {
   hungry: ['{n} purrs and follows you, just in case you have snacks.', '{n} head-bonks your boots. Snacks were implied.'],
   shy: ['{n} gives you one slow blink, then bolts.', '{n} tolerates exactly one pet, then relocates.'],
@@ -185,7 +243,11 @@ export class Homestead {
   gathered = false;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
+  /** Separate stream for ambient behaviour so it never shifts the games' dice. */
+  private life = new Rng(1989);
   private barkT = 3;
+  /** A donkey already came over to the fence this visit. */
+  private greeted = false;
 
   constructor(
     readonly shared: SharedWorld,
@@ -215,6 +277,8 @@ export class Homestead {
       ball: false,
       wag: 0.5,
       side: i ? 1 : -1,
+      sniffAt: null,
+      sniffT: 0,
       path: null,
       pathT: 0,
     }));
@@ -239,7 +303,7 @@ export class Homestead {
         phase: 0,
         state: 'rest',
         target: null,
-        t: 0,
+        t: this.life.range(...CAT_REST[c.personality]),
         emote: c.personality === 'sleepy' ? 'zzz' : 'none',
         emoteT: 0,
         speed: PERSONALITIES[c.personality].walk + 40,
@@ -260,7 +324,8 @@ export class Homestead {
   private placeNpcs(): void {
     this.npcs = FAMILY_ORDER.filter((id) => id !== this.explorer).map((who) => {
       const a = ACTIVITIES.find((aa) => aa.who === who)!;
-      return { who, x: a.station.x, y: a.station.y, home: { ...a.station }, faceX: -1, waveT: 0, near: false };
+      const { x, y } = a.station;
+      return { who, x, y, px: x, py: y, home: { x, y }, faceX: -1, waveT: 0, near: false, target: null, idleT: this.life.range(1, 4), busyT: 0, cheerT: 0, walkPhase: 0 };
     });
   }
 
@@ -297,16 +362,19 @@ export class Homestead {
     this.gathered = on;
     if (!on) {
       for (const n of this.npcs) {
-        n.x = n.home.x;
-        n.y = n.home.y;
+        n.x = n.px = n.home.x;
+        n.y = n.py = n.home.y;
+        n.target = null;
       }
       for (const d of this.dogs) d.state = 'follow';
       return;
     }
     this.npcs.forEach((n, i) => {
       const seat = TABLE_SEATS[i % TABLE_SEATS.length];
-      n.x = seat.x;
-      n.y = seat.y;
+      n.x = n.px = seat.x;
+      n.y = n.py = seat.y;
+      n.target = null;
+      n.busyT = 0;
       n.faceX = seat.x < LONG_TABLE.x ? 1 : -1;
       n.waveT = 0;
     });
@@ -375,6 +443,7 @@ export class Homestead {
     this.updateNpcs(dt);
     this.updateBall(dt);
     for (const d of this.dogs) this.updateDog(d, dt);
+    this.donkeysNotice();
     for (const d of this.donkeys) this.updateDonkey(d, dt);
     for (const c of this.cats) this.updateCat(c, dt);
     this.updateMission(dt);
@@ -398,16 +467,74 @@ export class Homestead {
     return best;
   }
 
+  /** Someone whose game you just played is pleased about it. */
+  celebrate(who: FamilyId): void {
+    const n = this.npcs.find((x) => x.who === who);
+    if (n) n.cheerT = 2.4;
+  }
+
   private updateNpcs(dt: number): void {
     const p = this.player;
     for (const n of this.npcs) {
+      n.px = n.x;
+      n.py = n.y;
       const d = dist(n, p);
       const near = d < 170;
       if (near && !n.near) n.waveT = 1.4;
       n.near = near;
-      if (near) n.faceX = p.x >= n.x ? 1 : -1;
       n.waveT = Math.max(0, n.waveT - dt);
+      n.cheerT = Math.max(0, n.cheerT - dt);
+      n.busyT = Math.max(0, n.busyT - dt);
+      if (this.gathered) continue;
+      const R = NPC_ROUTINES[n.who];
+      if (d < NPC_ATTEND) {
+        // Drop everything and come back to their spot to talk.
+        n.target = dist(n, n.home) > 2 ? n.home : null;
+        n.busyT = 0;
+        n.idleT = Math.max(n.idleT, 1.5);
+      } else if (!n.target) {
+        n.idleT -= dt;
+        if (n.idleT <= 0) {
+          n.idleT = this.life.range(R.gap[0], R.gap[1]);
+          if (R.roam > 0 && this.life.next() < 0.5) n.target = this.strollSpot(n, R.roam);
+          else {
+            n.busyT = R.gestureT;
+            if (R.gesture === 'look') n.faceX = -n.faceX;
+            else if (R.gestureFace) n.faceX = R.gestureFace;
+          }
+        }
+      }
+      if (n.target) {
+        const dx = n.target.x - n.x;
+        const dy = n.target.y - n.y;
+        const dd = Math.hypot(dx, dy);
+        const speed = d < NPC_ATTEND ? 90 : 34;
+        if (dd < 1.5) {
+          n.x = n.target.x;
+          n.y = n.target.y;
+          n.target = null;
+        } else {
+          const s = Math.min(dd, speed * dt);
+          n.x += (dx / dd) * s;
+          n.y += (dy / dd) * s;
+          if (Math.abs(dx) > 0.5) n.faceX = dx > 0 ? 1 : -1;
+          n.walkPhase += dt * (2 + (speed / 260) * 9);
+        }
+      }
+      if (near && !n.target) n.faceX = p.x >= n.x ? 1 : -1;
     }
+  }
+
+  /** A nearby open spot to amble to (or home, if nothing nearby is clear). */
+  private strollSpot(n: Npc, roam: number): Vec {
+    const w = this.shared.world;
+    for (let i = 0; i < 4; i++) {
+      const a = this.life.range(0, Math.PI * 2);
+      const r = this.life.range(roam * 0.4, roam);
+      const q = { x: n.home.x + Math.cos(a) * r, y: n.home.y + Math.sin(a) * r * 0.7 };
+      if (w.isFree(q.x, q.y, 10) && w.clearPath(n.x, n.y, q.x, q.y, 10)) return q;
+    }
+    return n.home;
   }
 
   private findAction(): HubAction | null {
@@ -563,6 +690,14 @@ export class Homestead {
         d.wag = 1;
         this.emit({ type: 'fetched', dog: d.def.name, x: d.x, y: d.y });
       }
+    } else if (d.state === 'sniff' && d.sniffAt) {
+      // Nose down in the grass a little way off, then back to heel.
+      if (p.idleT < 0.1) d.state = 'follow';
+      else if (dist(d, d.sniffAt) > 8) sp = this.moveAgent(d, d.sniffAt, 120, dt, 11);
+      else {
+        d.sniffT -= dt;
+        if (d.sniffT <= 0) d.state = 'follow';
+      }
     } else {
       // Follow at heel, one on each side; flop down when the explorer stands still a while.
       const back = fromAngle(p.heading + Math.PI, 56);
@@ -571,6 +706,7 @@ export class Homestead {
       const far = dist(d, target);
       if (p.idleT > 5 && far < 90) d.state = 'rest';
       if (d.state === 'rest' && (p.idleT < 0.1 || far > 120)) d.state = 'follow';
+      if (d.state === 'rest' && !this.gathered && p.idleT > (SNIFF_AFTER[d.def.id] ?? 12) && this.life.next() < dt * 0.25) this.startSniff(d);
       if (d.state === 'follow' && far > 16) sp = this.moveAgent(d, target, far > 260 ? 360 : far > 80 ? 270 : 170, dt, 11);
       if (far > 900) {
         // Lost behind something: trot back into view.
@@ -587,6 +723,18 @@ export class Homestead {
     d.phase += dt * (2 + Math.min(1, sp / 300) * 14);
     d.wag = Math.max(0.3, d.wag - dt * 0.3);
     if (d.state === 'fetch' || d.state === 'return') d.wag = 1;
+  }
+
+  private startSniff(d: HubDog): void {
+    const p = this.player;
+    const a = this.life.range(0, Math.PI * 2);
+    const r = this.life.range(70, 140);
+    const spot = this.shared.nav.nearestWalkable(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 3);
+    if (!spot || !this.shared.nav.reachable(d, spot)) return;
+    d.state = 'sniff';
+    d.sniffAt = spot;
+    d.sniffT = this.life.range(1.8, 3.4);
+    d.path = null;
   }
 
   /* --- Donkeys --------------------------------------------------------------------------- */
@@ -619,13 +767,34 @@ export class Homestead {
     p.throwT = 0.4;
   }
 
+  /**
+   * Stand at the pen fence a moment and somebody wanders over to see what you've got.
+   * Chewy is usually first to the gate.
+   */
+  private donkeysNotice(): void {
+    const p = this.player;
+    if (dist(p, this.pen) > this.pen.r + 110) {
+      this.greeted = false;
+      return;
+    }
+    if (this.greeted || p.idleT < 1.2 || this.donkeys.some((d) => d.state === 'come' || d.state === 'eat' || d.state === 'greet')) return;
+    this.greeted = true;
+    const keen = this.donkeys.find((d) => d.def.id === 'chewy') ?? this.donkeys[0];
+    const other = this.donkeys.find((d) => d !== keen);
+    const who = keen.state === 'sulk' && other ? other : keen;
+    const ang = Math.atan2(p.y - this.pen.y, p.x - this.pen.x);
+    who.state = 'greet';
+    who.target = { x: this.pen.x + Math.cos(ang) * (this.pen.r - 40), y: this.pen.y + Math.sin(ang) * (this.pen.r - 40) };
+    who.t = 8;
+  }
+
   private updateDonkey(d: HubDonkey, dt: number): void {
     d.px = d.x;
     d.py = d.y;
     d.t -= dt;
     d.brayT = Math.max(0, d.brayT - dt);
-    const speed = d.state === 'come' ? 70 : 34;
-    if (d.state === 'wander' || d.state === 'come') {
+    const speed = d.state === 'come' ? 70 : d.state === 'greet' ? 48 : 34;
+    if (d.state === 'wander' || d.state === 'come' || d.state === 'greet') {
       const dx = d.target.x - d.x;
       const dy = d.target.y - d.y;
       const dd = Math.hypot(dx, dy);
@@ -635,6 +804,9 @@ export class Homestead {
         d.y += (dy / dd) * s;
         d.faceX = dx > 0 ? 1 : -1;
         d.phase += dt * 6;
+      } else if (d.state === 'greet') {
+        d.state = 'watch';
+        d.t = 5;
       } else if (d.state === 'come') {
         d.state = 'eat';
         d.t = 1.8;
@@ -644,7 +816,10 @@ export class Homestead {
         d.state = 'graze';
         d.t = 3 + this.rng.range(0, 5);
       }
-      if (d.state === 'come' && d.t <= 0) d.state = 'graze';
+      if ((d.state === 'come' || d.state === 'greet') && d.t <= 0) d.state = 'graze';
+    } else if (d.state === 'watch' && (d.t > 0 || (dist(this.player, this.pen) < this.pen.r + 110 && d.t > -12))) {
+      // Hangs about at the fence while you do, then loses interest.
+      d.faceX = this.player.x >= d.x ? 1 : -1;
     } else if (d.t <= 0) {
       if (d.state === 'eat') {
         d.brayT = 1.2;
@@ -701,6 +876,8 @@ export class Homestead {
       if (d < 6) {
         c.state = 'rest';
         c.target = null;
+        c.t = this.life.range(...CAT_REST[c.personality]);
+        if (c.personality === 'sleepy') c.emote = 'zzz';
       } else this.stepCat(c, c.target, c.personality === 'shy' ? 190 : c.speed, dt);
     } else if (c.state === 'rest') {
       // Wake up and look around when someone walks by; skittish ones relocate.
@@ -712,6 +889,27 @@ export class Homestead {
         c.emote = 'alarm';
         c.emoteT = 0;
       } else if (d < 120) c.faceX = p.x >= c.x ? 1 : -1;
+      else {
+        // Now and then, off to the other favourite spot (never while someone's about to pet them).
+        c.t -= dt;
+        if (c.t <= 0) {
+          c.t = this.life.range(...CAT_REST[c.personality]);
+          if (c.spots.length > 1) {
+            c.spot = (c.spot + 1) % c.spots.length;
+            c.target = c.spots[c.spot];
+            c.state = 'walk';
+            if (c.personality === 'sleepy') c.emote = 'none';
+          }
+        }
+      }
+      // A dog thundering past gets a look.
+      for (const g of this.dogs) {
+        if ((g.state === 'fetch' || g.state === 'return') && dist(g, c) < 46 && c.emote !== 'alarm') {
+          c.emote = 'alarm';
+          c.emoteT = 0;
+          c.faceX = g.x >= c.x ? -1 : 1;
+        }
+      }
     }
   }
 

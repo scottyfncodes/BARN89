@@ -293,7 +293,7 @@ button {
 #toast {
   position: absolute;
   left: 50%;
-  top: calc(var(--sat) + 74px);
+  top: var(--toast-top, calc(var(--sat) + 74px));
   transform: translate(-50%, -10px);
   max-width: min(92vw, 420px);
   background: var(--paper);
@@ -343,6 +343,26 @@ button {
 #hint em {
   font-style: normal;
   color: var(--gold);
+}
+
+/* ---------- Scene change ---------- */
+#curtain {
+  position: absolute;
+  inset: 0;
+  background: #2a1d14;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease-out;
+}
+#curtain.on {
+  opacity: 1;
+  transition: none;
+}
+#safe-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }
 
 /* ---------- Screens ---------- */
@@ -666,6 +686,10 @@ button {
   }
   #toast {
     top: calc(var(--sat) + 12px);
+  }
+  /* The chore card takes the top centre in landscape; toasts go under it. */
+  #app:has(#mission:not([hidden])) #toast {
+    top: var(--toast-top, calc(var(--sat) + 12px));
   }
 }
 

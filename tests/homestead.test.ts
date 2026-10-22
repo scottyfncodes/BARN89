@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVITIES } from '../src/content/activities';
 import { PLAYER_RADIUS } from '../src/games/kitten/player';
-import { Homestead, type HubEvent } from '../src/hub/homestead';
+import { Homestead, NPC_ROUTINES, type HubEvent } from '../src/hub/homestead';
 import { HUNT_ITEMS, ORNAMENTS, ROUNDS_TASKS } from '../src/hub/missions';
 import { PORCH_TREE } from '../src/hub/hubView';
 import { NavGrid } from '../src/world/navgrid';
@@ -155,5 +155,102 @@ describe('homestead life', () => {
     h.useHint();
     expect(h.mission?.kind === 'hunt' && h.mission.hints).toBe(1);
     expect(h.huntTarget()).toEqual(HUNT_ITEMS[0]);
+  });
+});
+
+describe('living ranch', () => {
+  const far = { x: 1250, y: 1150 };
+
+  it('family members keep busy near their spot while you are away', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    let moved = 0;
+    let gestures = 0;
+    for (let i = 0; i < 40 * 60; i++) {
+      h.step(still, DT, false);
+      for (const n of h.npcs) {
+        const R = NPC_ROUTINES[n.who];
+        expect(Math.hypot(n.x - n.home.x, n.y - n.home.y), n.who).toBeLessThanOrEqual(R.roam + 1);
+        if (n.x !== n.px || n.y !== n.py) moved++;
+        if (n.busyT > 0) gestures++;
+      }
+    }
+    expect(moved).toBeGreaterThan(0);
+    expect(gestures).toBeGreaterThan(0);
+  });
+
+  it('they come back to their spot and turn to you when you walk up', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    run(h, 30);
+    const a = ACTIVITIES.find((x) => x.id === 'rounds')!;
+    h.teleport(a.station.x + 90, a.station.y + 20);
+    run(h, 2);
+    const megan = h.npcs.find((n) => n.who === 'megan')!;
+    expect(Math.hypot(megan.x - megan.home.x, megan.y - megan.home.y)).toBeLessThan(2);
+    expect(megan.faceX).toBe(1);
+    expect(megan.busyT).toBe(0);
+    expect(h.nearStation?.id).toBe('rounds');
+  });
+
+  it('cheers after you play their game', () => {
+    const h = fresh();
+    h.celebrate('jay');
+    expect(h.npcs.find((n) => n.who === 'jay')!.cheerT).toBeGreaterThan(0);
+    run(h, 3);
+    expect(h.npcs.find((n) => n.who === 'jay')!.cheerT).toBe(0);
+  });
+
+  it('cats wander between their favourite spots on their own', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    const start = h.cats.map((c) => c.spot);
+    run(h, 70);
+    const moved = h.cats.filter((c, i) => c.spot !== start[i] && c.personality !== 'sleepy');
+    expect(moved.length).toBeGreaterThan(0);
+  });
+
+  it('a cat you are standing next to stays put to be petted', () => {
+    const h = fresh();
+    const c = h.cats.find((x) => x.personality === 'distractible')!;
+    h.teleport(c.x + 30, c.y + 10);
+    run(h, 40);
+    expect(c.state).toBe('rest');
+    expect(h.action?.kind).toBe('pet');
+  });
+
+  it('a donkey wanders over when you stand at the pen fence', () => {
+    const h = fresh();
+    h.teleport(h.pen.x + h.pen.r + 40, h.pen.y);
+    const ev = run(h, 10);
+    expect(ev.some((e) => e.type === 'carrot')).toBe(false);
+    const chewy = h.donkeys.find((d) => d.def.id === 'chewy')!;
+    expect(chewy.state === 'watch' || chewy.state === 'greet').toBe(true);
+    expect(Math.hypot(chewy.x - h.player.x, chewy.y - h.player.y)).toBeLessThan(110);
+    // Carrots still work while they're at the fence.
+    expect(h.action?.kind).toBe('carrot');
+  });
+
+  it('dogs go off sniffing when you stand still, and come back when you move', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    let sniffed = false;
+    for (let i = 0; i < 40 * 60 && !sniffed; i++) {
+      h.step(still, DT, false);
+      sniffed = h.dogs.some((d) => d.state === 'sniff');
+    }
+    expect(sniffed).toBe(true);
+    h.step({ ...still, moveX: 1 }, DT, false);
+    h.step({ ...still, moveX: 1 }, DT, false);
+    expect(h.dogs.every((d) => d.state === 'follow')).toBe(true);
+  });
+
+  it('everyone sits still at Sunday breakfast', () => {
+    const h = fresh();
+    h.gather(true);
+    const seats = h.npcs.map((n) => ({ x: n.x, y: n.y }));
+    run(h, 20);
+    h.npcs.forEach((n, i) => expect(Math.hypot(n.x - seats[i].x, n.y - seats[i].y), n.who).toBeLessThan(1));
+    expect(h.dogs.every((d) => d.state === 'rest')).toBe(true);
   });
 });
