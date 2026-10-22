@@ -1,0 +1,28 @@
+{
+  "name": "kitten-cowgirl",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Natalie rides Deputy the tiger and herds very uncooperative kittens around the ranch.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "node scripts/e2e.mjs",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
+    "playwright": "1.56.1",
+    "typescript": "~5.9",
+    "typescript-eslint": "^8.72.0",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5"
+  }
+}

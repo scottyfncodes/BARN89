@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#86c051" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kitten Cowgirl" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="description" content="Natalie rides Deputy the tiger and herds very uncooperative kittens around the ranch." />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>Kitten Cowgirl</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="Kitten Cowgirl game view"></canvas>
+      <div id="touch" aria-hidden="true"></div>
+      <div id="stick-base" aria-hidden="true"></div>
+      <div id="stick-knob" aria-hidden="true"></div>
+
+      <header id="hud" hidden>
+        <div class="hud-left">
+          <div class="pill objective" aria-live="polite">
+            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M4 9 5 3l4.5 4h5L19 3l1 6c1.3 1.4 2 3.2 2 5 0 4.4-4.5 7-10 7S2 18.4 2 14c0-1.8.7-3.6 2-5Z" fill="#f4a25a" stroke="#3b2a20" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8.5" cy="13" r="1.3" fill="#3b2a20"/><circle cx="15.5" cy="13" r="1.3" fill="#3b2a20"/><path d="M11 16h2l-1 1z" fill="#e5737f"/></svg>
+            <span class="count"><b id="count">0</b><span id="required">/6</span></span>
+            <span class="label">in the corral</span>
+          </div>
+          <div class="pips" id="pips" aria-hidden="true"></div>
+        </div>
+        <div class="hud-right">
+          <div class="pill stat"><span id="time">0:00</span><span class="dot">·</span><span id="score">0</span></div>
+          <button id="pause-btn" class="round-btn" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div id="hint" aria-live="polite"></div>
+
+      <div id="actions" hidden>
+        <button id="treat-btn" class="action treat" aria-label="Toss a treat">
+          <svg viewBox="0 0 40 24" aria-hidden="true"><path d="M8 12c6-10 18-10 24 0-6 10-18 10-24 0Z" fill="#e8963f" stroke="#3b2a20" stroke-width="2"/><path d="M9 12 2 6v12z" fill="#e8963f" stroke="#3b2a20" stroke-width="2" stroke-linejoin="round"/><circle cx="25" cy="10" r="1.8" fill="#3b2a20"/></svg>
+          <span class="badge" id="treat-count">4</span>
+          <small>Treat</small>
+        </button>
+        <button id="whistle-btn" class="action whistle" aria-label="Whistle">
+          <svg viewBox="0 0 40 32" aria-hidden="true"><path d="M6 14h18a8 8 0 1 1-8 8H8a3 3 0 0 1-3-3v-2a3 3 0 0 1 1-3Z" fill="#c8ccd2" stroke="#3b2a20" stroke-width="2.2" stroke-linejoin="round"/><circle cx="24" cy="22" r="3" fill="#3b2a20"/><path d="M30 6l3-3M33 11h4M27 4V0" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <span class="cooldown" id="whistle-cd"></span>
+          <small>Whistle</small>
+        </button>
+      </div>
+
+      <section id="title" class="screen">
+        <div class="panel title-panel scrollable">
+          <canvas id="hero" width="360" height="220" aria-hidden="true"></canvas>
+          <h1 class="logo"><span>Kitten</span><span>Cowgirl</span></h1>
+          <p class="tagline">One tiger. One cowgirl. Eight kittens who would rather not.</p>
+          <button id="play-btn" class="big-btn">Saddle up!</button>
+          <ul class="howto">
+            <li><span class="how-ico stick"></span><span><b>Drag</b> anywhere to ride Deputy</span></li>
+            <li><span class="how-ico push"></span><span><b>Ride behind</b> kittens to push them into the glowing <b>Kitten Corral</b></span></li>
+            <li><span class="how-ico whistle"></span><span><b>Whistle</b> scoots nearby kittens the way you're riding</span></li>
+            <li><span class="how-ico treat"></span><span><b>Treats</b> lure hungry kittens, who then tag along</span></li>
+          </ul>
+          <div class="title-row">
+            <button class="link-btn" data-open="herd">Meet the herd</button>
+            <span id="best" class="best"></span>
+          </div>
+        </div>
+      </section>
+
+      <section id="pause" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2>Taking a breather</h2>
+          <p class="sub" id="pause-sub"></p>
+          <button id="resume-btn" class="big-btn">Back to the herd</button>
+          <div class="btn-row">
+            <button id="restart-btn" class="mid-btn">Restart</button>
+            <button id="sound-btn" class="mid-btn" aria-pressed="true">Sound: on</button>
+          </div>
+          <div class="btn-row">
+            <button class="link-btn" data-open="herd">Meet the herd</button>
+            <button id="quit-btn" class="link-btn">Title screen</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="herd" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2>Meet the herd</h2>
+          <p class="sub">Every kitten has a personality. Learn them and they're (mostly) predictable.</p>
+          <ul id="roster" class="roster"></ul>
+          <button id="herd-close" class="big-btn">Got it</button>
+        </div>
+      </section>
+
+      <section id="results" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2 class="yeehaw">Yee-haw!</h2>
+          <p class="sub" id="results-sub">The corral is full of very smug kittens.</p>
+          <div class="stars" id="stars" aria-label="Stars"></div>
+          <ul class="lines" id="lines"></ul>
+          <div class="total"><span>Total</span><b id="total">0</b></div>
+          <p class="best" id="results-best"></p>
+          <button id="again-btn" class="big-btn">Play again</button>
+          <button id="results-title-btn" class="link-btn">Title screen</button>
+        </div>
+      </section>
+
+      <noscript>Kitten Cowgirl needs JavaScript to round up the kittens.</noscript>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
