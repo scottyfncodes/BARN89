@@ -26,7 +26,10 @@ export interface HubDog {
   vy: number;
   faceX: number;
   phase: number;
-  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase' | 'skunk';
+  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase' | 'skunk' | 'cat' | 'treed';
+  /** The cat it's after (state 'cat'), and seconds left barking up the tree ('treed'). */
+  chaseCat: string | null;
+  treedT: number;
   /** Seconds left smelling of skunk. */
   stinkT: number;
   ball: boolean;
@@ -53,6 +56,29 @@ export interface HubDonkey {
   brayT: number;
 }
 
+/** Somewhere a cat likes to be: a spot on the ground, or up high (`lift`) above it. */
+export interface CatSpot {
+  x: number;
+  y: number;
+  lift?: number;
+}
+
+/** The trampoline's mat (an ellipse on the ground) and how high the mat sits. */
+export const TRAMPOLINE = { x: 810, y: 1000, rx: 38, ry: 18, mat: 14 };
+
+/** Seconds a big trampoline jump lasts. */
+const BIG_JUMP = 0.95;
+
+/** Up on the treehouse platform: the ground point under it, and how high up. */
+export const TREEHOUSE_PERCHES: CatSpot[] = [
+  { x: 1124, y: 966, lift: 82 },
+  { x: 1202, y: 966, lift: 76 },
+];
+/** The main house roof, above the front porch. */
+export const ROOF_PERCH: CatSpot = { x: 880, y: 912, lift: 206 };
+/** How fast cats go up and down (units per second). */
+const CLIMB = 120;
+
 export interface HubCat {
   id: string;
   /** Matches the cat's id in Kitten Cowgirl (and in saved names). */
@@ -64,12 +90,16 @@ export interface HubCat {
   y: number;
   px: number;
   py: number;
-  spots: Vec[];
+  spots: CatSpot[];
   spot: number;
   faceX: number;
   phase: number;
-  state: 'rest' | 'walk' | 'follow' | 'chase';
-  target: Vec | null;
+  state: 'rest' | 'walk' | 'follow' | 'chase' | 'flee';
+  target: CatSpot | null;
+  /** How high up it is right now (treehouse platform, the roof). */
+  lift: number;
+  /** Resting up the treehouse after a dog chased it there. */
+  refuge: boolean;
   t: number;
   emote: Emote;
   emoteT: number;
@@ -154,7 +184,8 @@ export type HubAction =
   | { kind: 'task'; label: string; task: string }
   | { kind: 'pickup'; label: string; item: string }
   | { kind: 'sunday'; label: string }
-  | { kind: 'moto'; label: string };
+  | { kind: 'moto'; label: string }
+  | { kind: 'jump'; label: string };
 
 export type HubEvent =
   | { type: 'ornament'; id: string; x: number; y: number; count: number }
@@ -175,6 +206,8 @@ export type HubEvent =
   | { type: 'raceGo' }
   | { type: 'snake'; x: number; y: number; chased: boolean }
   | { type: 'skunk'; x: number; y: number }
+  | { type: 'catChase'; dog: string; cat: string; x: number; y: number }
+  | { type: 'boing'; big: boolean }
   | { type: 'raceGate'; gate: number; x: number; y: number }
   | { type: 'raceRival'; name: string }
   | { type: 'raceDone'; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
@@ -223,15 +256,16 @@ const TABLE_SEATS = [
 ];
 const EXPLORER_SEAT = { x: 1708, y: 2942 };
 
-const CAT_HOMES: { id: keyof typeof COATS; name: string; personality: Personality; spots: Vec[] }[] = [
+// Most of the cats live in and around the treehouse; Ziggy likes the house roof.
+const CAT_HOMES: { id: keyof typeof COATS; name: string; personality: Personality; spots: CatSpot[] }[] = [
   { id: 'marshmallow', name: 'Marshmallow', personality: 'sleepy', spots: [{ x: 1440, y: 2165 }, { x: 1380, y: 2190 }] },
-  { id: 'tortie', name: 'Tater', personality: 'sleepy', spots: [{ x: 880, y: 1080 }, { x: 760, y: 1090 }] },
+  { id: 'tortie', name: 'Tater', personality: 'sleepy', spots: [TREEHOUSE_PERCHES[0], { x: 1100, y: 1012 }] },
   { id: 'calico', name: 'Pickles', personality: 'curious', spots: [{ x: 1452, y: 755 }, { x: 1560, y: 730 }] },
-  { id: 'greyTabby', name: 'Ziggy', personality: 'distractible', spots: [{ x: 800, y: 1195 }, { x: 960, y: 1210 }] },
+  { id: 'greyTabby', name: 'Ziggy', personality: 'distractible', spots: [{ x: 1060, y: 1052 }, ROOF_PERCH] },
   { id: 'orangeTabby', name: 'Biscuit', personality: 'hungry', spots: [{ x: 1640, y: 2785 }, { x: 1440, y: 2380 }] },
-  { id: 'siamese', name: 'Mochi', personality: 'shy', spots: [{ x: 1010, y: 930 }, { x: 1180, y: 1060 }] },
+  { id: 'siamese', name: 'Mochi', personality: 'shy', spots: [TREEHOUSE_PERCHES[1], { x: 1218, y: 1012 }] },
   { id: 'tuxedo', name: 'Pepper', personality: 'shy', spots: [{ x: 500, y: 2165 }, { x: 640, y: 2230 }] },
-  { id: 'waffles', name: 'Waffles', personality: 'hungry', spots: [{ x: 540, y: 470 }, { x: 640, y: 380 }] },
+  { id: 'waffles', name: 'Waffles', personality: 'hungry', spots: [{ x: 1235, y: 1185 }, { x: 1150, y: 1040 }] },
 ];
 
 /** How long each kind of cat stays put before wandering over to its other favourite spot. */
@@ -288,6 +322,11 @@ export class Homestead {
   skunk: Skunk | null = null;
   /** Seconds until a skunk might next wander by. */
   skunkT = 70;
+  /** Seconds until a dog might next go after a cat. */
+  catChaseT = 30;
+  /** Seconds bouncing on the trampoline, and what's left of a big jump. */
+  trampT = 0;
+  bigJumpT = 0;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
@@ -330,6 +369,8 @@ export class Homestead {
       sniffAt: null,
       sniffT: 0,
       stinkT: 0,
+      chaseCat: null,
+      treedT: 0,
       path: null,
       pathT: 0,
     }));
@@ -371,6 +412,8 @@ export class Homestead {
         phase: 0,
         state: 'rest',
         target: null,
+        lift: s.lift ?? 0,
+        refuge: false,
         t: this.life.range(...CAT_REST[c.personality]),
         emote: c.personality === 'sleepy' ? 'zzz' : 'none',
         emoteT: 0,
@@ -558,8 +601,10 @@ export class Homestead {
     for (const d of this.donkeys) this.updateDonkey(d, dt);
     for (const c of this.cats) this.updateCat(c, dt);
     this.pups.forEach((d, i) => this.updatePup(d, i, dt));
+    this.updateTrampoline(dt);
     this.updateSnake(dt);
     this.updateSkunk(dt);
+    this.maybeChaseCat(dt);
     this.updateMission(dt);
     this.checkFinds(dt);
     this.nearStation = this.mission || this.family.moto?.player ? null : this.findStation();
@@ -620,6 +665,7 @@ export class Homestead {
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
+    if (this.onTrampoline && !(m?.kind === 'race')) return { kind: 'jump', label: 'Jump!' };
     // Jason's motorcycle: Natalie and Jason ride it together.
     const moto = this.family.moto;
     if (moto?.player) return { kind: 'moto', label: 'Hop off' };
@@ -632,7 +678,7 @@ export class Homestead {
     let cd = 70;
     for (const c of this.cats) {
       const d = dist(c, p);
-      if (d < cd && c.state !== 'walk') {
+      if (d < cd && c.state !== 'walk' && c.state !== 'flee' && c.lift === 0) {
         cd = d;
         cat = c;
       }
@@ -690,6 +736,12 @@ export class Homestead {
         }
         break;
       }
+      case 'jump':
+        if (this.bigJumpT <= 0) {
+          this.bigJumpT = BIG_JUMP;
+          this.emit({ type: 'boing', big: true });
+        }
+        break;
       case 'sunday':
         this.emit({ type: 'sunday' });
         break;
@@ -766,7 +818,32 @@ export class Homestead {
     let sp = 0;
     const fromX = d.x;
     d.stinkT = Math.max(0, d.stinkT - dt);
-    if (d.state === 'skunk') {
+    if (d.state === 'cat') {
+      // After a cat. The cat is faster, and knows where it's going.
+      const c = this.cats.find((x) => x.id === d.chaseCat);
+      d.treedT += dt;
+      if (!c || c.state !== 'flee' || d.treedT > 12) {
+        d.state = 'follow';
+        d.chaseCat = null;
+      } else if (c.lift > 0) {
+        // Up the treehouse. Bark at it for a bit.
+        d.state = 'treed';
+        d.treedT = 3.2;
+        this.emit({ type: 'bark', x: d.x, y: d.y });
+      } else sp = this.moveAgent(d, c, 235, dt, 11);
+      d.wag = 1;
+    } else if (d.state === 'treed') {
+      const c = this.cats.find((x) => x.id === d.chaseCat);
+      d.treedT -= dt;
+      if (c && dist(d, c) > 46) sp = this.moveAgent(d, c, 160, dt, 11);
+      if (c) d.faceX = c.x >= d.x ? 1 : -1;
+      if (d.treedT > 0 && Math.floor(d.treedT / 0.9) !== Math.floor((d.treedT + dt) / 0.9)) this.emit({ type: 'bark', x: d.x, y: d.y });
+      if (d.treedT <= 0) {
+        d.state = 'follow';
+        d.chaseCat = null;
+      }
+      d.wag = 0.8;
+    } else if (d.state === 'skunk') {
       // Annie has spotted a skunk. This will go the way it always goes.
       const k = this.skunk;
       if (!k || k.state !== 'waddle') d.state = 'follow';
@@ -976,7 +1053,7 @@ export class Homestead {
     if (!s) {
       this.snakeT -= dt;
       // Only while he's out working the yard, and only where you'd see it.
-      const outside = g && !g.outing && !g.target && (g.stop.id === 'frontYard' || g.stop.id === 'putting');
+      const outside = g && !g.outing && !g.target && g.stop.id !== 'porch';
       if (this.snakeT > 0 || !g || !outside || this.gathered || this.mission || dist(this.player, g) > 450) return;
       this.snakeT = this.life.range(70, 130);
       const side = this.life.next() < 0.5 ? -1 : 1;
@@ -1013,6 +1090,61 @@ export class Homestead {
     if (s.t > (s.fleeing ? 2.2 : 14) || !this.shared.world.isFree(s.x, s.y, 2)) {
       this.snake = null;
       for (const d of this.dogs) if (d.state === 'chase') d.state = 'follow';
+    }
+  }
+
+  /* --- The trampoline ----------------------------------------------------------------------- */
+
+  get onTrampoline(): boolean {
+    const p = this.player;
+    return ((p.x - TRAMPOLINE.x) / TRAMPOLINE.rx) ** 2 + ((p.y - TRAMPOLINE.y) / TRAMPOLINE.ry) ** 2 < 1;
+  }
+
+  private updateTrampoline(dt: number): void {
+    if (!this.onTrampoline) {
+      this.trampT = 0;
+      this.bigJumpT = 0;
+      return;
+    }
+    this.trampT += dt;
+    if (this.bigJumpT > 0) this.bigJumpT = Math.max(0, this.bigJumpT - dt);
+  }
+
+  /** How high the explorer is right now: the mat, plus a little bounce, or a big jump. */
+  trampolineLift(): number {
+    if (!this.onTrampoline) return 0;
+    if (this.bigJumpT > 0) return TRAMPOLINE.mat + Math.sin(Math.PI * (1 - this.bigJumpT / BIG_JUMP)) * 58;
+    return TRAMPOLINE.mat + Math.abs(Math.sin(this.trampT * Math.PI * 1.8)) * 9;
+  }
+
+  /* --- Dogs and cats ------------------------------------------------------------------------- */
+
+  /** Every so often a dog spots a cat and gives chase; the cat bolts up the treehouse. */
+  private maybeChaseCat(dt: number): void {
+    this.catChaseT -= dt;
+    if (this.catChaseT > 0 || this.gathered || this.mission || this.family.moto?.player) return;
+    this.catChaseT = 4;
+    const p = this.player;
+    const tree = TREEHOUSE_PERCHES[0];
+    for (const d of this.dogs) {
+      if ((d.state !== 'follow' && d.state !== 'rest') || d.stinkT > 0) continue;
+      const cat = this.cats
+        .filter((c) => c.lift === 0 && (c.state === 'rest' || c.state === 'walk') && dist(c, d) < 280 && dist(c, p) < 420 && dist(c, tree) < 800)
+        .sort((a, b) => dist(a, d) - dist(b, d))[0];
+      if (!cat) continue;
+      this.catChaseT = this.life.range(45, 90);
+      d.state = 'cat';
+      d.chaseCat = cat.id;
+      d.treedT = 0;
+      d.path = null;
+      // Up the treehouse, to whichever bit of platform is free.
+      const taken = new Set(this.cats.filter((c) => c !== cat && c.lift > 0).map((c) => `${c.x},${c.y}`));
+      cat.target = TREEHOUSE_PERCHES.find((s) => !taken.has(`${s.x},${s.y}`)) ?? TREEHOUSE_PERCHES[0];
+      cat.state = 'flee';
+      cat.emote = 'alarm';
+      cat.emoteT = 0;
+      this.emit({ type: 'catChase', dog: d.def.name, cat: cat.name, x: cat.x, y: cat.y });
+      return;
     }
   }
 
@@ -1179,18 +1311,28 @@ export class Homestead {
         c.state = 'walk';
         c.target = c.spots[c.spot];
       }
-    } else if (c.state === 'walk' && c.target) {
-      const d = dist(c, c.target);
-      if (d < 6) {
+    } else if ((c.state === 'walk' || c.state === 'flee') && c.target) {
+      const tgt = c.target;
+      const up = tgt.lift ?? 0;
+      const atBase = dist(c, tgt) < 6;
+      if (c.lift > 0 && !(atBase && up > 0)) {
+        // Down from wherever it was first.
+        c.lift = Math.max(0, c.lift - CLIMB * dt);
+      } else if (atBase && c.lift < up) {
+        // Up the ladder, or up the porch post onto the roof.
+        c.lift = Math.min(up, c.lift + CLIMB * dt);
+        c.phase += dt * 12;
+      } else if (atBase) {
+        c.refuge = c.state === 'flee';
         c.state = 'rest';
         c.target = null;
-        c.t = this.life.range(...CAT_REST[c.personality]);
+        c.t = c.refuge ? this.life.range(25, 45) : this.life.range(...CAT_REST[c.personality]);
         if (c.personality === 'sleepy') c.emote = 'zzz';
-      } else this.stepCat(c, c.target, c.personality === 'shy' ? 190 : c.speed, dt);
+      } else this.stepCat(c, tgt, c.state === 'flee' ? 250 : c.personality === 'shy' ? 190 : c.speed, dt);
     } else if (c.state === 'rest') {
       // Wake up and look around when someone walks by; skittish ones relocate.
       const d = dist(c, p);
-      if (c.personality === 'shy' && d < 50 && Math.hypot(p.vx, p.vy) > 200) {
+      if (c.personality === 'shy' && c.lift === 0 && d < 50 && Math.hypot(p.vx, p.vy) > 200) {
         c.spot = (c.spot + 1) % c.spots.length;
         c.target = c.spots[c.spot];
         c.state = 'walk';
@@ -1200,7 +1342,12 @@ export class Homestead {
       else {
         // Now and then, off to the other favourite spot (never while someone's about to pet them).
         c.t -= dt;
-        if (c.t <= 0) {
+        if (c.t <= 0 && c.refuge) {
+          // The coast is clear: back home.
+          c.refuge = false;
+          c.target = c.spots[c.spot];
+          c.state = 'walk';
+        } else if (c.t <= 0) {
           c.t = this.life.range(...CAT_REST[c.personality]);
           if (c.spots.length > 1) {
             c.spot = (c.spot + 1) % c.spots.length;

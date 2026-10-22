@@ -87,6 +87,7 @@ export type PropKind =
   | 'bench'
   | 'trampoline'
   | 'treehouse'
+  | 'pot'
   | 'cabinet'
   | 'pickup'
   | 'motorcycle'

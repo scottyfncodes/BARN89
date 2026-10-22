@@ -513,6 +513,15 @@ function onHubEvent(e: HubEvent): void {
     case 'sunday':
       openSunday();
       break;
+    case 'boing':
+      sfx.whistle();
+      if (store.addTo('seen', 'trampoline')) toast.show('<b>Boing!</b>Tap <b>Jump!</b> for a big one. Cats are still banned.', 3);
+      break;
+    case 'catChase':
+      sfx.meow(1.3);
+      setTimeout(() => sfx.bark(), 200);
+      if (store.addTo('seen', 'catChase')) toast.show(`<b>${e.dog} is after ${e.cat}!</b>The cats always make it up the treehouse.`, 3);
+      break;
     case 'skunk': {
       sfx.oops();
       setTimeout(() => sfx.bark(), 250);

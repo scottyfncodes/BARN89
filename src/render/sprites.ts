@@ -1332,6 +1332,35 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.stroke();
       break;
     }
+    case 'pot': {
+      // A terracotta pot of geraniums.
+      ctx.beginPath();
+      ctx.ellipse(x + 2, y + 1, 9, 3, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 12);
+      ctx.lineTo(x + 7, y - 12);
+      ctx.lineTo(x + 5, y);
+      ctx.lineTo(x - 5, y);
+      ctx.closePath();
+      ctx.fillStyle = '#c9683f';
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#4f8a35';
+      for (const [lx, ly] of [[-5, -15], [0, -18], [5, -15], [-2, -21], [3, -21]]) {
+        blob(ctx, x + lx, y + ly, 3.6);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#e8424f';
+      for (const [lx, ly] of [[-3, -20], [3, -22], [0, -16]]) {
+        blob(ctx, x + lx, y + ly, 2.2);
+        ctx.fill();
+      }
+      break;
+    }
     case 'treehouse': {
       // The treehouse at the corner of the main house: an old oak, a platform, a little house, a ladder.
       ctx.beginPath();

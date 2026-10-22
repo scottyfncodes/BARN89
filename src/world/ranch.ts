@@ -79,7 +79,8 @@ function props(): PropDef[] {
     { kind: 'sign', x: 2085, y: 330, text: 'BUFFALO GAP RD' },
     { kind: 'sign', x: 2085, y: 2420, text: 'BUFFALO GAP RD' },
     // Main house surroundings.
-    { kind: 'trampoline', x: 810, y: 1012, w: 40, solid: true },
+    // You can jump on it (see Homestead.onTrampoline), so it isn't solid.
+    { kind: 'trampoline', x: 810, y: 1012, w: 40 },
     { kind: 'bench', x: 1060, y: 935, w: 40 },
     // Jason's big white truck, beside the main house.
     { kind: 'pickup', x: 548, y: 790, w: 108, angle: Math.PI / 2, color: 'white', solid: true },
@@ -98,6 +99,16 @@ function props(): PropDef[] {
     { kind: 'clothesline', x: 1800, y: 750, w: 130 },
     { kind: 'yarn', x: 1450, y: 735 },
     { kind: 'flowers', x: 1400, y: 610, w: 24 },
+    // Grandpa's flower beds and plants, all the way round his house, kept just so.
+    { kind: 'flowers', x: 1515, y: 408, w: 24 },
+    { kind: 'flowers', x: 1700, y: 406, w: 26 },
+    { kind: 'flowers', x: 1880, y: 448, w: 22 },
+    { kind: 'flowers', x: 1490, y: 692, w: 18 },
+    { kind: 'flowers', x: 1985, y: 600, w: 18 },
+    { kind: 'pot', x: 1605, y: 700 },
+    { kind: 'pot', x: 1712, y: 700 },
+    { kind: 'pot', x: 1462, y: 452 },
+    { kind: 'pot', x: 1960, y: 470 },
     // Through the trees.
     { kind: 'rock', x: 1330, y: 1240, w: 22, solid: true },
     { kind: 'roundBale', x: 1030, y: 1460, w: 24, solid: true },
