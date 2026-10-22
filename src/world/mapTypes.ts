@@ -37,6 +37,13 @@ export interface BuildingDef {
   label?: string;
   /** Colour of a star emblem hung on the front wall (Grandpa's shop). */
   star?: string;
+  /**
+   * Which way the roof ridge runs: along the front (the default), or front to back so the
+   * gable end faces you (wings and bays that stick out from a house).
+   */
+  gable?: 'side' | 'front';
+  /** House trim by x from the left edge. Left out, a farmhouse gets the standard front. */
+  trim?: { windows?: number[]; door?: number; porch?: [number, number]; chimney?: number; label?: number };
 }
 
 export interface TreeDef {

@@ -16,7 +16,13 @@ const near = (p: { x: number; y: number }, aerial: [number, number], tol: number
 describe('ranch layout matches the aerial photo', () => {
   it('places the buildings where the photo shows them', () => {
     expect(near(centre(building('mainHouse')), [425, 410], 120)).toBe(true);
-    expect(near(centre(building('grandpaHouse')), [860, 280], 120)).toBe(true);
+    // Grandpa's place is several roofs; the whole of it sits where the photo shows it.
+    const gp = ['grandpaHouse', 'grandpaBayW', 'grandpaBayE', 'grandpaShop', 'grandpaEast'].map(building);
+    const x0 = Math.min(...gp.map((b) => b.x));
+    const x1 = Math.max(...gp.map((b) => b.x + b.w));
+    const y0 = Math.min(...gp.map((b) => b.y));
+    const y1 = Math.max(...gp.map((b) => b.y + b.h));
+    expect(near({ x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, [860, 280], 80)).toBe(true);
     expect(near(centre(building('whiteShed')), [252, 610], 60)).toBe(true);
     expect(near(centre(building('stable')), [840, 1075], 80)).toBe(true);
     expect(near(centre(building('barn89')), [835, 1255], 80)).toBe(true);
@@ -27,9 +33,24 @@ describe('ranch layout matches the aerial photo', () => {
     const shop = building('grandpaShop');
     // The separately roofed east wing in the aerial, where his driveway comes in.
     expect(near(centre(shop), [915, 287], 80)).toBe(true);
-    expect(shop.x - (house.x + house.w)).toBeLessThan(10);
+    // Set back between the porch bay and the east wing, flush with the main block's front.
+    const bay = building('grandpaBayE');
+    const east = building('grandpaEast');
+    expect(Math.abs(shop.x - (bay.x + bay.w))).toBeLessThan(4);
+    expect(Math.abs(east.x - (shop.x + shop.w))).toBeLessThan(4);
     expect(shop.y + shop.h).toBe(house.y + house.h);
+    expect(bay.y + bay.h).toBeGreaterThan(shop.y + shop.h);
     expect(shop.star).toBeTruthy();
+  });
+
+  it('gives the main house its L: the west wing reaches further south than the rest', () => {
+    const main = building('mainHouse');
+    const wing = building('mainHouseWing');
+    expect(wing.x + wing.w).toBe(main.x);
+    expect(wing.y + wing.h).toBeGreaterThan(main.y + main.h + 60);
+    expect(wing.gable).toBe('front');
+    // The whole house spans the roofline in the photo.
+    expect(near({ x: (wing.x + main.x + main.w) / 2, y: main.y + main.h / 2 }, [425, 400], 60)).toBe(true);
   });
 
   it('puts the arena on the east side against Buffalo Gap Rd', () => {

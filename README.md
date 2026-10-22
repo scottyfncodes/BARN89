@@ -10,8 +10,8 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 
 **The homestead.** One shared map, traced from the aerial photo in [`docs/reference/aerial.jpg`](docs/reference/aerial.jpg) (one aerial pixel = two world units). Every scene uses the same map, so the barn in Kitten Cowgirl is the barn on the map.
 
-- The main house (west of the driveway loop) with the trampoline, red-mulch garden, doghouse and the ranch activity board
-- Grandpa's house and fenced yard in the north-east, with his porch Christmas tree
+- The main house (west of the driveway loop), an L like the aerial: the gabled west wing comes forward past the trampoline, and the long main block runs east to the treehouse. The red-mulch garden and doghouse are out back
+- Grandpa's house and fenced yard in the north-east, traced from its rooflines: the main block, two gabled bays stepping out toward the back yard (the doggie door in one, his door in the other), the garage set back between them and the east wing, and his porch Christmas tree
 - The big front lawn inside the teardrop driveway loop
 - The woodshed and woodpile on the west access road
 - The round pen (the donkeys' paddock), the riding arena, the stable

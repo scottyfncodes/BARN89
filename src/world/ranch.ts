@@ -32,10 +32,54 @@ export const CHICKEN_RUN = { x: 1320, y: 1090, r: 82 };
 
 function buildings(): BuildingDef[] {
   return [
-    { id: 'mainHouse', style: 'farmhouse', x: 600, y: 700, w: 500, h: 200, wall: 100, roof: '#6b7480', walls: '#efe2c8', label: 'HOME' },
-    { id: 'grandpaHouse', style: 'farmhouse', x: 1470, y: 440, w: 272, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: "GRANDPA'S" },
-    // The shop/garage wing on the east end of Grandpa's house, where his driveway comes in (its own roofline in the aerial).
-    { id: 'grandpaShop', style: 'shop', x: 1746, y: 476, w: 204, h: 194, wall: 100, roof: '#666d77', walls: '#ece6da', star: '#2f63c0' },
+    // The main house is an L in the aerial: a long wing on the west end runs further south than
+    // the rest, gable end facing the yard, and the main block runs east to the treehouse.
+    {
+      id: 'mainHouse',
+      style: 'farmhouse',
+      x: 770,
+      y: 690,
+      w: 330,
+      h: 210,
+      wall: 100,
+      roof: '#6b7480',
+      walls: '#efe2c8',
+      label: 'HOME',
+      trim: { windows: [26, 96, 288], door: 196, porch: [150, 324], chimney: 252, label: 60 },
+    },
+    {
+      id: 'mainHouseWing',
+      style: 'farmhouse',
+      gable: 'front',
+      x: 600,
+      y: 680,
+      w: 170,
+      h: 310,
+      wall: 100,
+      roof: '#6b7480',
+      walls: '#efe2c8',
+      trim: { windows: [26, 116] },
+    },
+    // Grandpa's house: a main block, two gabled bays stepping out toward the back yard (the west
+    // one with the doggie door, the east one with his door), the garage set back under its lighter
+    // roof (his workshop, with the blue star), and the east wing by his driveway.
+    {
+      id: 'grandpaHouse',
+      style: 'farmhouse',
+      x: 1458,
+      y: 440,
+      w: 200,
+      h: 200,
+      wall: 96,
+      roof: '#5f6670',
+      walls: '#f3e9d6',
+      trim: { windows: [158], chimney: 60 },
+    },
+    { id: 'grandpaBayW', style: 'farmhouse', gable: 'front', x: 1494, y: 530, w: 112, h: 142, wall: 92, roof: '#5f6670', walls: '#f3e9d6', label: "GRANDPA'S", trim: { windows: [16, 70], label: 82 } },
+    { id: 'grandpaBayE', style: 'farmhouse', gable: 'front', x: 1655, y: 520, w: 90, h: 152, wall: 96, roof: '#5f6670', walls: '#f3e9d6', trim: { door: 34 } },
+    // The shop/garage between the porch bay and the east wing, under its own lighter roof in the aerial.
+    { id: 'grandpaShop', style: 'shop', x: 1745, y: 476, w: 140, h: 164, wall: 96, roof: '#7b828c', walls: '#ece6da', star: '#2f63c0' },
+    { id: 'grandpaEast', style: 'farmhouse', gable: 'front', x: 1885, y: 470, w: 95, h: 202, wall: 96, roof: '#5f6670', walls: '#f3e9d6', trim: { windows: [34] } },
     { id: 'whiteShed', style: 'shed', x: 410, y: 1150, w: 190, h: 130, wall: 70, roof: '#e9ecef', walls: '#f6f3ea' },
     { id: 'eastShed', style: 'shed', x: 1550, y: 1290, w: 110, h: 80, wall: 56, roof: '#c9ced4', walls: '#a94336' },
     { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
@@ -94,7 +138,7 @@ function props(): PropDef[] {
     { kind: 'pickup', x: 1832, y: 352, w: 98, angle: Math.PI / 2, color: 'charcoal', solid: true },
     // The treehouse at the south-east corner of the main house.
     { kind: 'treehouse', x: 1150, y: 960, solid: true },
-    { kind: 'doghouse', x: 650, y: 975, solid: true },
+    { kind: 'doghouse', x: 560, y: 1010, solid: true },
     // Jason's woodpile beside the woodshed.
     { kind: 'woodpile', x: 470, y: 1330, w: 120, solid: true },
     { kind: 'chopBlock', x: 590, y: 1325, solid: true },
@@ -110,11 +154,11 @@ function props(): PropDef[] {
     { kind: 'flowers', x: 1700, y: 406, w: 26 },
     { kind: 'flowers', x: 1880, y: 448, w: 22 },
     { kind: 'flowers', x: 1490, y: 692, w: 18 },
-    { kind: 'flowers', x: 1985, y: 600, w: 18 },
+    { kind: 'flowers', x: 2000, y: 612, w: 14 },
     { kind: 'pot', x: 1605, y: 700 },
     { kind: 'pot', x: 1712, y: 700 },
-    { kind: 'pot', x: 1462, y: 452 },
-    { kind: 'pot', x: 1960, y: 470 },
+    { kind: 'pot', x: 1444, y: 456 },
+    { kind: 'pot', x: 1996, y: 470 },
     // Through the trees.
     { kind: 'rock', x: 1330, y: 1240, w: 22, solid: true },
     { kind: 'roundBale', x: 1030, y: 1460, w: 24, solid: true },
@@ -320,7 +364,7 @@ export function createRanchMap(): RanchMap {
       { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white cats.' },
       { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
       { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
-      { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
+      { id: 'kitchen', x: 725, y: 1010, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
       { id: 'treehouse', x: 1150, y: 1010, r: 80, title: 'The Treehouse', text: 'Up the ladder: a lookout window with the best view of the front lawn on the whole place.' },
       { id: 'blueStar', x: 1805, y: 700, r: 70, title: 'Blue Star', text: "This was Apple's workshop. She and Grandpa fixed up and painted antique furniture here for her business, Blue Star." },
       { id: 'loop', x: 950, y: 1160, r: 70, title: 'The Loop', text: 'Two laps round the middle of the place, on anything with wheels. Everybody remembers their own best time differently.' },
@@ -333,7 +377,7 @@ export function createRanchMap(): RanchMap {
       { id: 'shoe-creek', kind: 'horseshoe', x: 300, y: 2960 },
       { id: 'shoe-roundpen', kind: 'horseshoe', x: 1130, y: 1760 },
       { id: 'shoe-barn', kind: 'horseshoe', x: 1930, y: 2720 },
-      { id: 'treats-barn89', kind: 'treatBag', x: 690, y: 960 },
+      { id: 'treats-barn89', kind: 'treatBag', x: 690, y: 1030 },
       { id: 'treats-shed', kind: 'treatBag', x: 520, y: 1430 },
       { id: 'treats-arena', kind: 'treatBag', x: 1975, y: 1490 },
     ],

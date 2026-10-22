@@ -5,7 +5,7 @@ import { drawDog, drawDonkey } from '../render/animals';
 import { drawEmote, drawKittenFigure, star } from '../render/characters';
 import { C } from '../render/palette';
 import { drawPerson, paintPortrait, type PersonAction } from '../render/people';
-import type { BuildingSprites, TreeSprites } from '../render/sprites';
+import { chimneyTop, type BuildingSprites, type TreeSprites } from '../render/sprites';
 import type { TerrainTiles } from '../render/terrain';
 import type { RideId } from '../content/rides';
 import { drawMotorcycle, drawMower, drawRide, RIDE_SEAT, type MowerPaint } from '../render/vehicles';
@@ -21,11 +21,7 @@ type Ctx = CanvasRenderingContext2D;
 export const PORCH_TREE = { x: 1562, y: 716 };
 /** The tire swing hanging off the big tree on the north lawn. */
 export const TIRE_SWING = { x: 1248, y: 330 };
-/** Chimney tops on the main house and Grandpa's (see the farmhouse sprite). */
-const CHIMNEYS = [
-  { x: 1041, y: 659 },
-  { x: 1683, y: 400 },
-];
+
 
 export class HubView extends WorldView {
   hat: HatKind | undefined;
@@ -516,7 +512,8 @@ export class HubView extends WorldView {
         if (!h.family.moto?.player) drawMe(ctx, true);
       },
       overlay: (ctx, v) => {
-        for (const c of CHIMNEYS) if (inBox(c, v, 120)) drawSmoke(ctx, c.x, c.y, clock);
+        this.chimneys ??= h.map.buildings.map(chimneyTop).filter((c): c is { x: number; y: number } => !!c);
+        for (const c of this.chimneys) if (inBox(c, v, 120)) drawSmoke(ctx, c.x, c.y, clock);
         for (const c of h.cats) {
           if (c.emote === 'none' || !inBox(c, v, 20)) continue;
           const lift = (c.personality === 'sleepy' && c.state === 'rest' ? 14 : 26) + c.lift;
@@ -598,6 +595,9 @@ export class HubView extends WorldView {
       },
     });
   }
+
+  /** Chimney tops on the main house and Grandpa's, for the smoke. */
+  private chimneys: { x: number; y: number }[] | null = null;
 
   /** Activities with no stars yet get a little star over the character. */
   untried = new Set<string>();
