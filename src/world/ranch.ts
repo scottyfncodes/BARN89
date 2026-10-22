@@ -189,8 +189,8 @@ function props(): PropDef[] {
     // Grandpa's back yard: the putting green, and the chihuahuas' doggie door in the back wall.
     { kind: 'puttingGreen', x: 1952, y: 738, w: 64 },
     { kind: 'doggieDoor', x: 1540, y: 673 },
-    // A small wooden cross by Grandpa's door.
-    { kind: 'wallCross', x: 1684, y: 672 },
+    // A help-yourself stand of extra eggs and tomatoes out by the drive.
+    { kind: 'farmStand', x: 640, y: 140, solid: true },
     // The donkeys' name board, hung on the front of their pen.
     { kind: 'nameSign', x: 1180, y: 1902, w: 84, text: 'CHEWY   YODA' },
     { kind: 'mouseHole', x: 1525, y: 2230 },
@@ -370,7 +370,8 @@ export function createRanchMap(): RanchMap {
       { id: 'loop', x: 950, y: 1160, r: 70, title: 'The Loop', text: 'Two laps round the middle of the place, on anything with wheels. Everybody remembers their own best time differently.' },
       { id: 'tireSwing', x: 1250, y: 360, r: 70, title: 'Tire Swing', text: 'The rope has been replaced twice. The tire is the original.' },
       { id: 'puddles', x: 930, y: 1950, r: 60, title: 'Puddle', text: 'Faster through the middle. Muddier, too.' },
-      { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
+      { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
+      { id: 'farmStand', x: 640, y: 180, r: 80, title: 'The Farm Stand', text: 'Extra eggs and garden tomatoes, free to anyone passing by. The sign says: Take what you need, share what you can. God bless.' },
     ],
     collectibles: [
       { id: 'shoe-paddock', kind: 'horseshoe', x: 140, y: 170 },

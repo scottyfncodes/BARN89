@@ -591,7 +591,8 @@ function onHubEvent(e: HubEvent): void {
         stars,
         score: Math.max(0, Math.round(3000 - e.seconds * 40 + (e.won ? 500 : 0))),
         title: e.won ? 'You win!' : `${e.rival} wins this time`,
-        sub: e.won ? `Two laps in ${formatTime(e.seconds)}, and home before ${e.rival}.` : `Two laps in ${formatTime(e.seconds)}. ${e.rival} wants a rematch anyway.`,
+        // Win or lose, everybody shakes hands at the line.
+        sub: e.won ? `Two laps in ${formatTime(e.seconds)}, and home before ${e.rival}. "Good race," says ${e.rival}, and means it.` : `Two laps in ${formatTime(e.seconds)}. You shake hands at the line, and ${e.rival} says it was closer than it looked.`,
         lines: [
           { label: 'Your time', value: formatTime(e.seconds) },
           { label: e.rival, value: e.rivalSeconds !== null ? formatTime(e.rivalSeconds) : 'still racing' },

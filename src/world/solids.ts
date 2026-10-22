@@ -22,6 +22,8 @@ export function propSolid(p: PropDef): Shape | null {
       const h = p.h ?? 26;
       return { kind: 'rect', x: p.x - w / 2, y: p.y - h / 2, w, h };
     }
+    case 'farmStand':
+      return { kind: 'rect', x: p.x - 24, y: p.y - 8, w: 48, h: 12 };
     case 'cart':
       return { kind: 'rect', x: p.x - 34, y: p.y - 16, w: 68, h: 32 };
     case 'jump': {

@@ -108,7 +108,8 @@ export type PropKind =
   | 'festoon'
   | 'venueSign'
   | 'longTable'
-  | 'wallCross'
+  /** A help-yourself table of extra eggs and garden tomatoes by the drive. */
+  | 'farmStand'
   | 'nameSign';
 
 export interface PropDef {

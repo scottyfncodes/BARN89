@@ -2017,13 +2017,51 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.restore();
       break;
     }
-    case 'wallCross': {
-      // Small, plain, hung by the door.
+    case 'farmStand': {
+      // A plank table with a basket of eggs, a crate of tomatoes and a hand-painted sign.
+      ctx.fillStyle = C.woodDark;
+      for (const lx of [-20, 17]) ctx.fillRect(x + lx, y - 18, 3, 18);
+      ctx.fillStyle = C.woodLight;
+      ctx.fillRect(x - 24, y - 22, 48, 5);
+      ctx.strokeRect(x - 24, y - 22, 48, 5);
+      // Basket of eggs.
+      ctx.beginPath();
+      ctx.ellipse(x - 11, y - 25, 9, 4, 0, 0, Math.PI);
+      ctx.fillStyle = '#b8864f';
+      ctx.fill();
+      ctx.stroke();
+      for (const [ex, ey] of [[-16, -26], [-12, -27.5], [-8, -26], [-11, -24.5]]) {
+        ctx.beginPath();
+        ctx.ellipse(x + ex, y + ey, 2.2, 2.8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#fffaf0';
+        ctx.fill();
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+      // Crate of tomatoes.
+      ctx.lineWidth = 1.4;
       ctx.fillStyle = C.wood;
-      ctx.fillRect(x - 1.8, y - 50, 3.6, 18);
-      ctx.strokeRect(x - 1.8, y - 50, 3.6, 18);
-      ctx.fillRect(x - 6, y - 45, 12, 3.4);
-      ctx.strokeRect(x - 6, y - 45, 12, 3.4);
+      ctx.fillRect(x + 2, y - 30, 16, 8);
+      ctx.strokeRect(x + 2, y - 30, 16, 8);
+      for (const tx of [5.5, 10, 14.5]) {
+        ctx.beginPath();
+        ctx.arc(x + tx, y - 31, 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = '#d9433a';
+        ctx.fill();
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+      // Sign on a stake.
+      ctx.lineWidth = 1.4;
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x + 22, y - 34, 2.5, 34);
+      ctx.fillStyle = '#f6efe0';
+      ctx.fillRect(x + 12, y - 48, 24, 13);
+      ctx.strokeRect(x + 12, y - 48, 24, 13);
+      ctx.fillStyle = C.ink;
+      ctx.font = 'bold 6px ui-rounded, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SHARE', x + 24, y - 39.5);
       break;
     }
     case 'bench': {
