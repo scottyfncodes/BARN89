@@ -323,12 +323,27 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
     ctx.strokeStyle = C.ink;
     ctx.lineWidth = 2;
     ctx.strokeRect(dx, dTop, dw, 92);
-    // Hayloft door.
-    ctx.fillStyle = '#3b2418';
-    ctx.fillRect(w / 2 - 22, wallTop - 4, 44, 26);
-    ctx.strokeStyle = C.white;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(w / 2 - 22, wallTop - 4, 44, 26);
+    if (b.label) {
+      // The painted name board over the doors.
+      const sw = Math.min(150, w - 40);
+      ctx.fillStyle = C.white;
+      ctx.fillRect(w / 2 - sw / 2, wallTop + 6, sw, 28);
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(w / 2 - sw / 2, wallTop + 6, sw, 28);
+      ctx.fillStyle = C.barnRed;
+      ctx.font = '900 21px Rockwell, "Roboto Slab", Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.label, w / 2, wallTop + 21);
+    } else {
+      // Hayloft door.
+      ctx.fillStyle = '#3b2418';
+      ctx.fillRect(w / 2 - 22, wallTop - 4, 44, 26);
+      ctx.strokeStyle = C.white;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(w / 2 - 22, wallTop - 4, 44, 26);
+    }
     // Wall trim.
     ctx.strokeStyle = C.white;
     ctx.lineWidth = 4;
@@ -1152,6 +1167,224 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fill();
       break;
     }
+    case 'board': {
+      // The ranch activity board: two posts, a little roof, and notes pinned all over it.
+      ctx.beginPath();
+      ctx.ellipse(x + 3, y + 2, 34, 6, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x - 28, y - 58, 6, 58);
+      ctx.fillRect(x + 22, y - 58, 6, 58);
+      ctx.strokeRect(x - 28, y - 58, 6, 58);
+      ctx.strokeRect(x + 22, y - 58, 6, 58);
+      ctx.fillStyle = C.woodLight;
+      ctx.fillRect(x - 32, y - 56, 64, 34);
+      ctx.strokeRect(x - 32, y - 56, 64, 34);
+      const notes: [number, number, string][] = [[-27, -52, '#fffaf0'], [-9, -50, '#ffe58a'], [9, -53, '#bfe3f2'], [-20, -36, '#f7c6cf'], [2, -37, '#fffaf0'], [17, -38, '#cfe8b4']];
+      for (const [nx, ny, col] of notes) {
+        ctx.fillStyle = col;
+        ctx.fillRect(x + nx, y + ny, 13, 12);
+        ctx.fillStyle = C.barnRed;
+        ctx.fillRect(x + nx + 5, y + ny + 1, 3, 2);
+        ctx.fillStyle = 'rgba(59,42,32,0.45)';
+        ctx.fillRect(x + nx + 2, y + ny + 6, 9, 1);
+        ctx.fillRect(x + nx + 2, y + ny + 9, 6, 1);
+      }
+      ctx.fillStyle = C.roofRed;
+      ctx.beginPath();
+      ctx.moveTo(x - 38, y - 55);
+      ctx.lineTo(x, y - 68);
+      ctx.lineTo(x + 38, y - 55);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'doghouse': {
+      ctx.beginPath();
+      ctx.ellipse(x + 4, y + 2, 34, 9, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.fillStyle = C.barnRed;
+      ctx.fillRect(x - 26, y - 30, 52, 30);
+      ctx.strokeRect(x - 26, y - 30, 52, 30);
+      ctx.fillStyle = '#2b1a12';
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y);
+      ctx.lineTo(x - 10, y - 14);
+      ctx.arc(x, y - 14, 10, Math.PI, 0);
+      ctx.lineTo(x + 10, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#efe2c8';
+      ctx.beginPath();
+      ctx.moveTo(x - 32, y - 28);
+      ctx.lineTo(x, y - 50);
+      ctx.lineTo(x + 32, y - 28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Water bowl.
+      ctx.beginPath();
+      ctx.ellipse(x + 34, y - 2, 8, 3.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#3d7fd6';
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'woodpile': {
+      const w = p.w ?? 120;
+      ctx.beginPath();
+      ctx.ellipse(x + 4, y + 3, w / 2 + 6, 9, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x - w / 2 - 4, y - 42, 5, 42);
+      ctx.fillRect(x + w / 2 - 1, y - 42, 5, 42);
+      // Split log ends, stacked in rows.
+      const rows = 4;
+      for (let r = 0; r < rows; r++) {
+        const cy = y - 6 - r * 9.5;
+        const off = r % 2 ? 5 : 0;
+        for (let lx = x - w / 2 + 5 + off; lx < x + w / 2 - 3; lx += 10) {
+          const h = hash2(Math.round(lx), r, 3);
+          ctx.beginPath();
+          ctx.moveTo(lx - 5, cy + 4);
+          ctx.lineTo(lx - 4 + h * 2, cy - 5);
+          ctx.lineTo(lx + 5, cy - 3 + h * 2);
+          ctx.lineTo(lx + 4, cy + 4);
+          ctx.closePath();
+          ctx.fillStyle = h > 0.5 ? '#e2b77a' : '#d9a865';
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(140,90,40,0.5)';
+          ctx.beginPath();
+          ctx.arc(lx, cy, 1.6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = C.ink;
+        }
+      }
+      ctx.lineWidth = 1.6;
+      ctx.fillStyle = '#8c9aa6';
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2 - 10, y - 40);
+      ctx.lineTo(x + w / 2 + 10, y - 40);
+      ctx.lineTo(x + w / 2 + 6, y - 50);
+      ctx.lineTo(x - w / 2 - 6, y - 50);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'chopBlock': {
+      ctx.beginPath();
+      ctx.ellipse(x + 3, y + 2, 20, 6, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      // Wood chips.
+      ctx.fillStyle = '#e8c690';
+      for (let i = 0; i < 7; i++) ctx.fillRect(x - 24 + hash2(i, 1, 9) * 48, y - 3 + hash2(i, 2, 9) * 8, 4, 2);
+      ctx.fillStyle = C.wood;
+      ctx.fillRect(x - 14, y - 18, 28, 18);
+      ctx.strokeRect(x - 14, y - 18, 28, 18);
+      ctx.beginPath();
+      ctx.ellipse(x, y - 18, 14, 5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#e2b77a';
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(140,90,40,0.6)';
+      ctx.beginPath();
+      ctx.ellipse(x, y - 18, 7, 2.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Axe resting in the block.
+      ctx.strokeStyle = C.ink;
+      ctx.save();
+      ctx.translate(x + 2, y - 20);
+      ctx.rotate(0.5);
+      ctx.fillStyle = '#b07a44';
+      ctx.fillRect(-1.8, -30, 3.6, 30);
+      ctx.strokeRect(-1.8, -30, 3.6, 30);
+      ctx.fillStyle = '#9aa5ad';
+      ctx.beginPath();
+      ctx.moveTo(-2, -2);
+      ctx.lineTo(-11, 2);
+      ctx.lineTo(-11, -8);
+      ctx.lineTo(-2, -7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'festoon': {
+      const w = p.w ?? 200;
+      for (const px of [x, x + w]) {
+        ctx.beginPath();
+        ctx.ellipse(px + 3, y + 2, 7, 3, 0, 0, Math.PI * 2);
+        ctx.fillStyle = C.shadow;
+        ctx.fill();
+        ctx.fillStyle = C.woodGrey;
+        ctx.fillRect(px - 3, y - 74, 6, 74);
+        ctx.strokeRect(px - 3, y - 74, 6, 74);
+      }
+      ctx.strokeStyle = '#4a3b30';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 70);
+      ctx.quadraticCurveTo(x + w / 2, y - 40, x + w, y - 70);
+      ctx.stroke();
+      for (const b of festoonBulbs(p)) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y + 2, 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = b.out ? '#9a9488' : '#fff1b8';
+        ctx.fill();
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = C.ink;
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'venueSign': {
+      // The old venue sign out by the road, sun-faded, a couple of bulbs still in the arch.
+      ctx.beginPath();
+      ctx.ellipse(x + 3, y + 2, 48, 7, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x - 46, y - 62, 7, 62);
+      ctx.fillRect(x + 39, y - 62, 7, 62);
+      ctx.strokeRect(x - 46, y - 62, 7, 62);
+      ctx.strokeRect(x + 39, y - 62, 7, 62);
+      ctx.beginPath();
+      ctx.moveTo(x - 44, y - 30);
+      ctx.lineTo(x - 44, y - 54);
+      ctx.quadraticCurveTo(x, y - 78, x + 44, y - 54);
+      ctx.lineTo(x + 44, y - 30);
+      ctx.closePath();
+      ctx.fillStyle = '#efe4cc';
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#a8443a';
+      ctx.font = '900 15px Rockwell, "Roboto Slab", Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('BARN 89', x, y - 47);
+      ctx.fillStyle = 'rgba(59,42,32,0.7)';
+      ctx.font = 'italic 700 7px Georgia, serif';
+      ctx.fillText('celebrations', x, y - 36);
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6;
+        const bx = x - 40 + t * 80;
+        const by = y - 56 - Math.sin(t * Math.PI) * 14;
+        ctx.beginPath();
+        ctx.arc(bx, by, 2, 0, Math.PI * 2);
+        ctx.fillStyle = i === 2 || i === 5 ? '#9a9488' : '#fff1b8';
+        ctx.fill();
+      }
+      break;
+    }
     case 'bench': {
       const w = p.w ?? 40;
       ctx.fillStyle = C.woodDark;
@@ -1166,6 +1399,21 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
     }
   }
   ctx.restore();
+}
+
+/** Bulb positions along a festoon string (some long since burned out). */
+export function festoonBulbs(p: PropDef): { x: number; y: number; out: boolean }[] {
+  const w = p.w ?? 200;
+  const n = Math.max(4, Math.round(w / 22));
+  const out: { x: number; y: number; out: boolean }[] = [];
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    const x = p.x + t * w;
+    // Quadratic sag matching the drawn wire.
+    const y = p.y - 70 + 2 * t * (1 - t) * 30;
+    out.push({ x, y, out: hash2(i, Math.round(p.y), 89) < 0.22 });
+  }
+  return out;
 }
 
 /** Things drawn flat on the ground in the dynamic layer (no height). */

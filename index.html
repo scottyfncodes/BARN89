@@ -7,29 +7,81 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Kitten Cowgirl" />
+    <meta name="apple-mobile-web-app-title" content="Barn 89" />
     <meta name="format-detection" content="telephone=no" />
-    <meta name="description" content="Natalie rides Deputy the tiger and herds very uncooperative kittens around the ranch." />
+    <meta name="robots" content="noindex" />
+    <meta name="description" content="Barn 89: a family adventure on the homestead. Our place. Our people. Our kind of chaos." />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <title>Kitten Cowgirl</title>
+    <title>Barn 89</title>
   </head>
   <body>
     <div id="app">
-      <canvas id="game" aria-label="Kitten Cowgirl game view"></canvas>
+      <canvas id="game" aria-label="Barn 89 game view"></canvas>
       <div id="touch" aria-hidden="true"></div>
       <div id="stick-base" aria-hidden="true"></div>
       <div id="stick-knob" aria-hidden="true"></div>
 
-      <header id="hud" hidden>
+      <!-- Homestead HUD -->
+      <header id="hub-hud" class="hud" hidden>
+        <div class="hud-left">
+          <button class="pill stat-pill" id="hub-stars" data-open="board" aria-label="Stars earned">
+            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z" fill="#f2c53d" stroke="#3b2a20" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            <span id="hub-stars-n">0</span>
+          </button>
+          <button class="pill stat-pill" id="hub-orn" data-open="board" aria-label="Ornaments found">
+            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><rect x="9.5" y="2.5" width="5" height="4" rx="1" fill="#c9a548" stroke="#3b2a20" stroke-width="1.6"/><circle cx="12" cy="14" r="7.5" fill="#d9434f" stroke="#3b2a20" stroke-width="1.8"/><ellipse cx="9.5" cy="11.5" rx="2" ry="1.3" fill="#fff" opacity=".7"/></svg>
+            <span id="hub-orn-n">0/8</span>
+          </button>
+        </div>
+        <div class="hud-right">
+          <button class="round-btn" data-open="board" aria-label="Activity board">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5" fill="none" stroke="#3b2a20" stroke-width="2.2"/><path d="M8 8h8M8 12h8M8 16h5" stroke="#3b2a20" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <button class="round-btn" data-open="map" aria-label="Map">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" fill="none" stroke="#3b2a20" stroke-width="2" stroke-linejoin="round"/><path d="M9 4v14M15 6v14" stroke="#3b2a20" stroke-width="2"/></svg>
+          </button>
+          <button class="round-btn" data-open="menu" aria-label="Menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" stroke="#3b2a20" stroke-width="2.4" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Mission card (Morning Rounds, Treasure Hunt) -->
+      <div id="mission" hidden>
+        <div class="mission-head">
+          <b id="mission-title"></b>
+          <span id="mission-time"></span>
+          <button id="mission-hint" class="chip-btn">Hint</button>
+          <button id="mission-quit" class="chip-btn">Stop</button>
+        </div>
+        <div id="mission-body"></div>
+      </div>
+
+      <!-- Station prompt -->
+      <div id="prompt" hidden>
+        <canvas id="prompt-face" aria-hidden="true"></canvas>
+        <div class="prompt-text">
+          <b id="prompt-who"></b>
+          <p id="prompt-line"></p>
+          <span id="prompt-stars" class="mini-stars"></span>
+        </div>
+        <button id="prompt-go" class="go-btn">Let's go</button>
+      </div>
+
+      <button id="act-btn" class="action act" hidden><span id="act-label">Pet</span></button>
+
+      <!-- Minigame HUD -->
+      <header id="hud" class="hud" hidden>
         <div class="hud-left">
           <div class="pill objective" aria-live="polite">
-            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M4 9 5 3l4.5 4h5L19 3l1 6c1.3 1.4 2 3.2 2 5 0 4.4-4.5 7-10 7S2 18.4 2 14c0-1.8.7-3.6 2-5Z" fill="#f4a25a" stroke="#3b2a20" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8.5" cy="13" r="1.3" fill="#3b2a20"/><circle cx="15.5" cy="13" r="1.3" fill="#3b2a20"/><path d="M11 16h2l-1 1z" fill="#e5737f"/></svg>
+            <span id="obj-ico" class="ico" aria-hidden="true"></span>
             <span class="count"><b id="count">0</b><span id="required">/6</span></span>
-            <span class="label">in the corral</span>
+            <span class="label" id="obj-label">in the corral</span>
           </div>
           <div class="pips" id="pips" aria-hidden="true"></div>
+          <div class="bar" id="bar" aria-hidden="true"><i id="bar-fill"></i><s id="bar-target"></s></div>
         </div>
         <div class="hud-right">
           <div class="pill stat"><span id="time">0:00</span><span class="dot">·</span><span id="score">0</span></div>
@@ -55,64 +107,188 @@
         </button>
       </div>
 
-      <section id="title" class="screen">
+      <button id="toss-btn" class="action toss" hidden aria-label="Toss on the burn pile">
+        <svg viewBox="0 0 40 32" aria-hidden="true"><path d="M6 24h24M10 24c2-8 6-12 12-14" fill="none" stroke="#3b2a20" stroke-width="2.6" stroke-linecap="round"/><path d="M19 6l7 4-5 6" fill="none" stroke="#3b2a20" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <small>Toss it</small>
+      </button>
+
+      <!-- Title -->
+      <section id="title" class="screen title-screen">
         <div class="panel title-panel scrollable">
-          <canvas id="hero" width="360" height="220" aria-hidden="true"></canvas>
-          <h1 class="logo"><span>Kitten</span><span>Cowgirl</span></h1>
-          <p class="tagline">One tiger. One cowgirl. Eight kittens who would rather not.</p>
-          <button id="play-btn" class="big-btn">Saddle up!</button>
-          <ul class="howto">
-            <li><span class="how-ico stick"></span><span><b>Drag</b> anywhere to ride Deputy</span></li>
-            <li><span class="how-ico push"></span><span><b>Ride behind</b> kittens to push them into the glowing <b>Kitten Corral</b></span></li>
-            <li><span class="how-ico whistle"></span><span><b>Whistle</b> scoots nearby kittens the way you're riding</span></li>
-            <li><span class="how-ico treat"></span><span><b>Treats</b> lure hungry kittens, who then tag along</span></li>
-          </ul>
+          <canvas id="hero" width="360" height="230" aria-hidden="true"></canvas>
+          <h1 class="logo"><span class="logo-barn">BARN</span><span class="logo-num">89</span></h1>
+          <p class="tagline">Our place. Our people. Our kind of chaos.</p>
+          <button id="play-btn" class="big-btn">Explore the homestead</button>
+          <button id="who-btn" class="who-btn">
+            <canvas id="who-face" aria-hidden="true"></canvas>
+            <span>Exploring as <b id="who-name">Natalie</b></span>
+            <em>Change</em>
+          </button>
           <div class="title-row">
-            <button class="link-btn" data-open="herd">Meet the herd</button>
-            <span id="best" class="best"></span>
+            <button id="title-sound" class="link-btn" aria-pressed="true">Sound: on</button>
+            <span id="title-best" class="best"></span>
+          </div>
+          <p id="storage-note" class="note" hidden>This browser isn't saving progress (private browsing?). Everything works, it just won't be remembered.</p>
+        </div>
+      </section>
+
+      <!-- Explorer picker -->
+      <section id="who" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2>Who's exploring?</h2>
+          <p class="sub">Pick anyone. Everybody else will be out on the homestead.</p>
+          <ul id="who-list" class="who-list"></ul>
+          <button id="who-done" class="big-btn">Done</button>
+        </div>
+      </section>
+
+      <!-- Intro / challenge picker -->
+      <section id="intro" class="screen" hidden>
+        <div class="panel scrollable">
+          <div class="intro-head">
+            <canvas id="intro-face" aria-hidden="true"></canvas>
+            <div>
+              <h2 id="intro-title">Kitten Cowgirl</h2>
+              <p class="sub" id="intro-who"></p>
+            </div>
+          </div>
+          <div id="intro-challenges" class="challenges"></div>
+          <ul id="intro-howto" class="howto"></ul>
+          <button id="intro-start" class="big-btn">Start</button>
+          <div class="btn-row">
+            <button id="intro-extra" class="link-btn" hidden>Meet the cats</button>
+            <button id="intro-close" class="link-btn">Not now</button>
           </div>
         </div>
       </section>
 
+      <!-- Pause -->
       <section id="pause" class="screen" hidden>
         <div class="panel scrollable">
           <h2>Taking a breather</h2>
           <p class="sub" id="pause-sub"></p>
-          <button id="resume-btn" class="big-btn">Back to the herd</button>
+          <button id="resume-btn" class="big-btn">Keep going</button>
           <div class="btn-row">
             <button id="restart-btn" class="mid-btn">Restart</button>
             <button id="sound-btn" class="mid-btn" aria-pressed="true">Sound: on</button>
           </div>
           <div class="btn-row">
-            <button class="link-btn" data-open="herd">Meet the herd</button>
-            <button id="quit-btn" class="link-btn">Title screen</button>
+            <button id="howto-btn" class="link-btn">How to play</button>
+            <button id="quit-btn" class="link-btn">Back to the homestead</button>
           </div>
         </div>
       </section>
 
+      <!-- Results -->
+      <section id="results" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2 class="yeehaw" id="results-title">Yee-haw!</h2>
+          <p class="sub" id="results-sub"></p>
+          <div class="stars" id="stars" aria-label="Stars"></div>
+          <ul class="lines" id="lines"></ul>
+          <div class="total"><span>Score</span><b id="total">0</b></div>
+          <p class="best" id="results-best"></p>
+          <div id="unlocks" class="unlocks"></div>
+          <button id="again-btn" class="big-btn">Play again</button>
+          <div class="btn-row">
+            <button id="next-btn" class="mid-btn" hidden>Next challenge</button>
+            <button id="home-btn" class="mid-btn">Back to the homestead</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Activity board -->
+      <section id="board" class="screen" hidden>
+        <div class="panel wide scrollable">
+          <h2>Ranch Activity Board</h2>
+          <p class="sub" id="board-sub"></p>
+          <ul id="board-list" class="board-list"></ul>
+          <h3 class="section-h">Around the homestead</h3>
+          <ul id="secrets" class="secrets"></ul>
+          <div class="btn-row">
+            <button class="mid-btn" data-open="rewards">Rewards</button>
+            <button class="mid-btn" data-close>Close</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Rewards & wardrobe -->
+      <section id="rewards" class="screen" hidden>
+        <div class="panel wide scrollable">
+          <h2>Rewards</h2>
+          <p class="sub" id="rewards-sub"></p>
+          <ul id="reward-list" class="reward-list"></ul>
+          <div class="btn-row">
+            <button class="mid-btn" data-close>Done</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Map -->
+      <section id="map" class="screen" hidden>
+        <div class="panel wide map-panel">
+          <h2>The Homestead</h2>
+          <p class="sub">Tap someone to walk straight over.</p>
+          <canvas id="map-canvas" aria-label="Map of the homestead"></canvas>
+          <div class="btn-row">
+            <button class="mid-btn" data-close>Close</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Homestead menu -->
+      <section id="menu" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2>Barn 89</h2>
+          <p class="sub" id="menu-sub"></p>
+          <button class="big-btn" data-close>Back outside</button>
+          <div class="btn-row">
+            <button class="mid-btn" data-open="rewards">Rewards</button>
+            <button class="mid-btn" data-open="who">Who's exploring</button>
+          </div>
+          <div class="btn-row">
+            <button id="menu-sound" class="mid-btn" aria-pressed="true">Sound: on</button>
+            <button id="menu-title" class="mid-btn">Title screen</button>
+          </div>
+          <button id="erase-btn" class="link-btn small">Erase progress on this device</button>
+        </div>
+      </section>
+
+      <!-- Kitten roster -->
       <section id="herd" class="screen" hidden>
         <div class="panel scrollable">
-          <h2>Meet the herd</h2>
-          <p class="sub">Every kitten has a personality. Learn them and they're (mostly) predictable.</p>
+          <h2>Meet the barn cats</h2>
+          <p class="sub">Every cat has a personality. Learn them and they're (mostly) predictable.</p>
           <ul id="roster" class="roster"></ul>
           <button id="herd-close" class="big-btn">Got it</button>
         </div>
       </section>
 
-      <section id="results" class="screen" hidden>
+      <!-- Grandpa's lockbox -->
+      <section id="lockbox" class="screen" hidden>
         <div class="panel scrollable">
-          <h2 class="yeehaw">Yee-haw!</h2>
-          <p class="sub" id="results-sub">The corral is full of very smug kittens.</p>
-          <div class="stars" id="stars" aria-label="Stars"></div>
-          <ul class="lines" id="lines"></ul>
-          <div class="total"><span>Total</span><b id="total">0</b></div>
-          <p class="best" id="results-best"></p>
-          <button id="again-btn" class="big-btn">Play again</button>
-          <button id="results-title-btn" class="link-btn">Title screen</button>
+          <h2>Grandpa's Lockbox</h2>
+          <p class="sub" id="lock-line">"Two numbers. It's painted on the big red barn, plain as day."</p>
+          <div class="dials">
+            <div class="dial"><button class="dial-btn" data-dial="0" data-d="1" aria-label="First number up">+</button><b id="dial-0">0</b><button class="dial-btn" data-dial="0" data-d="-1" aria-label="First number down">-</button></div>
+            <div class="dial"><button class="dial-btn" data-dial="1" data-d="1" aria-label="Second number up">+</button><b id="dial-1">0</b><button class="dial-btn" data-dial="1" data-d="-1" aria-label="Second number down">-</button></div>
+          </div>
+          <button id="lock-open" class="big-btn">Open it</button>
+          <button id="lock-close" class="link-btn">Go look at the barn</button>
         </div>
       </section>
 
-      <noscript>Kitten Cowgirl needs JavaScript to round up the kittens.</noscript>
+      <!-- Generic notice -->
+      <section id="notice" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2 id="notice-title"></h2>
+          <p class="sub" id="notice-text"></p>
+          <button id="notice-ok" class="big-btn">OK</button>
+          <button id="notice-cancel" class="link-btn" hidden>Cancel</button>
+        </div>
+      </section>
+
+      <noscript>Barn 89 needs JavaScript to open the barn doors.</noscript>
     </div>
     <script type="module" src="./src/main.ts"></script>
   </body>

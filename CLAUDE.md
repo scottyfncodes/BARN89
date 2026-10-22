@@ -1,6 +1,8 @@
-# Kitten Cowgirl: notes for contributors and agents
+# Barn 89: notes for contributors and agents
 
 Run `npm run check` (lint, typecheck, tests, build) before pushing. `npm run test:e2e` runs the browser checks against the built app.
+
+Barn 89 is a family gift. Family-specific details live in `src/content/cast.ts`; keep the map faithful to `docs/reference/aerial.jpg` (tests in `tests/map.test.ts` pin the landmarks).
 
 ## Design guardrails
 

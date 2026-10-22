@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { Game } from '../src/game/game';
-import { LEVEL_ONE } from '../src/game/levels';
-import { PLAYER_RADIUS } from '../src/game/player';
+import { Game } from '../src/games/kitten/game';
+import { LEVEL_ONE } from '../src/games/kitten/levels';
+import { PLAYER_RADIUS } from '../src/games/kitten/player';
 import { NavGrid } from '../src/world/navgrid';
 
 describe('Ranch Roundup level', () => {

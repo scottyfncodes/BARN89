@@ -15,11 +15,11 @@ const near = (p: { x: number; y: number }, aerial: [number, number], tol: number
 
 describe('ranch layout matches the aerial photo', () => {
   it('places the buildings where the photo shows them', () => {
-    expect(near(centre(building('barn89')), [425, 410], 120)).toBe(true);
-    expect(near(centre(building('house2')), [860, 280], 120)).toBe(true);
+    expect(near(centre(building('mainHouse')), [425, 410], 120)).toBe(true);
+    expect(near(centre(building('grandpaHouse')), [860, 280], 120)).toBe(true);
     expect(near(centre(building('whiteShed')), [252, 610], 60)).toBe(true);
     expect(near(centre(building('stable')), [840, 1075], 80)).toBe(true);
-    expect(near(centre(building('bigBarn')), [835, 1255], 80)).toBe(true);
+    expect(near(centre(building('barn89')), [835, 1255], 80)).toBe(true);
   });
 
   it('puts the arena on the east side against Buffalo Gap Rd', () => {

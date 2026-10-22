@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { Game } from '../src/game/game';
-import { LEVEL_ONE, type LevelDef } from '../src/game/levels';
-import { emptyInput, type InputState, type Kitten } from '../src/game/types';
+import { Game } from '../src/games/kitten/game';
+import { LEVEL_ONE, type LevelDef } from '../src/games/kitten/levels';
+import { emptyInput, type InputState, type Kitten } from '../src/games/kitten/types';
 import { Rng } from '../src/core/math';
 
 const DT = 1 / 60;

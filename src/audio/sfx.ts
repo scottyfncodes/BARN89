@@ -144,6 +144,98 @@ export class Sfx {
     this.tone(220, 0.15, 'square', 0.05, 0, 160);
   }
 
+  bark(): void {
+    this.tone(420, 0.09, 'sawtooth', 0.07, 0, 300);
+    this.noise(0.07, 0.25, 900);
+    this.tone(460, 0.09, 'sawtooth', 0.06, 0.16, 320);
+    this.noise(0.07, 0.2, 900, 0.16);
+  }
+
+  /** Hee-haw: a rising inhale squeal, then a low honk, twice. */
+  bray(): void {
+    for (let i = 0; i < 2; i++) {
+      const t = i * 0.62;
+      this.tone(900, 0.22, 'sawtooth', 0.05, t, 1300);
+      this.tone(260, 0.3, 'sawtooth', 0.07, t + 0.24, 200);
+    }
+  }
+
+  chop(quality: number): void {
+    // Wood "thock": low body plus a crack whose brightness tracks how clean the swing was.
+    this.tone(150, 0.12, 'triangle', 0.25, 0, 90);
+    this.noise(0.09, 0.4, 900 + quality * 1600);
+  }
+
+  split(): void {
+    this.noise(0.18, 0.35, 1800);
+    this.tone(330, 0.1, 'triangle', 0.12, 0.02, 180);
+  }
+
+  thud(): void {
+    this.tone(110, 0.16, 'sine', 0.3, 0, 70);
+    this.noise(0.08, 0.2, 400);
+  }
+
+  stack(snug: boolean): void {
+    this.tone(snug ? 520 : 380, 0.07, 'square', 0.05);
+    this.noise(0.06, 0.25, snug ? 1500 : 700);
+  }
+
+  clunk(): void {
+    this.tone(140, 0.18, 'square', 0.08, 0, 90);
+    this.noise(0.1, 0.3, 500);
+  }
+
+  oops(): void {
+    this.tone(330, 0.14, 'triangle', 0.1, 0, 250);
+    this.tone(250, 0.2, 'triangle', 0.1, 0.12, 190);
+  }
+
+  tick(): void {
+    this.tone(1200, 0.03, 'square', 0.03);
+  }
+
+  private engine: { o: OscillatorNode; o2: OscillatorNode; g: GainNode; f: BiquadFilterNode } | null = null;
+
+  /** Continuous mower engine; throttle 0..1 (negative stops it). */
+  setEngine(throttle: number): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    if (throttle < 0) {
+      if (this.engine) {
+        const e = this.engine;
+        e.g.gain.setTargetAtTime(0.0001, t, 0.08);
+        e.o.stop(t + 0.4);
+        e.o2.stop(t + 0.4);
+        this.engine = null;
+      }
+      return;
+    }
+    if (!this.engine) {
+      const o = this.ctx.createOscillator();
+      const o2 = this.ctx.createOscillator();
+      const f = this.ctx.createBiquadFilter();
+      const g = this.ctx.createGain();
+      o.type = 'sawtooth';
+      o2.type = 'square';
+      f.type = 'lowpass';
+      f.frequency.value = 500;
+      g.gain.value = 0.0001;
+      o.connect(f);
+      o2.connect(f);
+      f.connect(g);
+      g.connect(this.master);
+      o.start();
+      o2.start();
+      this.engine = { o, o2, g, f };
+    }
+    const e = this.engine;
+    e.o.frequency.setTargetAtTime(48 + throttle * 34, t, 0.1);
+    e.o2.frequency.setTargetAtTime(24 + throttle * 17, t, 0.1);
+    e.f.frequency.setTargetAtTime(380 + throttle * 500, t, 0.1);
+    e.g.gain.setTargetAtTime(0.035 + throttle * 0.035, t, 0.1);
+  }
+
   click(): void {
     this.tone(880, 0.05, 'triangle', 0.08);
   }

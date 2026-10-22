@@ -1,4 +1,4 @@
-import { clamp, damp, dist, fromAngle, norm, Rng, type Vec } from '../core/math';
+import { clamp, damp, dist, fromAngle, norm, Rng, type Vec } from '../../core/math';
 import { PERSONALITIES } from './kittenTypes';
 import type { KittenSpawn } from './levels';
 import type { Game } from './game';

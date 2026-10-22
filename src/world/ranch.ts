@@ -3,15 +3,17 @@ import type { BuildingDef, FenceDef, PenDef, PropDef, RanchMap, TreeDef } from '
 import { pruneTrees } from './solids';
 
 /**
- * Natalie's ranch on Buffalo Gap Rd, traced from the aerial photo in docs/reference/aerial.jpg.
+ * The Barn 89 homestead on Buffalo Gap Rd, traced from the aerial photo in docs/reference/aerial.jpg.
  * Scale: one aerial pixel = two world units, so features keep their real relative positions.
+ * Every scene (the homestead, Kitten Cowgirl, Yard Boss) uses this one map.
  *
- *  - the drive along the north edge and the teardrop driveway loop with its lawn
- *  - "Barn 89", the main residence, west of the loop, with the trampoline and red-mulch garden
- *  - the second residence and its fenced yard in the north-east corner
- *  - the access road winding down the west side, through the trees, to the barns
+ *  - the drive along the north edge and the teardrop driveway loop around the big front lawn
+ *  - the main house west of the loop, with the trampoline, the red-mulch garden and the dogs' house
+ *  - Grandpa's house and its fenced yard in the north-east corner
+ *  - the access road winding down the west side, past the woodshed and woodpile, to the barns
  *  - the big sandy riding arena against the east fence line
- *  - the two metal barns in the south-east, the walled round pen and the round corral
+ *  - the stable and Barn 89 (the red barn and old wedding venue) in the south-east, with the
+ *    string-lit lawn south of it; the walled round pen (the donkeys' paddock) and the round corral
  *  - fenced paddocks and a chicken run in the north-west, red-dirt creek woods to the south-west
  *  - Buffalo Gap Rd running along the east boundary
  */
@@ -27,13 +29,13 @@ export const ROUND_PEN = { x: 1180, y: 1790, r: 110 };
 
 function buildings(): BuildingDef[] {
   return [
-    { id: 'barn89', style: 'farmhouse', x: 600, y: 700, w: 500, h: 200, wall: 100, roof: '#6b7480', walls: '#efe2c8', label: 'BARN 89' },
-    { id: 'house2', style: 'farmhouse', x: 1470, y: 440, w: 480, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: 'No. 2' },
+    { id: 'mainHouse', style: 'farmhouse', x: 600, y: 700, w: 500, h: 200, wall: 100, roof: '#6b7480', walls: '#efe2c8', label: 'HOME' },
+    { id: 'grandpaHouse', style: 'farmhouse', x: 1470, y: 440, w: 480, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: "GRANDPA'S" },
     { id: 'whiteShed', style: 'shed', x: 410, y: 1150, w: 190, h: 130, wall: 70, roof: '#e9ecef', walls: '#f6f3ea' },
     { id: 'eastShed', style: 'shed', x: 1550, y: 1290, w: 110, h: 80, wall: 56, roof: '#c9ced4', walls: '#a94336' },
     { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
     { id: 'stable', style: 'shed', x: 1480, y: 2075, w: 400, h: 155, wall: 84, roof: '#9fb0bf', walls: '#b8382c', label: 'STABLE' },
-    { id: 'bigBarn', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8d9cab', walls: '#b8382c' },
+    { id: 'barn89', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8d9cab', walls: '#b8382c', label: 'BARN 89' },
     { id: 'coop', style: 'coop', x: 370, y: 280, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
   ];
 }
@@ -71,9 +73,14 @@ function props(): PropDef[] {
     { kind: 'mailbox', x: 1975, y: 175, solid: true },
     { kind: 'sign', x: 2085, y: 330, text: 'BUFFALO GAP RD' },
     { kind: 'sign', x: 2085, y: 2420, text: 'BUFFALO GAP RD' },
-    // Barn 89 surroundings.
+    // Main house surroundings.
     { kind: 'trampoline', x: 810, y: 1012, w: 40, solid: true },
     { kind: 'bench', x: 1060, y: 935, w: 40 },
+    { kind: 'board', x: 1150, y: 960, solid: true },
+    { kind: 'doghouse', x: 650, y: 975, solid: true },
+    // Jason's woodpile beside the woodshed.
+    { kind: 'woodpile', x: 470, y: 1330, w: 120, solid: true },
+    { kind: 'chopBlock', x: 590, y: 1325, solid: true },
     { kind: 'scarecrow', x: 860, y: 1205, solid: true },
     { kind: 'flowers', x: 760, y: 1190, w: 30 },
     { kind: 'flowers', x: 1030, y: 380, w: 46, solid: true },
@@ -99,9 +106,13 @@ function props(): PropDef[] {
     { kind: 'squareBale', x: 1940, y: 2600, w: 56, h: 30, solid: true },
     { kind: 'trough', x: 1430, y: 2345, w: 60, h: 24, solid: true },
     { kind: 'box', x: 980, y: 2300 },
-    { kind: 'napHay', x: 1670, y: 2815, w: 70 },
+    { kind: 'napHay', x: 1440, y: 2160, w: 60 },
+    // Barn 89: the old venue lawn with its string lights, and the sign out by the road.
+    { kind: 'festoon', x: 1545, y: 2830, w: 250, solid: true },
+    { kind: 'festoon', x: 1545, y: 2935, w: 250, solid: true },
+    { kind: 'venueSign', x: 1985, y: 2215, solid: true },
     { kind: 'mouseHole', x: 1525, y: 2230 },
-    { kind: 'sign', x: 1150, y: 2350, text: 'KITTENS', solid: true },
+    { kind: 'sign', x: 1150, y: 2350, text: 'CATS', solid: true },
     { kind: 'cart', x: 640, y: 2190, solid: true },
     { kind: 'barrel', x: 570, y: 2110, w: 13, solid: true },
   ];
@@ -257,16 +268,18 @@ export function createRanchMap(): RanchMap {
       { id: 'flowers', kind: 'flowers', x: 800, y: 1175, radius: 230 },
     ],
     discoveries: [
-      { id: 'mailbox', x: 1975, y: 200, r: 90, title: 'The Mailbox', text: 'NATALIE & DEPUTY, Buffalo Gap Rd. No solicitors. No dogs. Absolutely no baths.' },
-      { id: 'trampoline', x: 810, y: 1060, r: 90, title: 'Trampoline', text: 'Kittens have been banned since The Incident. Nobody talks about The Incident.' },
+      { id: 'mailbox', x: 1975, y: 200, r: 90, title: 'The Mailbox', text: 'Seed catalogs, a feed store bill, and a postcard addressed to "The Cats".' },
+      { id: 'trampoline', x: 810, y: 1060, r: 90, title: 'Trampoline', text: 'Cats have been banned since The Incident. Nobody talks about The Incident.' },
       { id: 'scarecrow', x: 860, y: 1240, r: 80, title: 'Scarecrow', text: 'Fired. Too scary for kittens, not scary enough for crows.' },
-      { id: 'arena', x: 1380, y: 1660, r: 90, title: 'Riding Arena', text: 'Tigers welcome. Horses concerned.' },
-      { id: 'highway', x: 1975, y: 1260, r: 90, title: 'Buffalo Gap Rd', text: 'The kittens are NOT allowed past this fence. Deputy is NOT allowed to chase trucks.' },
-      { id: 'nap', x: 1670, y: 2815, r: 80, title: "Deputy's Nap Spot", text: 'Tiger-shaped dent in the hay: certified authentic.' },
+      { id: 'arena', x: 1380, y: 1660, r: 90, title: 'Riding Arena', text: 'Wide open sand. The donkeys consider it beneath them.' },
+      { id: 'highway', x: 1975, y: 1260, r: 90, title: 'Buffalo Gap Rd', text: 'Wave at the trucks. Do not chase the trucks.' },
+      { id: 'venue', x: 1670, y: 2880, r: 100, title: 'Barn 89', text: 'A few old bulbs still glow on the string lights. People danced here every weekend for years.' },
+      { id: 'guestbook', x: 1880, y: 2620, r: 70, title: 'Tucked Behind the Barn', text: 'A weathered guestbook page: "Best day ever. The donkeys were very welcoming."' },
       { id: 'mouse', x: 1525, y: 2265, r: 70, title: 'Mouse Hole', text: 'WANTED: The Mouse. Reward: one (1) nap.' },
-      { id: 'chickens', x: 400, y: 420, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by your tiger.' },
-      { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white kittens.' },
-      { id: 'laundry', x: 1800, y: 770, r: 80, title: 'Clothesline', text: 'Three socks are missing. The kittens know something.' },
+      { id: 'chickens', x: 400, y: 420, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by everyone.' },
+      { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white cats.' },
+      { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
+      { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
     ],
     collectibles: [
       { id: 'shoe-paddock', kind: 'horseshoe', x: 140, y: 170 },
@@ -274,7 +287,7 @@ export function createRanchMap(): RanchMap {
       { id: 'shoe-roundpen', kind: 'horseshoe', x: 1130, y: 1760 },
       { id: 'shoe-barn', kind: 'horseshoe', x: 1930, y: 2720 },
       { id: 'treats-barn89', kind: 'treatBag', x: 690, y: 960 },
-      { id: 'treats-shed', kind: 'treatBag', x: 505, y: 1320 },
+      { id: 'treats-shed', kind: 'treatBag', x: 520, y: 1430 },
       { id: 'treats-arena', kind: 'treatBag', x: 1975, y: 1490 },
     ],
     zoomieZones: [{ x: ARENA.x, y: ARENA.y, w: ARENA.w, h: ARENA.h }],

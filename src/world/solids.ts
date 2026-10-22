@@ -37,10 +37,33 @@ export function propSolid(p: PropDef): Shape | null {
     case 'sign':
       return { kind: 'circle', x: p.x, y: p.y, r: 8 };
     case 'scarecrow':
-      return { kind: 'circle', x: p.x, y: p.y, r: 10 };
+    case 'chopBlock':
+      return { kind: 'circle', x: p.x, y: p.y, r: p.kind === 'chopBlock' ? 15 : 10 };
+    case 'board':
+      return { kind: 'rect', x: p.x - 32, y: p.y - 7, w: 64, h: 12 };
+    case 'doghouse':
+      return { kind: 'rect', x: p.x - 30, y: p.y - 30, w: 60, h: 32 };
+    case 'woodpile': {
+      const w = p.w ?? 120;
+      return { kind: 'rect', x: p.x - w / 2, y: p.y - 20, w, h: 24 };
+    }
+    case 'venueSign':
+      return { kind: 'segment', ax: p.x - 44, ay: p.y, bx: p.x + 44, by: p.y, r: 6 };
     default:
       return null;
   }
+}
+
+/** Extra solids for props with more than one footprint (the festoon light poles). */
+function propExtraSolids(p: PropDef): Shape[] {
+  if (p.kind === 'festoon' && p.solid) {
+    const w = p.w ?? 200;
+    return [
+      { kind: 'circle', x: p.x, y: p.y, r: 7 },
+      { kind: 'circle', x: p.x + w, y: p.y, r: 7 },
+    ];
+  }
+  return [];
 }
 
 /** Every solid in the level, derived from the visual map so art and collision always agree. */
@@ -56,6 +79,7 @@ export function buildSolids(map: RanchMap): Shape[] {
   for (const p of map.props) {
     const s = propSolid(p);
     if (s) out.push(s);
+    out.push(...propExtraSolids(p));
   }
   out.push(...map.extraSolids);
   return out;
@@ -85,6 +109,11 @@ export function pruneTrees(map: RanchMap, trees: TreeDef[]): TreeDef[] {
     }
     for (const p of map.pens) if (Math.hypot(t.x - p.x, t.y - p.y) < p.r + pad) return false;
     for (const c of map.collectibles) if (Math.hypot(t.x - c.x, t.y - c.y) < pad + 24) return false;
+    for (const p of map.props) {
+      const half = p.kind === 'festoon' ? (p.w ?? 200) / 2 : (p.w ?? 30) / 2;
+      const cx = p.kind === 'festoon' ? p.x + half : p.x;
+      if (Math.abs(t.x - cx) < half + pad && Math.abs(t.y - p.y) < pad + 20) return false;
+    }
     for (const f of map.fences) {
       for (let i = 0; i < f.points.length - 1; i++) {
         const [ax, ay] = f.points[i];
