@@ -1,33 +1,36 @@
-import type { InputState } from '../game/types';
+import type { InputState } from '../games/kitten/types';
 
 const STICK_RADIUS = 56;
 
 /**
- * Touch-first controls:
+ * Touch-first controls shared by every scene:
  *  - Floating joystick: put a thumb down anywhere that isn't a button and drag.
- *  - Whistle and Treat are regular buttons (pointer events, no hover needed).
- * Keyboard and mouse work too, but nothing depends on them.
+ *  - Named buttons (pointer events, no hover) queue a press that the scene consumes once.
+ *  - Tap mode (Woodpile): a touch anywhere is a tap instead of a joystick.
+ * Keyboard works too (arrows/WASD, Space, E, Esc), but nothing depends on it.
  */
 export class Controls {
   private stickId: number | null = null;
   private origin = { x: 0, y: 0 };
   private vec = { x: 0, y: 0 };
   private keys = new Set<string>();
-  private whistleQueued = false;
-  private treatQueued = false;
+  private queued = new Set<string>();
+  /** Joystick active. */
   enabled = false;
-  /** Called on any first interaction (used to unlock audio). */
+  /** Touches become taps (no joystick). */
+  tapMode = false;
+  /** Keyboard → button names for the current scene. */
+  keyMap: Record<string, string> = {};
   onInteract: () => void = () => {};
   onPause: () => void = () => {};
-  /** True once the player has actually steered (for the tutorial hint). */
+  onTap: () => void = () => {};
+  /** True once the player has actually steered (for tutorial hints). */
   moved = false;
 
   constructor(
-    private readonly surface: HTMLElement,
+    surface: HTMLElement,
     private readonly stickBase: HTMLElement,
     private readonly stickKnob: HTMLElement,
-    whistleBtn: HTMLElement,
-    treatBtn: HTMLElement,
   ) {
     surface.addEventListener('pointerdown', this.down, { passive: false });
     window.addEventListener('pointermove', this.move, { passive: false });
@@ -35,18 +38,10 @@ export class Controls {
     window.addEventListener('pointercancel', this.up);
     window.addEventListener('blur', () => this.reset());
 
-    const press = (fn: () => void) => (e: PointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.onInteract();
-      if (!this.enabled) return;
-      fn();
-    };
-    whistleBtn.addEventListener('pointerdown', press(() => (this.whistleQueued = true)));
-    treatBtn.addEventListener('pointerdown', press(() => (this.treatQueued = true)));
-
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'BUTTON' || t.tagName === 'INPUT') && (e.key === ' ' || e.key === 'Enter')) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
       this.onInteract();
@@ -54,16 +49,49 @@ export class Controls {
         this.onPause();
         return;
       }
-      if (!this.enabled) return;
-      if (k === ' ' || k === 'q') this.whistleQueued = true;
-      else if (k === 'e' || k === 'f') this.treatQueued = true;
-      else this.keys.add(k);
+      if (this.tapMode && (k === ' ' || k === 'enter')) {
+        this.onTap();
+        return;
+      }
+      const name = this.keyMap[k];
+      if (name) this.queued.add(name);
+      else if (this.enabled) this.keys.add(k);
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
   }
 
+  /** Wire a DOM button to a named press. */
+  bindButton(el: HTMLElement, name: string): void {
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onInteract();
+      this.queued.add(name);
+      el.classList.add('pressed');
+    });
+    const release = () => el.classList.remove('pressed');
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointerleave', release);
+    el.addEventListener('pointercancel', release);
+    // Keyboard activation (Enter/Space on a focused button).
+    el.addEventListener('click', (e) => {
+      if ((e as MouseEvent).detail === 0) this.queued.add(name);
+    });
+  }
+
+  consume(name: string): boolean {
+    const had = this.queued.has(name);
+    this.queued.delete(name);
+    return had;
+  }
+
   private down = (e: PointerEvent): void => {
     this.onInteract();
+    if (this.tapMode) {
+      e.preventDefault();
+      this.onTap();
+      return;
+    }
     if (!this.enabled || this.stickId !== null) return;
     e.preventDefault();
     this.stickId = e.pointerId;
@@ -91,7 +119,7 @@ export class Controls {
       this.stickBase.style.transform = `translate(${this.origin.x}px, ${this.origin.y}px)`;
     }
     const dd = Math.hypot(dx, dy);
-    // Small dead zone, then a gentle response curve for fine control near kittens.
+    // Small dead zone, then a gentle response curve for fine control.
     const mag = dd < 6 ? 0 : Math.min(1, (dd - 6) / (STICK_RADIUS - 6));
     const curved = Math.pow(mag, 1.25);
     this.vec = dd > 0 ? { x: (dx / dd) * curved, y: (dy / dd) * curved } : { x: 0, y: 0 };
@@ -111,14 +139,13 @@ export class Controls {
     this.stickId = null;
     this.vec = { x: 0, y: 0 };
     this.keys.clear();
-    this.whistleQueued = false;
-    this.treatQueued = false;
+    this.queued.clear();
     this.stickBase.classList.remove('on');
     this.stickKnob.classList.remove('on');
   }
 
-  /** Read the current input; action presses are consumed once. */
-  read(out: InputState): InputState {
+  /** Current stick (or arrow keys) as a vector of length <= 1. */
+  stick(): { x: number; y: number } {
     let x = this.vec.x;
     let y = this.vec.y;
     const k = this.keys;
@@ -130,16 +157,16 @@ export class Controls {
       y = ky / l;
       this.moved = true;
     }
-    out.moveX = x;
-    out.moveY = y;
-    out.whistle = this.whistleQueued;
-    out.treat = this.treatQueued;
-    this.whistleQueued = false;
-    this.treatQueued = false;
-    return out;
+    return { x, y };
   }
 
-  get surfaceElement(): HTMLElement {
-    return this.surface;
+  /** Kitten Cowgirl's input shape: stick plus whistle and treat presses. */
+  read(out: InputState): InputState {
+    const s = this.stick();
+    out.moveX = s.x;
+    out.moveY = s.y;
+    out.whistle = this.consume('whistle');
+    out.treat = this.consume('treat');
+    return out;
   }
 }

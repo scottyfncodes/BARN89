@@ -1,4 +1,4 @@
-import type { Rng, Vec } from '../core/math';
+import type { Rng, Vec } from '../../core/math';
 import type { Coat, Personality } from './kittenTypes';
 
 export interface InputState {

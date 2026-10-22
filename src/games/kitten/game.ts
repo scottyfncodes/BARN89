@@ -1,8 +1,8 @@
-import { dist, fromAngle, norm, Rng } from '../core/math';
-import { CollisionWorld } from '../world/collision';
-import type { CollectibleDef, PenDef, RanchMap } from '../world/mapTypes';
-import { NavGrid } from '../world/navgrid';
-import { buildSolids } from '../world/solids';
+import { dist, fromAngle, norm, Rng } from '../../core/math';
+import { CollisionWorld } from '../../world/collision';
+import type { CollectibleDef, PenDef, RanchMap } from '../../world/mapTypes';
+import { NavGrid } from '../../world/navgrid';
+import { buildSolids } from '../../world/solids';
 import { createKitten, emote, KITTEN_RADIUS, updateKitten, whistleKitten } from './kittenAI';
 import type { LevelDef } from './levels';
 import { createPlayer, updatePlayer } from './player';

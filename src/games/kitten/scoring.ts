@@ -32,7 +32,7 @@ export function finalScore(s: ScoreInput): ScoreResult {
   const seconds = Math.max(0, s.seconds);
   const timeBonus = Math.max(0, Math.round((s.starTimes[1] - seconds) * POINTS.perSecond));
   const lines = [
-    { label: `Kittens penned ×${s.penned}`, value: s.penned * POINTS.kitten },
+    { label: `Cats corralled ×${s.penned}`, value: s.penned * POINTS.kitten },
     { label: `Golden horseshoes ×${s.horseshoes}`, value: s.horseshoes * POINTS.horseshoe },
     { label: `Discoveries ×${s.discoveries}`, value: s.discoveries * POINTS.discovery },
     { label: `Treats saved ×${s.treatsLeft}`, value: s.treatsLeft * POINTS.treat },

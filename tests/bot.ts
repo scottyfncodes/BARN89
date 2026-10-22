@@ -1,6 +1,6 @@
-import { Game } from '../src/game/game';
-import { PLAYER_RADIUS } from '../src/game/player';
-import type { InputState, Kitten } from '../src/game/types';
+import { Game } from '../src/games/kitten/game';
+import { PLAYER_RADIUS } from '../src/games/kitten/player';
+import type { InputState, Kitten } from '../src/games/kitten/types';
 import { NavGrid } from '../src/world/navgrid';
 
 /**

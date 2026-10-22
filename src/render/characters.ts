@@ -1,5 +1,5 @@
-import type { Coat } from '../game/kittenTypes';
-import type { Emote, Kitten, Player } from '../game/types';
+import type { Coat } from '../games/kitten/kittenTypes';
+import type { Emote, Kitten, Player } from '../games/kitten/types';
 import { C } from './palette';
 
 type Ctx = CanvasRenderingContext2D;

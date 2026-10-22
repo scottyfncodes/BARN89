@@ -1,6 +1,6 @@
 import type { Coat, Personality } from './kittenTypes';
-import { createRanchMap } from '../world/ranch';
-import type { RanchMap } from '../world/mapTypes';
+import { createRanchMap } from '../../world/ranch';
+import type { RanchMap } from '../../world/mapTypes';
 
 export interface KittenSpawn {
   id: string;
@@ -39,9 +39,9 @@ export const COATS = {
 } satisfies Record<string, Coat>;
 
 export const LEVEL_ONE: LevelDef = {
-  id: 'ranch-roundup',
+  id: 'kitten-1',
   name: 'Ranch Roundup',
-  subtitle: 'Get six kittens into the Kitten Corral.',
+  subtitle: 'Get six barn cats into the corral.',
   createMap: createRanchMap,
   targetPen: 'corral',
   required: 6,
@@ -60,4 +60,14 @@ export const LEVEL_ONE: LevelDef = {
   ],
 };
 
-export const LEVELS: LevelDef[] = [LEVEL_ONE];
+export const LEVEL_TWO: LevelDef = {
+  ...LEVEL_ONE,
+  id: 'kitten-2',
+  name: 'Every Last Cat',
+  subtitle: 'All eight barn cats, and only two treats.',
+  required: 8,
+  startTreats: 2,
+  starTimes: [480, 780],
+};
+
+export const LEVELS: LevelDef[] = [LEVEL_ONE, LEVEL_TWO];

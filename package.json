@@ -1,8 +1,8 @@
 {
-  "name": "kitten-cowgirl",
+  "name": "barn-89",
   "private": true,
-  "version": "1.0.0",
-  "description": "Natalie rides Deputy the tiger and herds very uncooperative kittens around the ranch.",
+  "version": "2.0.0",
+  "description": "Barn 89: a family adventure on the homestead, with Kitten Cowgirl, Yard Boss, Woodpile and more.",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

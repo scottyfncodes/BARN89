@@ -83,7 +83,13 @@ export type PropKind =
   | 'mouseHole'
   | 'well'
   | 'bench'
-  | 'trampoline';
+  | 'trampoline'
+  | 'board'
+  | 'doghouse'
+  | 'woodpile'
+  | 'chopBlock'
+  | 'festoon'
+  | 'venueSign';
 
 export interface PropDef {
   kind: PropKind;

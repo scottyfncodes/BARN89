@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { finalScore, formatTime, liveScore, POINTS } from '../src/game/scoring';
+import { finalScore, formatTime, liveScore, POINTS } from '../src/games/kitten/scoring';
 
 describe('scoring', () => {
   it('awards stars by time', () => {

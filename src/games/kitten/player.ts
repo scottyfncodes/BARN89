@@ -1,5 +1,5 @@
-import { angleOf, clamp, damp } from '../core/math';
-import type { CollisionWorld } from '../world/collision';
+import { angleOf, clamp, damp } from '../../core/math';
+import type { CollisionWorld } from '../../world/collision';
 import type { InputState, Player } from './types';
 
 export const PLAYER_RADIUS = 24;

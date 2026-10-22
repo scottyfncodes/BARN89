@@ -1,7 +1,7 @@
-// Browser gameplay checks on phone-sized viewports.
+// Browser checks on phone-sized viewports.
 // Usage: npm run build && npm run test:e2e
 // Starts `vite preview` on the built app, drives it with Playwright (touch-enabled iPhone
-// profile), and saves screenshots to test-results/.
+// profiles), and saves screenshots to test-results/.
 import { mkdirSync } from 'node:fs';
 import { chromium, devices } from 'playwright';
 import { preview } from 'vite';
@@ -42,11 +42,17 @@ async function newPage(device) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('request', (r) => !r.url().startsWith(BASE) && !r.url().startsWith('data:') && external.push(r.url()));
   page.on('response', (r) => r.status() >= 400 && failedReq.push(`${r.status()} ${r.url()}`));
-  return { page, errors, external, failedReq };
+  return { page, ctx, errors, external, failedReq };
 }
 
-function kc(page, fn, arg) {
+function b89(page, fn, arg) {
   return page.evaluate(fn, arg);
+}
+function visible(page, sel) {
+  return page.evaluate((s) => {
+    const el = document.querySelector(s);
+    return !!el && !el.hidden && el.getBoundingClientRect().height > 0;
+  }, sel);
 }
 
 async function drag(page, x0, y0, dx, dy, ms) {
@@ -57,194 +63,169 @@ async function drag(page, x0, y0, dx, dy, ms) {
   await page.mouse.up();
 }
 
+async function tap(page, sel) {
+  const box = await page.locator(sel).boundingBox();
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+}
+
 async function portrait() {
-  const { page, errors, external, failedReq } = await newPage(devices['iPhone 13']);
+  const { page, ctx, errors, external, failedReq } = await newPage(devices['iPhone 13']);
   await page.goto(BASE);
-  await page.waitForTimeout(1200);
-  check('title screen visible', await page.isVisible('#play-btn'));
-  const painted = await page.evaluate(() => {
-    const c = document.getElementById('game');
-    const ctx = c.getContext('2d');
-    const d = ctx.getImageData(c.width / 2, c.height / 2, 1, 1).data;
-    return d[0] + d[1] + d[2] > 0;
-  });
-  check('ranch renders behind title', painted);
-  await page.screenshot({ path: `${OUT}/01-title-portrait.png` });
+  await page.waitForTimeout(800);
+  const vw = page.viewportSize().width;
 
-  await page.tap('#play-btn');
-  await page.waitForTimeout(500);
-  check('playing after tapping Saddle up', (await kc(page, () => window.__kc.mode)) === 'playing');
-  check('HUD + actions visible', (await page.isVisible('#hud')) && (await page.isVisible('#whistle-btn')));
-  check('objective shows 0/6', (await page.textContent('#count')) === '0' && (await page.textContent('#required')) === '/6');
+  check('title screen shows on load', await visible(page, '#title'));
+  check('title shows Barn 89 logo', (await page.textContent('.logo')).replace(/\s+/g, '') === 'BARN89');
+  await page.screenshot({ path: `${OUT}/p-title.png` });
 
-  // Movement via the floating joystick (drag right).
-  const p0 = await kc(page, () => ({ x: window.__kc.game.player.x, y: window.__kc.game.player.y }));
-  await drag(page, 120, 520, 70, 0, 1200);
-  const p1 = await kc(page, () => ({ x: window.__kc.game.player.x, y: window.__kc.game.player.y }));
-  check('joystick moves Deputy right', p1.x - p0.x > 150 && Math.abs(p1.y - p0.y) < 60, `dx=${(p1.x - p0.x).toFixed(0)}`);
-  await page.screenshot({ path: `${OUT}/02-riding.png` });
+  // Explorer picker.
+  await tap(page, '#who-btn');
+  check('explorer picker opens', await visible(page, '#who'));
+  await page.locator('.who-item').nth(4).click();
+  check('choosing Grandpa saves the explorer', (await b89(page, () => window.__b89.store.data.explorer)) === 'grandpa');
+  await tap(page, '#who-done');
 
-  // Collision: ride north into the barn from just below it.
-  await kc(page, () => {
-    const g = window.__kc.game;
-    g.player.x = g.player.px = 1670;
-    g.player.y = g.player.py = 2850;
-    window.__kc.renderer.snap();
-  });
-  await drag(page, 120, 520, 0, -70, 1500);
-  const pb = await kc(page, () => ({ x: window.__kc.game.player.x, y: window.__kc.game.player.y }));
-  check('barn blocks movement', pb.y > 2740, `y=${pb.y.toFixed(0)}`);
-  await page.screenshot({ path: `${OUT}/03-barn-collision.png` });
+  // Into the homestead.
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(600);
+  check('explore enters the homestead', (await b89(page, () => window.__b89.mode)) === 'hub');
+  check('homestead HUD visible', await visible(page, '#hub-hud'));
+  const p0 = await b89(page, () => ({ x: window.__b89.hub.player.x, y: window.__b89.hub.player.y }));
+  await drag(page, vw / 2, 520, 0, 70, 900);
+  const p1 = await b89(page, () => ({ x: window.__b89.hub.player.x, y: window.__b89.hub.player.y }));
+  check('joystick walks the explorer', p1.y - p0.y > 60, `moved ${(p1.y - p0.y).toFixed(0)}`);
+  await page.screenshot({ path: `${OUT}/p-hub.png` });
 
-  // Boundaries: ride far west into the tree line.
-  await kc(page, () => {
-    const g = window.__kc.game;
-    g.player.x = g.player.px = 300;
-    g.player.y = g.player.py = 1900;
-    window.__kc.renderer.snap();
-  });
-  await drag(page, 200, 520, -70, 0, 1500);
-  const pw = await kc(page, () => window.__kc.game.player.x);
-  check('map boundary holds', pw >= 72 + 24 - 0.5, `x=${pw.toFixed(1)}`);
-
-  // Whistle & treat buttons.
-  await kc(page, () => {
-    const g = window.__kc.game;
-    const k = g.kittens.find((kk) => kk.id === 'pepper');
-    g.player.x = g.player.px = k.x - 120;
-    g.player.y = g.player.py = k.y;
-    window.__kc.renderer.snap();
-  });
+  // Board and map.
+  await page.click('#hub-hud [data-open="board"]');
+  check('activity board opens', await visible(page, '#board'));
+  check('board lists five activities', (await page.locator('#board-list li').count()) === 5);
+  await page.screenshot({ path: `${OUT}/p-board.png` });
+  await page.click('#board [data-close]');
+  await page.click('#hub-hud [data-open="map"]');
   await page.waitForTimeout(200);
-  await page.tap('#whistle-btn');
-  await page.waitForTimeout(100);
-  const dashed = await kc(page, () => window.__kc.game.kittens.find((k) => k.id === 'pepper').state);
-  check('whistle button scoots nearby kitten', dashed === 'dash' || dashed === 'flee', dashed);
-  const t0 = Number(await page.textContent('#treat-count'));
-  await page.tap('#treat-btn');
-  await page.waitForTimeout(150);
-  const t1 = Number(await page.textContent('#treat-count'));
-  check('treat button uses a treat', t1 === t0 - 1, `${t0} -> ${t1}`);
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: `${OUT}/04-whistle-treat.png` });
-
-  // Penning updates the HUD and score.
-  await kc(page, () => {
-    const g = window.__kc.game;
-    const k = g.kittens.find((kk) => kk.id === 'biscuit');
-    k.x = g.targetPen.x;
-    k.y = g.targetPen.y;
-    g.player.x = g.player.px = g.targetPen.x - 220;
-    g.player.y = g.player.py = g.targetPen.y - 60;
-    window.__kc.renderer.snap();
+  check('map opens and is drawn', (await page.evaluate(() => document.getElementById('map-canvas').getBoundingClientRect().width)) > 200);
+  await page.screenshot({ path: `${OUT}/p-map.png` });
+  // Tap Jay's marker to travel.
+  const jay = await page.evaluate(() => {
+    const r = document.getElementById('map-canvas').getBoundingClientRect();
+    const st = { x: 1250, y: 668 };
+    const s = r.width / 2400;
+    return { x: r.left + st.x * s, y: r.top + st.y * s };
   });
+  await page.mouse.click(jay.x, jay.y);
   await page.waitForTimeout(400);
-  check('penned kitten counted in HUD', (await page.textContent('#count')) === '1');
-  check('score updated', Number(await page.textContent('#score')) >= 100);
-  await page.screenshot({ path: `${OUT}/05-penned.png` });
+  check('map travel closes the map', !(await visible(page, '#map')));
+  check('map travel lands next to Jay', (await b89(page, () => window.__b89.hub.nearStation?.id)) === 'mower');
+  check('station prompt shows', await visible(page, '#prompt'));
+  await page.screenshot({ path: `${OUT}/p-prompt.png` });
 
-  // Pause freezes time; resume continues.
-  await page.tap('#pause-btn');
-  await page.waitForTimeout(200);
-  const e0 = await kc(page, () => window.__kc.game.elapsed);
-  await page.waitForTimeout(1000);
-  const e1 = await kc(page, () => window.__kc.game.elapsed);
-  check('pause screen shown and clock frozen', (await page.isVisible('#pause')) && e1 === e0);
-  await page.screenshot({ path: `${OUT}/06-pause.png` });
-  await page.tap('[data-open="herd"] >> nth=1');
-  await page.waitForTimeout(300);
-  check('herd roster lists all kittens', (await page.locator('#roster li').count()) === 8);
-  await page.screenshot({ path: `${OUT}/07-herd.png` });
-  await page.tap('#herd-close');
-  await page.tap('#resume-btn');
+  // Yard Boss through the intro card.
+  await tap(page, '#prompt-go');
+  check('intro card opens', await visible(page, '#intro'));
+  check('locked challenges are disabled', (await page.locator('.chal-btn.locked').count()) === 2);
+  await tap(page, '#intro-start');
   await page.waitForTimeout(500);
-  const e2 = await kc(page, () => window.__kc.game.elapsed);
-  check('resume continues the clock', e2 > e1);
+  check('Yard Boss starts', (await b89(page, () => window.__b89.game?.challenge)) === 'mower-1');
+  check('game HUD visible', await visible(page, '#hud'));
+  const cov0 = await b89(page, () => window.__b89.game.game.coverage);
+  await drag(page, vw / 2, 520, 0, -60, 1500);
+  const cov1 = await b89(page, () => window.__b89.game.game.coverage);
+  check('driving mows the lawn', cov1 > cov0 + 0.01, `${(cov0 * 100).toFixed(1)}% -> ${(cov1 * 100).toFixed(1)}%`);
+  await page.screenshot({ path: `${OUT}/p-mower.png` });
+  await tap(page, '#pause-btn');
+  check('pause opens', await visible(page, '#pause'));
+  const t0 = await b89(page, () => window.__b89.game.game.elapsed);
+  await page.waitForTimeout(500);
+  check('pause freezes the clock', (await b89(page, () => window.__b89.game.game.elapsed)) === t0);
+  await tap(page, '#restart-btn');
+  check('restart resets the lawn', (await b89(page, () => window.__b89.game.game.coverage)) < cov1);
+  await tap(page, '#pause-btn');
+  await tap(page, '#quit-btn');
+  check('back to the homestead from a game', (await b89(page, () => window.__b89.mode)) === 'hub');
 
-  // Interruption: app goes to background.
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
-    document.dispatchEvent(new Event('visibilitychange'));
+  // Kitten Cowgirl.
+  await b89(page, () => window.__b89.startChallenge('kitten-1'));
+  await page.waitForTimeout(400);
+  check('Kitten Cowgirl starts', (await b89(page, () => window.__b89.game?.challenge)) === 'kitten-1');
+  check('whistle and treat buttons visible', await visible(page, '#actions'));
+  await tap(page, '#whistle-btn');
+  await page.waitForTimeout(200);
+  check('whistle works', (await b89(page, () => window.__b89.game.game.player.whistleCooldown)) > 0);
+  await page.screenshot({ path: `${OUT}/p-kitten.png` });
+
+  // Woodpile, finished quickly with a tiny goal.
+  await b89(page, () => window.__b89.startChallenge('woodpile-1'));
+  await page.waitForTimeout(400);
+  check('Woodpile starts', (await b89(page, () => window.__b89.game?.challenge)) === 'woodpile-1');
+  check('toss button shows while aiming', await visible(page, '#toss-btn'));
+  await b89(page, () => {
+    window.__b89.game.game.round.goal = 2;
   });
-  check('backgrounding auto-pauses', (await kc(page, () => window.__kc.mode)) === 'paused');
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-    document.dispatchEvent(new Event('visibilitychange'));
-  });
-  await page.tap('#resume-btn');
-
-  // No page scrolling from swipes.
-  await drag(page, 200, 700, 0, -300, 200);
-  const scroll = await page.evaluate(() => ({ y: window.scrollY, x: window.scrollX, h: document.documentElement.scrollHeight, ih: window.innerHeight }));
-  check('page never scrolls', scroll.y === 0 && scroll.x === 0 && scroll.h <= scroll.ih + 1, JSON.stringify(scroll));
-
-  // Completion → results → play again.
-  await kc(page, () => {
-    const g = window.__kc.game;
-    g.kittens.slice(0, 6).forEach((k, i) => {
-      k.x = g.targetPen.x + Math.cos(i) * 40;
-      k.y = g.targetPen.y + Math.sin(i) * 40;
+  for (let i = 0; i < 400; i++) {
+    const done = await b89(page, () => {
+      const g = window.__b89.game?.game;
+      if (!g) return true;
+      if ((g.phase === 'aim' || g.phase === 'ready') && Math.abs(g.meter - g.sweet) < g.sweetW / 8) g.tap();
+      else if (g.phase === 'slide' && Math.abs(g.slider.x - g.rowRight) < 4) g.tap();
+      return document.getElementById('results') && !document.getElementById('results').hidden;
     });
-  });
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${OUT}/08-victory.png` });
-  await page.waitForSelector('#results:not([hidden])', { timeout: 8000 });
-  check('results screen after victory', await page.isVisible('#again-btn'));
-  check('results show a total', Number(await page.textContent('#total')) > 600);
-  await page.screenshot({ path: `${OUT}/09-results.png` });
-  await page.tap('#again-btn');
-  await page.waitForTimeout(400);
-  const fresh = await kc(page, () => ({ mode: window.__kc.mode, n: window.__kc.game.pennedCount, t: window.__kc.game.elapsed }));
-  check('play again restarts cleanly', fresh.mode === 'playing' && fresh.n === 0 && fresh.t < 1, JSON.stringify(fresh));
-  check('HUD reset to 0', (await page.textContent('#count')) === '0');
+    if (done) break;
+    await page.waitForTimeout(16);
+  }
+  await page.waitForTimeout(500);
+  check('finishing shows results', await visible(page, '#results'));
+  const stars = await b89(page, () => window.__b89.store.data.stars['woodpile-1'] ?? 0);
+  check('result stars saved', stars >= 1, `${stars} stars`);
+  check('next challenge offered', await visible(page, '#next-btn'));
+  await page.screenshot({ path: `${OUT}/p-results.png` });
+  await tap(page, '#home-btn');
+  check('results return to the homestead', (await b89(page, () => window.__b89.mode)) === 'hub');
 
-  // Frame rate sanity on this machine (software-rendered headless Chromium, so a rough floor).
-  const fps = await page.evaluate(
-    () =>
-      new Promise((res) => {
-        let n = 0;
-        const t0 = performance.now();
-        const f = () => (++n < 90 ? requestAnimationFrame(f) : res((n * 1000) / (performance.now() - t0)));
-        requestAnimationFrame(f);
-      }),
-  );
-  check('renders at a playable frame rate', fps > 20, `${fps.toFixed(0)} fps headless`);
+  // Morning Rounds and the hunt.
+  await b89(page, () => window.__b89.startChallenge('rounds-1'));
+  await page.waitForTimeout(300);
+  check('Morning Rounds shows the chore card', await visible(page, '#mission'));
+  await b89(page, () => window.__b89.hub.endMission());
+  await b89(page, () => window.__b89.startChallenge('hunt-1'));
+  await page.waitForTimeout(300);
+  check("Grandpa's hunt shows a clue", (await page.textContent('#mission-body')).length > 20);
+  await page.screenshot({ path: `${OUT}/p-hunt.png` });
+  await b89(page, () => window.__b89.hub.endMission());
 
-  check('no console errors', errors.length === 0, errors.join(' | '));
-  check('no external network requests', external.length === 0, external.join(' '));
-  check('all assets load', failedReq.length === 0, failedReq.join(' '));
+  // Persistence across a reload.
+  await page.reload();
+  await page.waitForTimeout(600);
+  check('progress survives a reload', (await b89(page, () => window.__b89.store.data.stars['woodpile-1'] ?? 0)) >= 1);
+  check('explorer survives a reload', (await b89(page, () => window.__b89.store.data.explorer)) === 'grandpa');
+
+  check('page never scrolls', (await page.evaluate(() => window.scrollY + document.documentElement.scrollTop)) === 0);
+  check('no horizontal overflow', (await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)));
+  check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  check('no external network requests', external.length === 0, external.slice(0, 3).join(' '));
+  check('no failed requests', failedReq.length === 0, failedReq.slice(0, 3).join(' '));
+  await ctx.close();
 }
 
 async function landscape() {
-  const iphone = devices['iPhone 13 landscape'];
-  const { page, errors } = await newPage(iphone);
+  const { page, ctx, errors } = await newPage(devices['iPhone 13 landscape']);
   await page.goto(BASE);
-  await page.waitForTimeout(1000);
-  await page.screenshot({ path: `${OUT}/10-title-landscape.png` });
-  const fits = await page.evaluate(() => {
-    const r = document.getElementById('play-btn').getBoundingClientRect();
-    return r.bottom <= window.innerHeight && r.top >= 0;
-  });
-  check('landscape: play button on screen', fits);
-  await page.tap('#play-btn');
   await page.waitForTimeout(800);
-  const inView = await page.evaluate(() =>
-    ['whistle-btn', 'treat-btn', 'pause-btn'].every((id) => {
-      const r = document.getElementById(id).getBoundingClientRect();
-      return r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight;
-    }),
-  );
-  check('landscape: controls inside viewport', inView);
-  await drag(page, 150, 250, 0, -60, 800);
-  await page.screenshot({ path: `${OUT}/11-play-landscape.png` });
-  // Rotate back to portrait mid-game.
-  await page.setViewportSize({ width: 390, height: 664 });
-  await page.waitForTimeout(600);
-  const canvasOk = await page.evaluate(() => {
-    const c = document.getElementById('game');
-    return Math.abs(c.getBoundingClientRect().width - window.innerWidth) < 2 && Math.abs(c.getBoundingClientRect().height - window.innerHeight) < 2;
+  await page.screenshot({ path: `${OUT}/l-title.png` });
+  const fits = await page.evaluate(() => {
+    const r = document.querySelector('#title .panel').getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= window.innerHeight + 1;
   });
-  check('orientation change resizes the canvas', canvasOk);
-  await page.screenshot({ path: `${OUT}/12-rotated-portrait.png` });
-  check('landscape: no console errors', errors.length === 0, errors.join(' | '));
+  check('landscape: title card fits', fits);
+  await page.click('#play-btn');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/l-hub.png` });
+  for (const id of ['kitten-1', 'mower-1', 'woodpile-1']) {
+    await b89(page, (c) => window.__b89.startChallenge(c), id);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${OUT}/l-${id}.png` });
+    check(`landscape: ${id} runs`, (await b89(page, () => window.__b89.mode)) === 'game');
+  }
+  check('landscape: no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
 }
