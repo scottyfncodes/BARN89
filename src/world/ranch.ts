@@ -117,6 +117,8 @@ function props(): PropDef[] {
     { kind: 'longTable', x: 1670, y: 2890, w: 150, solid: true },
     // A small wooden cross by Grandpa's front door.
     { kind: 'wallCross', x: 1684, y: 672 },
+    // The donkeys' name board, hung on the front of their pen.
+    { kind: 'nameSign', x: 1180, y: 1902, w: 84, text: 'CHEWY   YODA' },
     { kind: 'mouseHole', x: 1525, y: 2230 },
     { kind: 'sign', x: 1150, y: 2350, text: 'CATS', solid: true },
     { kind: 'cart', x: 640, y: 2190, solid: true },
