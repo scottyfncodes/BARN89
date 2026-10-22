@@ -270,6 +270,13 @@ export class HubView extends WorldView {
           const { x: mx, y: my, heading } = MOWER_PARKED;
           items.push({ y: my, draw: () => drawMower(ctx, mx, my, heading, this.mowerPaint, null, clock, false) });
         }
+        // The snake (Grandpa's least favourite resident).
+        const sn = h.snake;
+        if (sn && inBox(sn, v, 30)) {
+          const sx = lerp(sn.px, sn.x, alpha);
+          const sy = lerp(sn.py, sn.y, alpha);
+          items.push({ y: sy, draw: () => drawSnake(ctx, sx, sy, sn.dx, sn.dy, sn.phase, clock) });
+        }
         // Jay and Jason's ball, and Grandpa's golf ball.
         const sb = h.family.sportBall(h.npcs);
         if (sb && inBox(sb, v, 40)) items.push({ y: sb.y + 1, draw: () => drawSportBall(ctx, sb.x, sb.y, sb.lift, sb.sport, clock) });
@@ -422,12 +429,13 @@ export class HubView extends WorldView {
           drawEmote(ctx, c.emote, c.x, c.y - lift, Math.min(1, c.emoteT * 4 + 0.3), clock);
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
+        for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
         h.pups.forEach((d, i) => {
           if (d.yipT > 0 && d.state !== 'inside') this.bubbleText(ctx, d.x + d.faceX * 8, d.y - 30 - i * 16, 'yip!');
         });
         // Name tags over family members when you're close.
         for (const n of h.gathered ? [] : h.npcs) {
-          if (dist(n, p) > 240 || onOuting(h, n.who)) continue;
+          if (dist(n, p) > 240 || onOuting(h, n.who) || n.spookT > 0) continue;
           const L = FAMILY[n.who];
           this.bubbleText(ctx, n.x, n.y - 64 * L.look.scale - 12, L.name, C.barnRed);
         }
@@ -556,7 +564,8 @@ const MARKER_RANGE = 1000;
 
 /** What a family member's hands are doing right now: celebrating, waving hello, or their routine. */
 function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: number; axe?: number; tool?: number } {
-  if (n.cheerT > 0) return { action: 'cheer' };
+  // Arms up: there is a snake.
+  if (n.spookT > 0 || n.cheerT > 0) return { action: 'cheer' };
   if (n.waveT > 0) return { action: 'wave' };
   if (n.busyT <= 0 || !n.gesture) return { action: 'none' };
   const k = 1 - n.busyT / n.gestureT;
@@ -583,6 +592,55 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
     default:
       return { action: 'none' };
   }
+}
+
+/** A little garter snake, wiggling along (dx, dy), flicking its tongue. */
+function drawSnake(ctx: Ctx, x: number, y: number, dx: number, dy: number, phase: number, clock: number): void {
+  const nx = -dy;
+  const ny = dx;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= 8; i++) {
+    const back = i * 3.4;
+    const wig = Math.sin(phase - i * 0.9) * (2 + i * 0.35);
+    pts.push({ x: x - dx * back + nx * wig, y: y - dy * back * 0.6 + ny * wig * 0.6 });
+  }
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+  };
+  path();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 5.6;
+  ctx.stroke();
+  path();
+  ctx.strokeStyle = '#4f7d36';
+  ctx.lineWidth = 3.6;
+  ctx.stroke();
+  path();
+  ctx.strokeStyle = '#e8d36a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Head and tongue.
+  ctx.beginPath();
+  ctx.ellipse(x + dx * 2, y + dy * 1.2, 3.4, 2.6, Math.atan2(dy * 0.6, dx), 0, Math.PI * 2);
+  ctx.fillStyle = '#4f7d36';
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = C.ink;
+  ctx.stroke();
+  if (Math.sin(clock * 9) > 0.3) {
+    ctx.strokeStyle = '#d9434f';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x + dx * 5, y + dy * 3);
+    ctx.lineTo(x + dx * 9, y + dy * 5.4);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /** Two posts and a checkered banner: the scooter race start and finish. */

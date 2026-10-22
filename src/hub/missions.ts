@@ -15,7 +15,7 @@ export interface RoundsTask {
 }
 
 export const ROUNDS_TASKS: RoundsTask[] = [
-  { id: 'eggs', label: 'Collect the eggs', short: 'Eggs', verb: 'Collect eggs', x: 425, y: 408, done: 'Seven eggs. One suspiciously warm.' },
+  { id: 'eggs', label: 'Collect the eggs', short: 'Eggs', verb: 'Collect eggs', x: 1342, y: 1186, done: 'Seven eggs. One suspiciously warm.' },
   { id: 'flowers', label: "Water Grandpa's flowers", short: "Grandpa's flowers", verb: 'Water flowers', x: 1420, y: 648, done: "Grandpa's zinnias say thank you." },
   { id: 'dogs', label: 'Fill the dog bowls', short: 'Dog bowls', verb: 'Fill bowls', x: 690, y: 1008, done: 'Axel and Annie approve. Annie would like seconds.' },
   { id: 'donkeys', label: 'Feed the donkeys', short: 'Donkeys', verb: 'Feed donkeys', x: 1305, y: 1722, done: 'Chewy and Yoda hee-haw their thanks.' },
@@ -57,8 +57,8 @@ export const HUNT_ITEMS: HuntItem[] = [
     name: 'Harmonica',
     clue: 'Played the chickens a tune this morning. They did not request an encore.',
     found: 'His harmonica, near the chicken run. The chickens look relieved.',
-    x: 300,
-    y: 430,
+    x: 1206,
+    y: 1166,
   },
   {
     id: 'lure',
@@ -104,7 +104,7 @@ export const ORNAMENTS: OrnamentDef[] = [
 export const RACE_START = { x: 1000, y: 1110 };
 /**
  * One lap, gate by gate: down the footpath, in through the arena's west gate, round the jumps,
- * out the north gate, back across the side yard, and over the line.
+ * out the north gate, back below the chicken run, and over the line.
  */
 export const RACE_GATES: { x: number; y: number }[] = [
   { x: 1130, y: 1415 },
@@ -114,7 +114,8 @@ export const RACE_GATES: { x: number; y: number }[] = [
   { x: 1560, y: 1985 },
   { x: 1688, y: 1470 },
   { x: 1700, y: 1250 },
-  { x: 1450, y: 1130 },
+  { x: 1480, y: 1290 },
+  { x: 1180, y: 1300 },
   RACE_START,
 ];
 export const RACE_LAPS = 2;

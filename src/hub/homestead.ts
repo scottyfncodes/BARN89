@@ -7,7 +7,7 @@ import { createPlayer, updatePlayer } from '../games/kitten/player';
 import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
 import type { SharedWorld } from '../world/shared';
-import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, type MotoSeat, type Npc } from './family';
+import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, NPC_ROUTINES, type MotoSeat, type Npc } from './family';
 import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_RIVAL_SPEED, RACE_START, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
 
 /* ---------------------------------------------------------------------------------------- */
@@ -26,7 +26,7 @@ export interface HubDog {
   vy: number;
   faceX: number;
   phase: number;
-  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff';
+  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase';
   ball: boolean;
   /** While sniffing: the interesting spot, and how long left with nose to the ground. */
   sniffAt: Vec | null;
@@ -85,6 +85,23 @@ export interface Ball {
   held: string | null;
 }
 
+/** A harmless little garter snake, out in Grandpa's grass. Grandpa disagrees about "harmless". */
+export interface Snake {
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  /** Unit heading. */
+  dx: number;
+  dy: number;
+  speed: number;
+  t: number;
+  phase: number;
+  /** Axel's after it: off it goes, quick. */
+  fleeing: boolean;
+  scared: boolean;
+}
+
 /** One of Grandpa's chihuahuas. */
 export interface HubPup {
   def: DogDef;
@@ -137,6 +154,7 @@ export type HubEvent =
   | { type: 'sunday' }
   | { type: 'moto'; partner: string; ride: boolean }
   | { type: 'raceGo' }
+  | { type: 'snake'; x: number; y: number; chased: boolean }
   | { type: 'raceGate'; gate: number; x: number; y: number }
   | { type: 'raceRival'; name: string }
   | { type: 'raceDone'; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
@@ -244,6 +262,9 @@ export class Homestead {
   gathered = false;
   /** Scooter races are open (Natalie's scooter is unlocked). */
   raceOpen = false;
+  snake: Snake | null = null;
+  /** Seconds until a snake might next turn up near Grandpa. */
+  snakeT = 35;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
@@ -381,6 +402,7 @@ export class Homestead {
   /** Bring the family to the long table (or send everyone back to what they were doing). */
   gather(on: boolean): void {
     this.gathered = on;
+    this.snake = null;
     this.family.reset(this.npcs, !on);
     if (!on) {
       for (const d of this.dogs) d.state = 'follow';
@@ -511,6 +533,7 @@ export class Homestead {
     for (const d of this.donkeys) this.updateDonkey(d, dt);
     for (const c of this.cats) this.updateCat(c, dt);
     this.pups.forEach((d, i) => this.updatePup(d, i, dt));
+    this.updateSnake(dt);
     this.updateMission(dt);
     this.checkFinds(dt);
     this.nearStation = this.mission || this.family.moto?.player ? null : this.findStation();
@@ -716,7 +739,23 @@ export class Homestead {
     const b = this.ball;
     let sp = 0;
     const fromX = d.x;
-    if (d.state === 'fetch') {
+    if (d.state === 'chase') {
+      // Axel has found another snake.
+      const s = this.snake;
+      if (!s) d.state = 'follow';
+      else {
+        sp = this.moveAgent(d, s, 300, dt, 11);
+        d.wag = 1;
+        if (dist(d, s) < 26 && !s.fleeing) {
+          s.fleeing = true;
+          s.speed = 150;
+          const a = Math.atan2(s.y - d.y, s.x - d.x);
+          s.dx = Math.cos(a);
+          s.dy = Math.sin(a);
+          this.emit({ type: 'bark', x: d.x, y: d.y });
+        }
+      }
+    } else if (d.state === 'fetch') {
       if (!b) d.state = 'follow';
       else if (b.landed) {
         sp = this.moveAgent(d, b, 330, dt, 11);
@@ -882,6 +921,54 @@ export class Homestead {
   }
 
   /* --- Cats ------------------------------------------------------------------------------ */
+
+  /* --- Grandpa and snakes ------------------------------------------------------------------- */
+
+  private updateSnake(dt: number): void {
+    const g = this.npcs.find((n) => n.who === 'grandpa');
+    let s = this.snake;
+    if (!s) {
+      this.snakeT -= dt;
+      // Only while he's out working the yard, and only where you'd see it.
+      const outside = g && !g.outing && !g.target && (g.stop.id === 'frontYard' || g.stop.id === 'putting');
+      if (this.snakeT > 0 || !g || !outside || this.gathered || this.mission || dist(this.player, g) > 450) return;
+      this.snakeT = this.life.range(70, 130);
+      const side = this.life.next() < 0.5 ? -1 : 1;
+      const from = { x: g.x + side * 95, y: g.y + 26 };
+      if (!this.shared.world.isFree(from.x, from.y, 6)) return;
+      const to = { x: g.x - side * 30, y: g.y + 8 };
+      const a = Math.atan2(to.y - from.y, to.x - from.x);
+      s = this.snake = { x: from.x, y: from.y, px: from.x, py: from.y, dx: Math.cos(a), dy: Math.sin(a), speed: 32, t: 0, phase: 0, fleeing: false, scared: false };
+    }
+    s.px = s.x;
+    s.py = s.y;
+    s.t += dt;
+    s.phase += dt * (s.fleeing ? 22 : 9);
+    s.x += s.dx * s.speed * dt;
+    s.y += s.dy * s.speed * dt;
+    if (g && !s.scared && dist(s, g) < 58) {
+      // Grandpa does not do snakes. Back to the porch, fast.
+      s.scared = true;
+      g.spookT = 3.2;
+      g.busyT = 0;
+      g.stop = NPC_ROUTINES.grandpa[0];
+      g.hold = g.stop.hold;
+      g.stayT = this.life.range(...g.stop.stay);
+      g.target = { ...g.stop.at };
+      g.path = null;
+      const axel = this.dogs.find((d) => d.def.id === 'axel');
+      const chased = !!axel && dist(axel, s) < 600 && (axel.state === 'follow' || axel.state === 'rest' || axel.state === 'sniff');
+      if (axel && chased) {
+        axel.state = 'chase';
+        axel.path = null;
+      }
+      this.emit({ type: 'snake', x: s.x, y: s.y, chased });
+    }
+    if (s.t > (s.fleeing ? 2.2 : 14) || !this.shared.world.isFree(s.x, s.y, 2)) {
+      this.snake = null;
+      for (const d of this.dogs) if (d.state === 'chase') d.state = 'follow';
+    }
+  }
 
   /* --- Grandpa's chihuahuas ---------------------------------------------------------------- */
 

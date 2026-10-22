@@ -489,3 +489,67 @@ describe('scooter races', () => {
     expect(h.raceRival()?.who).toBe('natalie');
   });
 });
+
+describe('Grandpa and snakes', () => {
+  it('a snake near Grandpa sends him hurrying back to his porch, and Axel chases it off', () => {
+    const h = fresh();
+    const g = h.npcs.find((n) => n.who === 'grandpa')!;
+    const front = NPC_ROUTINES.grandpa.find((s) => s.id === 'frontYard')!;
+    g.stop = front;
+    g.x = g.px = front.at.x;
+    g.y = g.py = front.at.y;
+    g.stayT = 999;
+    // Stand nearby (but not close enough for a chat) so the snake turns up where you'd see it.
+    h.teleport(front.at.x - 260, front.at.y + 120);
+    h.snakeT = 0;
+    let scare: HubEvent | undefined;
+    for (let i = 0; i < 20 * 60 && !scare; i++) {
+      h.step(still, DT, false);
+      scare = h.drainEvents().find((e) => e.type === 'snake') ?? scare;
+    }
+    expect(scare).toBeDefined();
+    expect(g.spookT).toBeGreaterThan(0);
+    expect(g.stop.id).toBe('porch');
+    expect(h.dogs.find((d) => d.def.id === 'axel')!.state).toBe('chase');
+    // A few seconds later: no snake, Axel back at heel, Grandpa on his way home.
+    run(h, 16);
+    expect(h.snake).toBeNull();
+    expect(h.dogs.every((d) => d.state !== 'chase')).toBe(true);
+  });
+
+  it('snakes only turn up while Grandpa is out in his yard', () => {
+    const h = fresh();
+    h.snakeT = 0;
+    h.teleport(1625, 900);
+    run(h, 5);
+    const g = h.npcs.find((n) => n.who === 'grandpa')!;
+    if (g.stop.id === 'porch') expect(h.snake).toBeNull();
+  });
+});
+
+describe('the chicken run and Blue Star', () => {
+  it('the chicken run sits in the clearing south-east of the treehouse, with Megan beside it', () => {
+    const run = shared.map.pens.find((p) => p.role === 'chickens')!;
+    const tree = shared.map.props.find((p) => p.kind === 'treehouse')!;
+    expect(run.x).toBeGreaterThan(tree.x);
+    expect(run.y).toBeGreaterThan(tree.y);
+    const megan = ACTIVITIES.find((a) => a.who === 'megan')!.station;
+    expect(Math.hypot(megan.x - run.x, megan.y - run.y)).toBeLessThan(run.r + 110);
+    const eggs = ROUNDS_TASKS.find((t) => t.id === 'eggs')!;
+    expect(Math.hypot(eggs.x - run.x, eggs.y - run.y)).toBeLessThan(run.r + 40);
+  });
+
+  it('Jay and Jason play catch where the coop used to be', () => {
+    expect(SPORT_SPOTS.jay.x).toBeLessThan(600);
+    expect(SPORT_SPOTS.jay.y).toBeLessThan(500);
+  });
+
+  it('walking up to the workshop under the blue star tells you about Blue Star', () => {
+    const h = fresh();
+    const d = shared.map.discoveries.find((x) => x.id === 'blueStar')!;
+    h.teleport(d.x, d.y + 20);
+    const ev = run(h, 0.2);
+    const found = ev.find((e) => e.type === 'discover' && e.id === 'blueStar');
+    expect(found?.type === 'discover' && found.text).toContain('Blue Star');
+  });
+});

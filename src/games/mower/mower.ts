@@ -133,6 +133,8 @@ export class MowGame {
         const y = this.y0 + (r + 0.5) * CELL;
         if (!pointInPoly(x, y, level.lawn)) continue;
         if (level.beds.some((b) => Math.hypot(b.x - x, b.y - y) < b.r + 4)) continue;
+        // Nobody mows inside a closed pen (the chicken run): mow round it.
+        if (shared.map.pens.some((p) => p.gateAngle === undefined && Math.hypot(p.x - x, p.y - y) < p.r + 4)) continue;
         let ok = w.isFree(x, y, MOWER_RADIUS);
         for (let k = 0; k < 8 && !ok; k++) {
           const a = (k / 8) * Math.PI * 2;
