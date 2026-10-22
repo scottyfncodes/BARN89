@@ -158,6 +158,10 @@ describe('rides and races', () => {
     for (const id of ['truck', 'rider', 'dirtbike', 'golfcart']) expect(rewardUnlocked(s, REWARDS.find((r) => r.id === id)!), id).toBe(true);
   });
 
+  it("carries an old hunt's reading glasses over to Grandpa's truck keys", () => {
+    expect(normalize({ hunt: { found: ['glasses', 'watch'], done: false } }).hunt.found).toEqual(['keys', 'watch']);
+  });
+
   it('old saves pick up the new ride switches, off', () => {
     const s = normalize({ cosmetics: { scooter: true } });
     expect(s.cosmetics.scooter).toBe(true);

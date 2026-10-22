@@ -1070,17 +1070,24 @@ export function drawHuntItem(ctx: Ctx, id: string, x: number, y: number, clock: 
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 1.3;
   switch (id) {
-    case 'glasses':
-      for (const s of [-1, 1]) {
-        ctx.beginPath();
-        ctx.arc(s * 5, -4, 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(190,225,240,0.8)';
-        ctx.fill();
-        ctx.stroke();
-      }
+    case 'keys':
+      // A key ring: two keys and the truck's black fob.
       ctx.beginPath();
-      ctx.moveTo(-1, -5);
-      ctx.lineTo(1, -5);
+      ctx.arc(-3, -5, 3.4, 0, Math.PI * 2);
+      ctx.strokeStyle = '#c9ced4';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.roundRect(-1, -4, 9, 2.6, 1);
+      ctx.fillStyle = '#d8b54a';
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(-2, -2, 3.6, 7, 1.4);
+      ctx.fillStyle = '#2b2a30';
+      ctx.fill();
       ctx.stroke();
       break;
     case 'watch':

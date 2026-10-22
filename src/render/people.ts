@@ -59,7 +59,7 @@ function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants
   fillStroke(ctx, shortsSkin ?? pants, 1.4);
   if (shortsSkin) {
     ctx.beginPath();
-    ctx.roundRect(-4.4, -1.5, 8.8, len * 0.48, 2.5);
+    ctx.roundRect(-4.4, -1.5, 8.8, len * 0.42, 2.5);
     fillStroke(ctx, pants, 1.4);
   }
   if (boots) {
