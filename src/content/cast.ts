@@ -176,6 +176,6 @@ export interface DonkeyDef {
 }
 
 export const DONKEYS: DonkeyDef[] = [
-  { id: 'hank', name: 'Hank', coat: '#8e8478', dark: '#5f574e', blurb: 'Takes carrots seriously. Takes instructions less seriously.' },
-  { id: 'dolly', name: 'Dolly', coat: '#6e5546', dark: '#46352b', blurb: 'Loud, opinionated, and the first to the gate.' },
+  { id: 'yoda', name: 'Yoda', coat: '#8e8478', dark: '#5f574e', blurb: 'Big ears, old soul. Decides for himself when it is carrot time.' },
+  { id: 'chewy', name: 'Chewy', coat: '#6e5546', dark: '#46352b', blurb: 'Loud, shaggy, and always first to the gate.' },
 ];

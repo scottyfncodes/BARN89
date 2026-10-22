@@ -550,7 +550,7 @@ export class Homestead {
     const spot = { x: this.pen.x + Math.cos(ang) * (this.pen.r - 36), y: this.pen.y + Math.sin(ang) * (this.pen.r - 36) };
     const order = [...this.donkeys].sort((a, b) => dist(a, spot) - dist(b, spot));
     // Donkeys are donkeys: sometimes the closest one simply isn't interested.
-    const stubborn = this.rng.next() < (order[0].def.id === 'hank' ? 0.45 : 0.2);
+    const stubborn = this.rng.next() < (order[0].def.id === 'yoda' ? 0.45 : 0.2);
     const chosen = stubborn ? order[1] : order[0];
     if (stubborn) {
       order[0].state = 'sulk';
