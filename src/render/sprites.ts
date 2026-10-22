@@ -1966,6 +1966,22 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
         ctx.fillStyle = fc;
         ctx.fill();
       }
+      // A small Bible at the head of the table, ready for grace.
+      ctx.save();
+      ctx.translate(x0 + 14, y - 20);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = '#f3ead2';
+      ctx.fillRect(-5, -3.2, 10.5, 7);
+      ctx.fillStyle = '#4a2c22';
+      ctx.fillRect(-5.5, -3.8, 10, 7);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-5.5, -3.8, 10, 7);
+      ctx.fillStyle = '#d9b54a';
+      ctx.fillRect(-4.6, -3, 0.9, 5.4);
+      ctx.fillStyle = '#b8382c';
+      ctx.fillRect(1.5, 3.2, 1.2, 3.6);
+      ctx.restore();
+      ctx.lineWidth = 1.6;
       // Front bench.
       ctx.fillStyle = C.woodLight;
       ctx.fillRect(x0 + 6, y + 6, w - 12, 7);
