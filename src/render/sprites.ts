@@ -285,133 +285,7 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
   ctx.lineWidth = 2;
 
   if (b.style === 'barn') {
-    // Vertical boards.
-    ctx.strokeStyle = 'rgba(70,15,10,0.35)';
-    ctx.lineWidth = 1.5;
-    for (let x = 8; x < w; x += 12) {
-      ctx.beginPath();
-      ctx.moveTo(x, wallTop);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    // Big open doors with white X-bracing, hay inside.
-    const dw = 110;
-    const dx = w / 2 - dw / 2;
-    const dTop = h - 92;
-    ctx.fillStyle = '#3b2418';
-    ctx.fillRect(dx, dTop, dw, 92);
-    ctx.fillStyle = '#e7c35d';
-    ctx.beginPath();
-    ctx.moveTo(dx + 6, h);
-    ctx.quadraticCurveTo(dx + 30, h - 34, dx + 60, h - 22);
-    ctx.quadraticCurveTo(dx + 86, h - 40, dx + dw - 4, h);
-    ctx.fill();
-    for (const side of [-1, 1]) {
-      const px = side < 0 ? dx - 58 : dx + dw;
-      ctx.fillStyle = C.barnRed;
-      ctx.fillRect(px, dTop, 58, 92);
-      ctx.strokeStyle = C.white;
-      ctx.lineWidth = 5;
-      ctx.strokeRect(px + 3, dTop + 3, 52, 86);
-      ctx.beginPath();
-      ctx.moveTo(px + 3, dTop + 3);
-      ctx.lineTo(px + 55, dTop + 89);
-      ctx.moveTo(px + 55, dTop + 3);
-      ctx.lineTo(px + 3, dTop + 89);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(dx, dTop, dw, 92);
-    if (b.label) {
-      // The painted name board over the doors.
-      const sw = Math.min(150, w - 40);
-      ctx.fillStyle = C.white;
-      ctx.fillRect(w / 2 - sw / 2, wallTop + 6, sw, 28);
-      ctx.strokeStyle = C.ink;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(w / 2 - sw / 2, wallTop + 6, sw, 28);
-      ctx.fillStyle = C.barnRed;
-      ctx.font = '900 21px Rockwell, "Roboto Slab", Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(b.label, w / 2, wallTop + 21);
-    } else {
-      // Hayloft door.
-      ctx.fillStyle = '#3b2418';
-      ctx.fillRect(w / 2 - 22, wallTop - 4, 44, 26);
-      ctx.strokeStyle = C.white;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(w / 2 - 22, wallTop - 4, 44, 26);
-    }
-    // Wall trim.
-    ctx.strokeStyle = C.white;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(2, wallTop + 2, w - 4, wall - 4);
-    // Gambrel roof seen from above: lower steep band + upper band.
-    const ry0 = roofTop - 10;
-    const ry1 = wallTop + 4;
-    ctx.fillStyle = b.roof;
-    ctx.beginPath();
-    ctx.moveTo(-12, ry1);
-    ctx.lineTo(w + 12, ry1);
-    ctx.lineTo(w + 6, ry0 + (ry1 - ry0) * 0.45);
-    ctx.lineTo(w - 4, ry0);
-    ctx.lineTo(4, ry0);
-    ctx.lineTo(-6, ry0 + (ry1 - ry0) * 0.45);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
-    ctx.fillStyle = '#93463a';
-    ctx.fillRect(4, ry0, w - 8, (ry1 - ry0) * 0.45);
-    shingles(ctx, -6, ry0, w + 12, ry1 - ry0, 'rgba(40,10,5,0.25)');
-    ctx.strokeStyle = C.ink;
-    ctx.beginPath();
-    ctx.moveTo(-6, ry0 + (ry1 - ry0) * 0.45);
-    ctx.lineTo(w + 6, ry0 + (ry1 - ry0) * 0.45);
-    ctx.stroke();
-    // Cupola with a cat weathervane.
-    const cx = w / 2;
-    ctx.fillStyle = C.white;
-    ctx.fillRect(cx - 16, ry0 + 6, 32, 26);
-    ctx.strokeRect(cx - 16, ry0 + 6, 32, 26);
-    ctx.fillStyle = '#3b2418';
-    ctx.fillRect(cx - 9, ry0 + 12, 18, 14);
-    ctx.fillStyle = b.roof;
-    ctx.beginPath();
-    ctx.moveTo(cx - 22, ry0 + 8);
-    ctx.lineTo(cx, ry0 - 10);
-    ctx.lineTo(cx + 22, ry0 + 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(cx, ry0 - 10);
-    ctx.lineTo(cx, ry0 - 30);
-    ctx.stroke();
-    ctx.fillStyle = '#333';
-    // Little cat silhouette on the vane.
-    ctx.beginPath();
-    ctx.ellipse(cx + 2, ry0 - 33, 7, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    blob(ctx, cx + 9, ry0 - 37, 3.4);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + 7, ry0 - 40);
-    ctx.lineTo(cx + 8, ry0 - 44);
-    ctx.lineTo(cx + 10, ry0 - 40);
-    ctx.moveTo(cx + 10, ry0 - 40);
-    ctx.lineTo(cx + 12, ry0 - 44);
-    ctx.lineTo(cx + 12.5, ry0 - 39);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - 5, ry0 - 33);
-    ctx.quadraticCurveTo(cx - 12, ry0 - 36, cx - 10, ry0 - 43);
-    ctx.stroke();
+    paintMetalBarn(ctx, b, wallTop, roofTop);
     return;
   }
 
@@ -560,6 +434,138 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
     ctx.font = 'bold 7px ui-rounded, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(b.label, 23, h - 10);
+  }
+}
+
+/** Corrugated metal wall: red panels with ribs and white corner trim, like the real Barn 89. */
+function metalWall(ctx: Ctx, w: number, top: number, bottom: number): void {
+  ctx.strokeStyle = 'rgba(60,10,8,0.28)';
+  ctx.lineWidth = 1.4;
+  for (let x = 6; x < w; x += 7) {
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+  }
+  ctx.fillStyle = C.white;
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  for (const x of [0, w - 9]) {
+    ctx.fillRect(x, top, 9, bottom - top);
+    ctx.strokeRect(x, top, 9, bottom - top);
+  }
+  ctx.fillRect(0, top, w, 7);
+  ctx.strokeRect(0, top, w, 7);
+  // Stone skirt along the bottom.
+  ctx.fillStyle = '#b9b1a3';
+  ctx.fillRect(9, bottom - 6, w - 18, 6);
+}
+
+/** Standing-seam metal roof seen from above, with clear skylight strips and white edge trim. */
+function metalRoof(ctx: Ctx, w: number, y0: number, y1: number, color: string, skylights: number): void {
+  ctx.fillStyle = color;
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.rect(-10, y0, w + 20, y1 - y0);
+  ctx.fill();
+  ctx.stroke();
+  // Lit half and shaded half either side of the ridge.
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(-10, y0, (w + 20) / 2, y1 - y0);
+  ctx.strokeStyle = 'rgba(30,40,60,0.22)';
+  ctx.lineWidth = 1.2;
+  for (let x = -4; x < w + 10; x += 9) {
+    ctx.beginPath();
+    ctx.moveTo(x, y0 + 2);
+    ctx.lineTo(x, y1 - 2);
+    ctx.stroke();
+  }
+  // Ridge cap.
+  ctx.fillStyle = '#c9d1db';
+  ctx.fillRect(w / 2 - 4, y0, 8, y1 - y0);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(w / 2 - 4, y0, 8, y1 - y0);
+  // Skylight strips down each slope.
+  ctx.fillStyle = 'rgba(240,246,250,0.85)';
+  for (let i = 0; i < skylights; i++) {
+    const yy = y0 + ((i + 0.5) / skylights) * (y1 - y0) - 5;
+    for (const sx of [w * 0.28, w * 0.72]) ctx.fillRect(sx - 9, yy, 18, 10);
+  }
+  // White trim along the eave.
+  ctx.fillStyle = C.white;
+  ctx.fillRect(-10, y1 - 5, w + 20, 5);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(-10, y1 - 5, w + 20, 5);
+}
+
+function paintMetalBarn(ctx: Ctx, b: BuildingDef, wallTop: number, roofTop: number): void {
+  const w = b.w;
+  const h = b.h;
+  ctx.fillStyle = b.walls;
+  ctx.fillRect(0, wallTop, w, h - wallTop);
+  metalWall(ctx, w, wallTop, h);
+  // Big sliding door, rolled open with hay inside.
+  const dw = Math.min(130, w * 0.42);
+  const dx = w / 2 - dw / 2;
+  const dh = Math.min(96, (h - wallTop) - 34);
+  const dTop = h - dh;
+  ctx.fillStyle = '#2e1d14';
+  ctx.fillRect(dx, dTop, dw, dh);
+  ctx.fillStyle = '#e7c35d';
+  ctx.beginPath();
+  ctx.moveTo(dx + 6, h);
+  ctx.quadraticCurveTo(dx + dw * 0.3, h - 34, dx + dw * 0.55, h - 22);
+  ctx.quadraticCurveTo(dx + dw * 0.8, h - 40, dx + dw - 4, h);
+  ctx.fill();
+  // The slid-back door panel, white like the trim.
+  ctx.fillStyle = '#e9ecef';
+  ctx.fillRect(dx + dw - 6, dTop, 40, dh);
+  ctx.strokeStyle = 'rgba(80,90,100,0.35)';
+  ctx.lineWidth = 1;
+  for (let x = dx + dw; x < dx + dw + 34; x += 6) {
+    ctx.beginPath();
+    ctx.moveTo(x, dTop);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(dx + dw - 6, dTop, 40, dh);
+  ctx.fillStyle = C.white;
+  ctx.fillRect(dx - 6, dTop - 7, dw + 52, 7);
+  ctx.strokeRect(dx - 6, dTop - 7, dw + 52, 7);
+  ctx.strokeRect(dx, dTop, dw, dh);
+  if (b.label) {
+    const sw = Math.min(150, w - 40);
+    const sy = Math.max(wallTop + 12, dTop - 40);
+    ctx.fillStyle = C.white;
+    ctx.fillRect(w / 2 - sw / 2, sy, sw, 28);
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w / 2 - sw / 2, sy, sw, 28);
+    ctx.fillStyle = C.barnRed;
+    ctx.font = '900 21px Rockwell, "Roboto Slab", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(b.label, w / 2, sy + 15);
+  }
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, wallTop, w, h - wallTop);
+  metalRoof(ctx, w, roofTop - 10, wallTop + 4, b.roof, Math.max(2, Math.round(h / 110)));
+  // A row of round roof vents along the ridge.
+  for (let i = 0; i < 3; i++) {
+    const vy = roofTop + ((i + 1) / 4) * (wallTop - roofTop);
+    ctx.beginPath();
+    ctx.arc(w / 2, vy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#dfe3e6';
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
   }
 }
 

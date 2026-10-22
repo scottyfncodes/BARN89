@@ -25,6 +25,15 @@ export interface PersonLook {
   mustache?: string;
   glasses?: boolean;
   suspenders?: string;
+  /** Wears a dress instead of shirt and pants (shirt is the dress colour). */
+  dress?: { pattern: 'plain' | 'floral'; colors?: string[] };
+  sleeveless?: boolean;
+  /** Tall western boots in this colour (shaft up the shin). */
+  cowboyBoots?: string;
+  /** Sparkly boots. */
+  glitter?: boolean;
+  /** A little cross on a chain. */
+  necklace?: boolean;
   /** Overall size: adults 1. */
   scale: number;
 }
@@ -43,14 +52,16 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     name: 'Megan',
     role: 'Runs the homestead',
     look: {
-      skin: '#f3c7a3',
-      hair: '#7a4a2a',
+      skin: '#f3c9a6',
+      hair: '#e3c27a',
       hairStyle: 'wavy',
-      shirt: '#5f9e6e',
-      pants: '#4c6fa8',
-      shoes: '#3f6b3a',
+      shirt: '#7fa3cc',
+      dress: { pattern: 'plain' },
+      sleeveless: true,
+      pants: '#f3c9a6',
+      shoes: '#b23a32',
+      cowboyBoots: '#b23a32',
       hat: 'none',
-      bandana: '#f3c13a',
       scale: 0.98,
     },
   },
@@ -60,14 +71,13 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     role: 'Keeps the woodpile stacked',
     look: {
       skin: '#eebd96',
-      hair: '#4a3022',
+      hair: '#3a2a20',
       hairStyle: 'short',
-      shirt: '#c23b33',
-      check: '#2a1f22',
-      pants: '#3e5687',
-      shoes: '#6b4426',
+      shirt: '#2b2a30',
+      pants: '#3e5a8a',
+      shoes: '#c49360',
+      cowboyBoots: '#c49360',
       hat: 'none',
-      beard: '#4a3022',
       scale: 1.04,
     },
   },
@@ -76,14 +86,15 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     name: 'Jay',
     role: 'Fastest mower in the county',
     look: {
-      skin: '#f2c49c',
-      hair: '#6b4128',
-      hairStyle: 'shaggy',
-      shirt: '#3d7fd6',
-      pants: '#56606e',
-      shoes: '#f2f2ee',
-      hat: 'capBack',
-      hatColor: '#d9434f',
+      skin: '#f4c7a4',
+      hair: '#c9975c',
+      hairStyle: 'short',
+      shirt: '#2b2a30',
+      pants: '#41598a',
+      shoes: '#8a5a35',
+      cowboyBoots: '#8a5a35',
+      necklace: true,
+      hat: 'none',
       scale: 0.92,
     },
   },
@@ -92,15 +103,17 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     name: 'Natalie',
     role: 'Kitten Cowgirl',
     look: {
-      skin: '#f5c9a2',
-      hair: '#b65a2a',
+      skin: '#f5caa6',
+      hair: '#e8cc8a',
       hairStyle: 'braids',
-      shirt: '#d9434f',
-      pants: '#4c6fa8',
-      shoes: '#7b4a2a',
+      shirt: '#fbf3e6',
+      dress: { pattern: 'floral', colors: ['#e2486a', '#f2b33a', '#f28aa0', '#5f9e6e'] },
+      sleeveless: true,
+      pants: '#f5caa6',
+      shoes: '#e9a7b8',
+      cowboyBoots: '#e9a7b8',
+      glitter: true,
       hat: 'cowgirl',
-      vest: '#8c5a35',
-      bandana: '#f3c13a',
       scale: 0.84,
     },
   },
