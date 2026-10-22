@@ -1,5 +1,5 @@
 import { ACTIVITIES, type Activity } from '../content/activities';
-import { DOGS, DONKEYS, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
+import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
 import { dist, fromAngle, Rng, type Vec } from '../core/math';
 import { COATS } from '../games/kitten/levels';
 import { PERSONALITIES, type Coat, type Personality } from '../games/kitten/kittenTypes';
@@ -7,64 +7,14 @@ import { createPlayer, updatePlayer } from '../games/kitten/player';
 import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
 import type { SharedWorld } from '../world/shared';
+import { FamilyLife, type Npc } from './family';
 import { HUNT_ITEMS, ORNAMENTS, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
 
 /* ---------------------------------------------------------------------------------------- */
 /* Actors                                                                                     */
 /* ---------------------------------------------------------------------------------------- */
 
-export interface Npc {
-  who: FamilyId;
-  x: number;
-  y: number;
-  px: number;
-  py: number;
-  home: Vec;
-  faceX: number;
-  waveT: number;
-  near: boolean;
-  /** Where they're ambling to between bits of business, if anywhere. */
-  target: Vec | null;
-  /** Seconds until the next bit of business. */
-  idleT: number;
-  /** Seconds left on the current gesture (see NPC_ROUTINES). */
-  busyT: number;
-  /** Seconds left celebrating after you played their game. */
-  cheerT: number;
-  walkPhase: number;
-}
-
-/**
- * What each family member does while waiting at their spot: how far they amble, and the small
- * gesture that fits where they stand. Everyone stops and turns to you when you walk up.
- */
-export interface NpcRoutine {
-  /** How far from their spot they wander (0 stays put). */
-  roam: number;
-  /** Seconds between bits of business. */
-  gap: [number, number];
-  gesture: 'toss' | 'swing' | 'point' | 'look' | 'wave';
-  /** Seconds the gesture lasts. */
-  gestureT: number;
-  /** Which way they face for the gesture (0 keeps whatever way they're facing). */
-  gestureFace: number;
-}
-
-export const NPC_ROUTINES: Record<FamilyId, NpcRoutine> = {
-  // Scattering feed for the chickens beside her.
-  megan: { roam: 44, gap: [3, 6], gesture: 'toss', gestureT: 0.6, gestureFace: -1 },
-  // A practice swing or two at the woodpile.
-  jason: { roam: 0, gap: [4, 7], gesture: 'swing', gestureT: 1.4, gestureFace: 0 },
-  // Walking a lap around his mower.
-  jay: { roam: 40, gap: [3, 7], gesture: 'look', gestureT: 1.2, gestureFace: 0 },
-  // Keeping an eye on the arena for loose cats.
-  natalie: { roam: 46, gap: [3, 6], gesture: 'point', gestureT: 1.1, gestureFace: 0 },
-  // On his porch, waving at the trucks on Buffalo Gap Rd.
-  grandpa: { roam: 0, gap: [6, 11], gesture: 'wave', gestureT: 1.6, gestureFace: 1 },
-};
-
-/** Within this distance family members stop what they're doing and turn to you. */
-export const NPC_ATTEND = 150;
+export { NPC_ATTEND, NPC_ROUTINES, type Npc } from './family';
 
 export interface HubDog {
   def: DogDef;
@@ -103,6 +53,8 @@ export interface HubDonkey {
 
 export interface HubCat {
   id: string;
+  /** Matches the cat's id in Kitten Cowgirl (and in saved names). */
+  nameId: string;
   name: string;
   personality: Personality;
   coat: Coat;
@@ -133,9 +85,35 @@ export interface Ball {
   held: string | null;
 }
 
+/** One of Grandpa's chihuahuas. */
+export interface HubPup {
+  def: DogDef;
+  name: string;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  faceX: number;
+  phase: number;
+  state: 'trot' | 'sit' | 'inside' | 'guard';
+  target: Vec | null;
+  t: number;
+  /** Seconds left on a "yip!" bubble. */
+  yipT: number;
+  /** Seconds until the next yip while guarding. */
+  yapT: number;
+  heartT: number;
+}
+
+/** Inside Grandpa's picket fence, behind his house: as far as the chihuahuas ever go. */
+export const BACK_YARD = { x0: 1384, x1: 2004, y0: 694, y1: 778 };
+/** Just outside the doggie door in his back wall. */
+export const DOGGIE_DOOR = { x: 1540, y: 688 };
+
 export type HubAction =
   | { kind: 'ball'; label: string }
   | { kind: 'pet'; label: string; cat: HubCat }
+  | { kind: 'pup'; label: string; pup: HubPup }
   | { kind: 'carrot'; label: string }
   | { kind: 'task'; label: string; task: string }
   | { kind: 'pickup'; label: string; item: string }
@@ -155,7 +133,9 @@ export type HubEvent =
   | { type: 'roundsDone'; seconds: number; stars: number }
   | { type: 'huntItem'; id: string; text: string; x: number; y: number; left: number }
   | { type: 'huntReady' }
-  | { type: 'sunday' };
+  | { type: 'sunday' }
+  | { type: 'yip'; x: number; y: number }
+  | { type: 'pupPet'; name: string; text: string; x: number; y: number };
 
 export interface RoundsState {
   kind: 'rounds';
@@ -206,7 +186,7 @@ const CAT_REST: Record<Personality, [number, number]> = {
 };
 
 /** How long the dogs put up with you standing still before going off to sniff something. */
-const SNIFF_AFTER: Record<string, number> = { scout: 8, annie: 18 };
+const SNIFF_AFTER: Record<string, number> = { axel: 8, annie: 18 };
 
 const PET_LINES: Record<Personality, string[]> = {
   hungry: ['{n} purrs and follows you, just in case you have snacks.', '{n} head-bonks your boots. Snacks were implied.'],
@@ -229,6 +209,7 @@ export class Homestead {
   dogs: HubDog[];
   donkeys: HubDonkey[];
   cats: HubCat[];
+  pups: HubPup[];
   ball: Ball | null = null;
   clock = 0;
   /** Station currently in range (prompt card), if any. */
@@ -245,6 +226,8 @@ export class Homestead {
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
   private life = new Rng(1989);
+  /** What the family gets up to around the place. */
+  readonly family: FamilyLife;
   private barkT = 3;
   /** A donkey already came over to the fence this visit. */
   private greeted = false;
@@ -254,6 +237,7 @@ export class Homestead {
     opts: { explorer: FamilyId; ornaments: string[]; discoveries: string[]; huntFound: string[] },
   ) {
     this.map = shared.map;
+    this.family = new FamilyLife(shared.world, (a, t, s, dt) => this.moveAgent(a, t, s, dt, 10), this.life);
     this.explorer = opts.explorer;
     this.ornaments = new Set(opts.ornaments);
     this.discovered = new Set(opts.discoveries);
@@ -286,10 +270,27 @@ export class Homestead {
       const p = this.penPoint(i * 3 + 1);
       return { def, x: p.x, y: p.y, px: p.x, py: p.y, faceX: i ? -1 : 1, phase: 0, target: p, state: 'graze', t: 2 + i * 2, brayT: 0 };
     });
+    this.pups = CHIHUAHUAS.map((def, i) => ({
+      def,
+      name: def.name,
+      x: 1700 + i * 60,
+      y: 740,
+      px: 1700 + i * 60,
+      py: 740,
+      faceX: i ? -1 : 1,
+      phase: i,
+      state: 'sit',
+      target: null,
+      t: 1 + i * 2,
+      yipT: 0,
+      yapT: 0,
+      heartT: 0,
+    }));
     this.cats = CAT_HOMES.map((c) => {
       const s = c.spots[0];
       return {
         id: c.id,
+        nameId: c.name.toLowerCase(),
         name: c.name,
         personality: c.personality,
         coat: COATS[c.id],
@@ -322,12 +323,10 @@ export class Homestead {
   }
 
   private placeNpcs(): void {
-    this.npcs = FAMILY_ORDER.filter((id) => id !== this.explorer).map((who) => {
-      const a = ACTIVITIES.find((aa) => aa.who === who)!;
-      const { x, y } = a.station;
-      return { who, x, y, px: x, py: y, home: { x, y }, faceX: -1, waveT: 0, near: false, target: null, idleT: this.life.range(1, 4), busyT: 0, cheerT: 0, walkPhase: 0 };
-    });
+    this.family.reset([], false);
+    this.npcs = FAMILY_ORDER.filter((id) => id !== this.explorer).map((who) => this.family.create(who));
   }
+
 
   emit(e: HubEvent): void {
     this.events.push(e);
@@ -360,12 +359,8 @@ export class Homestead {
   /** Bring the family to the long table (or send everyone back to what they were doing). */
   gather(on: boolean): void {
     this.gathered = on;
+    this.family.reset(this.npcs, !on);
     if (!on) {
-      for (const n of this.npcs) {
-        n.x = n.px = n.home.x;
-        n.y = n.py = n.home.y;
-        n.target = null;
-      }
       for (const d of this.dogs) d.state = 'follow';
       return;
     }
@@ -373,8 +368,6 @@ export class Homestead {
       const seat = TABLE_SEATS[i % TABLE_SEATS.length];
       n.x = n.px = seat.x;
       n.y = n.py = seat.y;
-      n.target = null;
-      n.busyT = 0;
       n.faceX = seat.x < LONG_TABLE.x ? 1 : -1;
       n.waveT = 0;
     });
@@ -440,12 +433,13 @@ export class Homestead {
     p.py = p.y;
     updatePlayer(p, input, this.shared.world, dt);
 
-    this.updateNpcs(dt);
+    this.family.update(this.npcs, this.player, dt, this.gathered);
     this.updateBall(dt);
     for (const d of this.dogs) this.updateDog(d, dt);
     this.donkeysNotice();
     for (const d of this.donkeys) this.updateDonkey(d, dt);
     for (const c of this.cats) this.updateCat(c, dt);
+    this.pups.forEach((d, i) => this.updatePup(d, i, dt));
     this.updateMission(dt);
     this.checkFinds(dt);
     this.nearStation = this.mission ? null : this.findStation();
@@ -453,12 +447,18 @@ export class Homestead {
     if (actionPressed && this.action) this.doAction(this.action);
   }
 
+  /** Where an activity is right now: with the person who runs it, wherever they've got to. */
+  stationPos(a: Activity): Vec {
+    const n = this.npcs.find((x) => x.who === a.who);
+    return n ? { x: n.x, y: n.y } : a.station;
+  }
+
   private findStation(): Activity | null {
     const p = this.player;
     let best: Activity | null = null;
     let bd = 105;
     for (const a of ACTIVITIES) {
-      const d = dist(p, a.station);
+      const d = dist(p, this.stationPos(a));
       if (d < bd) {
         bd = d;
         best = a;
@@ -473,69 +473,6 @@ export class Homestead {
     if (n) n.cheerT = 2.4;
   }
 
-  private updateNpcs(dt: number): void {
-    const p = this.player;
-    for (const n of this.npcs) {
-      n.px = n.x;
-      n.py = n.y;
-      const d = dist(n, p);
-      const near = d < 170;
-      if (near && !n.near) n.waveT = 1.4;
-      n.near = near;
-      n.waveT = Math.max(0, n.waveT - dt);
-      n.cheerT = Math.max(0, n.cheerT - dt);
-      n.busyT = Math.max(0, n.busyT - dt);
-      if (this.gathered) continue;
-      const R = NPC_ROUTINES[n.who];
-      if (d < NPC_ATTEND) {
-        // Drop everything and come back to their spot to talk.
-        n.target = dist(n, n.home) > 2 ? n.home : null;
-        n.busyT = 0;
-        n.idleT = Math.max(n.idleT, 1.5);
-      } else if (!n.target) {
-        n.idleT -= dt;
-        if (n.idleT <= 0) {
-          n.idleT = this.life.range(R.gap[0], R.gap[1]);
-          if (R.roam > 0 && this.life.next() < 0.5) n.target = this.strollSpot(n, R.roam);
-          else {
-            n.busyT = R.gestureT;
-            if (R.gesture === 'look') n.faceX = -n.faceX;
-            else if (R.gestureFace) n.faceX = R.gestureFace;
-          }
-        }
-      }
-      if (n.target) {
-        const dx = n.target.x - n.x;
-        const dy = n.target.y - n.y;
-        const dd = Math.hypot(dx, dy);
-        const speed = d < NPC_ATTEND ? 90 : 34;
-        if (dd < 1.5) {
-          n.x = n.target.x;
-          n.y = n.target.y;
-          n.target = null;
-        } else {
-          const s = Math.min(dd, speed * dt);
-          n.x += (dx / dd) * s;
-          n.y += (dy / dd) * s;
-          if (Math.abs(dx) > 0.5) n.faceX = dx > 0 ? 1 : -1;
-          n.walkPhase += dt * (2 + (speed / 260) * 9);
-        }
-      }
-      if (near && !n.target) n.faceX = p.x >= n.x ? 1 : -1;
-    }
-  }
-
-  /** A nearby open spot to amble to (or home, if nothing nearby is clear). */
-  private strollSpot(n: Npc, roam: number): Vec {
-    const w = this.shared.world;
-    for (let i = 0; i < 4; i++) {
-      const a = this.life.range(0, Math.PI * 2);
-      const r = this.life.range(roam * 0.4, roam);
-      const q = { x: n.home.x + Math.cos(a) * r, y: n.home.y + Math.sin(a) * r * 0.7 };
-      if (w.isFree(q.x, q.y, 10) && w.clearPath(n.x, n.y, q.x, q.y, 10)) return q;
-    }
-    return n.home;
-  }
 
   private findAction(): HubAction | null {
     const p = this.player;
@@ -565,6 +502,8 @@ export class Homestead {
       }
     }
     if (cat) return { kind: 'pet', label: `Pet ${cat.name}`, cat };
+    const pup = this.pups.find((d) => d.state !== 'inside' && dist(d, p) < 44);
+    if (pup) return { kind: 'pup', label: `Pet ${pup.name}`, pup };
     if (dist(p, this.pen) < this.pen.r + 60) return { kind: 'carrot', label: 'Offer carrot' };
     // Next to someone with a game, the prompt card is the thing to tap.
     if (!this.nearStation && !this.ball && this.dogs.some((d) => dist(d, p) < 170)) return { kind: 'ball', label: 'Throw ball' };
@@ -585,6 +524,17 @@ export class Homestead {
       case 'task': {
         const m = this.mission;
         if (m?.kind === 'rounds' && !m.holding) m.holding = { task: a.task, t: 0 };
+        break;
+      }
+      case 'pup': {
+        const d = a.pup;
+        const lines = ['{n} allows exactly one pet, then yaps about it.', '{n} trembles with joy. Or outrage. Hard to say.', '{n} sniffs your hand and approves. For now.'];
+        const text = lines[Math.floor(this.life.next() * lines.length)].replace('{n}', d.name);
+        d.state = 'sit';
+        d.t = 2.5;
+        d.heartT = 1.2;
+        d.faceX = this.player.x >= d.x ? 1 : -1;
+        this.emit({ type: 'pupPet', name: d.name, text, x: d.x, y: d.y });
         break;
       }
       case 'pickup':
@@ -831,6 +781,84 @@ export class Homestead {
   }
 
   /* --- Cats ------------------------------------------------------------------------------ */
+
+  /* --- Grandpa's chihuahuas ---------------------------------------------------------------- */
+
+  private yardSpot(): Vec {
+    const b = BACK_YARD;
+    return { x: this.life.range(b.x0, b.x1), y: this.life.range(b.y0, b.y1) };
+  }
+
+  private updatePup(d: HubPup, i: number, dt: number): void {
+    d.px = d.x;
+    d.py = d.y;
+    d.t -= dt;
+    d.yipT = Math.max(0, d.yipT - dt);
+    d.heartT = Math.max(0, d.heartT - dt);
+    const b = BACK_YARD;
+    const p = this.player;
+    if (d.state === 'inside') {
+      if (d.t <= 0) {
+        // Out through the flap.
+        d.x = d.px = DOGGIE_DOOR.x;
+        d.y = d.py = DOGGIE_DOOR.y;
+        d.state = 'trot';
+        d.target = this.yardSpot();
+      }
+      return;
+    }
+    // Anyone near the fence gets guarded; anyone in the yard gets escorted.
+    const cx = Math.max(b.x0, Math.min(b.x1, p.x));
+    const cy = Math.max(b.y0, Math.min(b.y1, p.y));
+    const outside = Math.hypot(p.x - cx, p.y - cy);
+    let speed = 70;
+    if (outside < 150 && !this.gathered && d.heartT <= 0 && !(d.state === 'sit' && d.t > 0 && dist(d, p) < 44)) {
+      d.state = 'guard';
+      speed = 150;
+      if (outside < 1) {
+        const a = this.clock * 1.6 + i * Math.PI;
+        d.target = { x: Math.max(b.x0, Math.min(b.x1, p.x + Math.cos(a) * 38)), y: Math.max(b.y0, Math.min(b.y1, p.y + Math.sin(a) * 18 + 8)) };
+      } else d.target = { x: Math.max(b.x0, Math.min(b.x1, cx + (i ? 16 : -16))), y: cy };
+      d.yapT -= dt;
+      if (d.yapT <= 0) {
+        d.yapT = this.life.range(0.5, 1.4);
+        d.yipT = 0.5;
+        this.emit({ type: 'yip', x: d.x, y: d.y });
+      }
+    } else if (d.state === 'guard') {
+      d.state = 'sit';
+      d.t = this.life.range(1, 3);
+      d.target = null;
+    }
+    if (d.target) {
+      const dx = d.target.x - d.x;
+      const dy = d.target.y - d.y;
+      const dd = Math.hypot(dx, dy);
+      if (dd > 2) {
+        const s = Math.min(dd, speed * dt);
+        d.x += (dx / dd) * s;
+        d.y += (dy / dd) * s;
+        if (Math.abs(dx) > 0.5) d.faceX = dx > 0 ? 1 : -1;
+        d.phase += dt * (speed > 100 ? 22 : 14);
+      } else if (d.state === 'trot') {
+        const toDoor = dist(d.target, DOGGIE_DOOR) < 1;
+        d.target = null;
+        if (toDoor) {
+          d.state = 'inside';
+          d.t = this.life.range(10, 24);
+        } else {
+          d.state = 'sit';
+          d.t = this.life.range(2, 5);
+        }
+      }
+      if (d.state === 'guard' && dd <= 2) d.faceX = p.x >= d.x ? 1 : -1;
+    } else if (d.state === 'sit' && d.t <= 0) {
+      d.state = 'trot';
+      // Now and then, in through the doggie door for a while.
+      const goIn = this.life.next() < 0.25;
+      d.target = goIn ? { ...DOGGIE_DOOR } : this.yardSpot();
+    }
+  }
 
   private petCat(c: HubCat): void {
     const lines = PET_LINES[c.personality];

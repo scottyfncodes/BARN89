@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ACTIVITIES } from '../src/content/activities';
 import { PLAYER_RADIUS } from '../src/games/kitten/player';
 import { Homestead, NPC_ROUTINES, type HubEvent } from '../src/hub/homestead';
+import { MOW_LAP, MOWER_PARKED, PUTTING_GREEN, SPORT_SPOTS } from '../src/hub/family';
 import { HUNT_ITEMS, ORNAMENTS, ROUNDS_TASKS } from '../src/hub/missions';
 import { PORCH_TREE } from '../src/hub/hubView';
 import { NavGrid } from '../src/world/navgrid';
@@ -169,8 +170,8 @@ describe('living ranch', () => {
     for (let i = 0; i < 40 * 60; i++) {
       h.step(still, DT, false);
       for (const n of h.npcs) {
-        const R = NPC_ROUTINES[n.who];
-        expect(Math.hypot(n.x - n.home.x, n.y - n.home.y), n.who).toBeLessThanOrEqual(R.roam + 1);
+        // Settled somewhere, they stay close to that spot.
+        if (!n.target && !n.outing) expect(Math.hypot(n.x - n.stop.at.x, n.y - n.stop.at.y), n.who).toBeLessThanOrEqual(n.stop.roam + 1);
         if (n.x !== n.px || n.y !== n.py) moved++;
         if (n.busyT > 0) gestures++;
       }
@@ -179,18 +180,21 @@ describe('living ranch', () => {
     expect(gestures).toBeGreaterThan(0);
   });
 
-  it('they come back to their spot and turn to you when you walk up', () => {
+  it('they stop and turn to you when you walk up, wherever they are', () => {
     const h = fresh();
     h.teleport(far.x, far.y);
     run(h, 30);
-    const a = ACTIVITIES.find((x) => x.id === 'rounds')!;
-    h.teleport(a.station.x + 90, a.station.y + 20);
-    run(h, 2);
-    const megan = h.npcs.find((n) => n.who === 'megan')!;
-    expect(Math.hypot(megan.x - megan.home.x, megan.y - megan.home.y)).toBeLessThan(2);
-    expect(megan.faceX).toBe(1);
-    expect(megan.busyT).toBe(0);
-    expect(h.nearStation?.id).toBe('rounds');
+    for (const who of ['megan', 'grandpa'] as const) {
+      const n = h.npcs.find((x) => x.who === who)!;
+      h.teleport(n.x + 60, n.y + 20);
+      run(h, 1);
+      const at = { x: n.x, y: n.y };
+      run(h, 2);
+      expect(n.attending, who).toBe(true);
+      expect(Math.hypot(n.x - at.x, n.y - at.y), who).toBeLessThan(1);
+      expect(n.faceX, who).toBe(h.player.x >= n.x ? 1 : -1);
+      expect(h.nearStation?.who, who).toBe(who);
+    }
   });
 
   it('cheers after you play their game', () => {
@@ -252,5 +256,113 @@ describe('living ranch', () => {
     run(h, 20);
     h.npcs.forEach((n, i) => expect(Math.hypot(n.x - seats[i].x, n.y - seats[i].y), n.who).toBeLessThan(1));
     expect(h.dogs.every((d) => d.state === 'rest')).toBe(true);
+  });
+});
+
+describe('family outings', () => {
+  const far = { x: 1250, y: 1700 };
+  const world = shared.world;
+
+  it("everyone's spots, Megan's mower lap and the catch spots are on open ground", () => {
+    for (const stops of Object.values(NPC_ROUTINES))
+      for (const s of stops) {
+        expect(world.isFree(s.at.x, s.at.y, 10), s.id).toBe(true);
+        expect(walkerNav.reachable(stops[0].at, s.at), s.id).toBe(true);
+      }
+    for (const p of Object.values(SPORT_SPOTS)) expect(world.isFree(p.x, p.y, 10)).toBe(true);
+    const lap = [MOWER_PARKED, ...MOW_LAP, MOW_LAP[0]];
+    for (let i = 0; i < lap.length - 1; i++) expect(world.clearPath(lap[i].x, lap[i].y, lap[i + 1].x, lap[i + 1].y, 16), `lap leg ${i}`).toBe(true);
+    expect(world.clearPath(MOW_LAP[MOW_LAP.length - 1].x, MOW_LAP[MOW_LAP.length - 1].y, MOWER_PARKED.x, MOWER_PARKED.y, 16)).toBe(true);
+  });
+
+  it('Grandpa works the front yard and putts out back', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    const seen = new Set<string>();
+    let putts = 0;
+    for (let i = 0; i < 400 * 60; i++) {
+      h.step(still, DT, false);
+      const g = h.npcs.find((n) => n.who === 'grandpa')!;
+      if (!g.target) seen.add(g.stop.id);
+      if (h.family.putt && h.family.putt.t < 0 && h.family.putt.t > -DT * 1.5) putts++;
+      if (seen.size === 3 && putts > 0) break;
+    }
+    expect([...seen].sort()).toEqual(['frontYard', 'porch', 'putting']);
+    expect(putts).toBeGreaterThan(0);
+    expect(PUTTING_GREEN.x).toBeLessThan(2020);
+  });
+
+  it('Megan takes the mower round the north lawn and parks it back', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    let rode = false;
+    let parked = false;
+    for (let i = 0; i < 600 * 60 && !parked; i++) {
+      h.step(still, DT, false);
+      if (h.family.mow?.phase === 'ride') rode = true;
+      if (rode && !h.family.mow) parked = true;
+    }
+    expect(rode).toBe(true);
+    expect(parked).toBe(true);
+  });
+
+  it('Jay and Jason meet up to practise football, baseball and soccer', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    const sports = new Set<string>();
+    let passes = 0;
+    for (let i = 0; i < 900 * 60 && sports.size < 3; i++) {
+      const before = h.family.sport?.flying;
+      h.step(still, DT, false);
+      const s = h.family.sport;
+      if (s?.phase === 'play') sports.add(s.sport);
+      if (!before && s?.flying) passes++;
+    }
+    expect([...sports].sort()).toEqual(['baseball', 'football', 'soccer']);
+    expect(passes).toBeGreaterThan(6);
+  });
+
+  it("the chihuahuas never leave Grandpa's back yard, and go in and out the doggie door", () => {
+    const h = fresh();
+    h.teleport(1700, 860);
+    let inside = 0;
+    for (let i = 0; i < 240 * 60; i++) {
+      // Wander past the fence, then stand in the yard, then leave.
+      if (i === 60 * 60) h.teleport(1800, 740);
+      if (i === 90 * 60) h.teleport(far.x, far.y);
+      h.step(still, DT, false);
+      for (const d of h.pups) {
+        if (d.state === 'inside') {
+          inside++;
+          continue;
+        }
+        expect(d.x).toBeGreaterThanOrEqual(1380);
+        expect(d.x).toBeLessThanOrEqual(2006);
+        expect(d.y).toBeGreaterThanOrEqual(684);
+        expect(d.y).toBeLessThanOrEqual(780);
+      }
+    }
+    expect(inside).toBeGreaterThan(0);
+  });
+
+  it('the chihuahuas yap at you from the fence, and can be petted', () => {
+    const h = fresh();
+    h.teleport(1700, 830);
+    const ev = run(h, 4);
+    expect(ev.some((e) => e.type === 'yip')).toBe(true);
+    const d = h.pups[0];
+    h.teleport(d.x, d.y + 30);
+    run(h, 0.1);
+    expect(h.action?.kind === 'pup' || h.action?.kind === 'pet').toBe(true);
+  });
+
+  it('Sunday breakfast calls everything off and everyone sits down', () => {
+    const h = fresh();
+    h.teleport(far.x, far.y);
+    for (let i = 0; i < 300 * 60 && !(h.family.mow || h.family.sport); i++) h.step(still, DT, false);
+    h.gather(true);
+    expect(h.family.mow).toBeNull();
+    expect(h.family.sport).toBeNull();
+    expect(h.npcs.every((n) => !n.outing && !n.target)).toBe(true);
   });
 });

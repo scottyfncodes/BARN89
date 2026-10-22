@@ -151,6 +151,12 @@ export class Sfx {
     this.noise(0.07, 0.2, 900, 0.16);
   }
 
+  /** A tiny dog's yip: high, short, a bit indignant. */
+  yip(): void {
+    this.tone(1250, 0.06, 'square', 0.035, 0, 980);
+    this.noise(0.04, 0.12, 2600);
+  }
+
   /** Hee-haw: a rising inhale squeal, then a low honk, twice. */
   bray(): void {
     for (let i = 0; i < 2; i++) {

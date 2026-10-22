@@ -5,7 +5,7 @@ import { C } from './palette';
 type Ctx = CanvasRenderingContext2D;
 
 export type PersonAction = 'none' | 'wave' | 'cheer' | 'throw' | 'point';
-export type HeldItem = 'basket' | 'carrot' | 'ball' | 'pail' | 'axe' | null;
+export type HeldItem = 'basket' | 'carrot' | 'ball' | 'pail' | 'axe' | 'rake' | 'putter' | null;
 
 export interface PersonPose {
   x: number;
@@ -23,6 +23,8 @@ export interface PersonPose {
   hat?: HatKind;
   /** With hold 'axe': arm angle in radians (-2.3 raised behind the head, 0.9 swung down). */
   axe?: number;
+  /** With hold 'rake' or 'putter': the stroke, -1..1 (rake pulled back to pushed out, putter back to through). */
+  tool?: number;
   /** See-through pass behind trees and roofs: no shadow. */
   ghost?: boolean;
 }
@@ -341,6 +343,19 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     back = { x: front.x - Math.cos(axeA) * 3, y: front.y - Math.sin(axeA) * 3 };
   }
   if (p.hold === 'carrot') front = { x: sh.x + 13, y: sh.y + 4 };
+  // Long-handled tools: both hands on the shaft, the head on the ground out front.
+  let toolHead: { x: number; y: number } | null = null;
+  if (p.hold === 'rake') {
+    const s = (p.tool ?? 0) * 7;
+    front = { x: sh.x + 9 + s, y: sh.y + 12 };
+    back = { x: sh.x + 3 + s * 0.6, y: sh.y + 5 };
+    toolHead = { x: front.x + 17 + s * 0.8, y: -1 };
+  } else if (p.hold === 'putter') {
+    const s = (p.tool ?? 0) * 4;
+    front = { x: sh.x + 5 + s * 0.5, y: sh.y + 18 };
+    back = { x: sh.x + 3 + s * 0.5, y: sh.y + 16 };
+    toolHead = { x: front.x + 5 + s * 1.4, y: -1 };
+  }
 
   // Back hair, back arm, legs.
   drawHair(ctx, L, hx, hy, p, true);
@@ -552,6 +567,7 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
 
   // Front arm and anything held.
   if (p.hold === 'axe') drawAxe(ctx, front.x, front.y, axeA);
+  if (toolHead && (p.hold === 'rake' || p.hold === 'putter')) drawLongTool(ctx, p.hold, back, toolHead);
   arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin, L.sleeveStripe);
   drawHeld(ctx, p.hold ?? null, front.x, front.y);
 }
@@ -579,6 +595,40 @@ export function drawAxe(ctx: Ctx, gx: number, gy: number, a: number): void {
   ctx.fillStyle = '#e8eef2';
   ctx.fillRect(31, -8, 1.6, 16);
   ctx.restore();
+}
+
+/** A rake or putter: shaft from just above the top hand down through the lower hand to the head. */
+function drawLongTool(ctx: Ctx, kind: 'rake' | 'putter', top: { x: number; y: number }, head: { x: number; y: number }): void {
+  const dx = head.x - top.x;
+  const dy = head.y - top.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(top.x - ux * 6, top.y - uy * 6);
+  ctx.lineTo(head.x, head.y);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = kind === 'rake' ? 4.2 : 3.2;
+  ctx.stroke();
+  ctx.strokeStyle = kind === 'rake' ? '#b07a44' : '#c9ced4';
+  ctx.lineWidth = kind === 'rake' ? 2.4 : 1.6;
+  ctx.stroke();
+  if (kind === 'rake') {
+    // Fan of tines on the ground.
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = -3; i <= 3; i++) {
+      ctx.moveTo(head.x, head.y);
+      ctx.lineTo(head.x + 6 + Math.abs(i) * 0.4, head.y + i * 2.2);
+    }
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.roundRect(head.x - 1.5, head.y - 2.5, 7, 3.5, 1);
+    fillStroke(ctx, '#3c4148', 1);
+  }
 }
 
 function drawHeld(ctx: Ctx, item: HeldItem, x: number, y: number): void {

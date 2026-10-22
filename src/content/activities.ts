@@ -156,7 +156,7 @@ export interface Reward {
   /** Stars needed, or a secret condition described in `how`. */
   stars?: number;
   how?: string;
-  kind: 'hat' | 'ride' | 'mower' | 'decor';
+  kind: 'hat' | 'ride' | 'mower' | 'decor' | 'scooter';
   hat?: HatKind;
 }
 
@@ -168,9 +168,13 @@ export const REWARDS: Reward[] = [
   { id: 'hat-santa', name: 'Santa hat', desc: 'Festive. Slightly floppy.', stars: 12, kind: 'hat', hat: 'santa' },
   { id: 'holiday', name: 'Christmas lights', desc: 'Lights on every roof, and a little snow.', stars: 15, kind: 'decor' },
   { id: 'mower-gold', name: 'Golden mower', desc: 'For the true Yard Boss.', stars: 20, kind: 'mower' },
+  { id: 'scooter', name: "Natalie's e-scooter", desc: 'Natalie zips around the homestead on her e-scooter whenever she is the one exploring.', how: 'kitten', kind: 'scooter' },
   { id: 'hat-beanie', name: 'Barn cat beanie', desc: 'Pet every barn cat on the homestead.', how: 'pets', kind: 'hat', hat: 'beanie' },
   { id: 'bulbs', name: 'Fixed string lights', desc: "Finish Grandpa's Treasure Hunt. Every old bulb at Barn 89 shines again.", how: 'hunt', kind: 'decor' },
 ];
+
+/** Stars in Kitten Cowgirl (Natalie's game) that unlock her e-scooter. */
+export const SCOOTER_STARS = 3;
 
 export const ORNAMENT_COUNT = 8;
 export const CAT_COUNT = 8;
@@ -179,6 +183,7 @@ export function rewardUnlocked(s: SaveData, r: Reward): boolean {
   if (r.stars !== undefined) return totalStars(s) >= r.stars;
   if (r.how === 'pets') return s.pets.length >= CAT_COUNT;
   if (r.how === 'hunt') return s.hunt.done;
+  if (r.how === 'kitten') return activityStars(s, 'kitten').got >= SCOOTER_STARS;
   return false;
 }
 

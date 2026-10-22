@@ -22,11 +22,12 @@ import {
   ORNAMENT_COUNT,
   REWARDS,
   rewardUnlocked,
+  SCOOTER_STARS,
   totalStars,
   unlockedRewards,
   type GameId,
 } from './content/activities';
-import { FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
+import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
 import { PERSONALITIES } from './games/kitten/kittenTypes';
@@ -36,7 +37,9 @@ import { WOOD_ROUNDS } from './games/woodpile/woodpile';
 import { Homestead, LONG_TABLE, type HubEvent } from './hub/homestead';
 import { HubView } from './hub/hubView';
 import { HUNT_ITEMS, LOCKBOX_CODE, ROUNDS_TASKS } from './hub/missions';
+import { drawDog, drawDonkey } from './render/animals';
 import { drawKittenFigure } from './render/characters';
+import { cleanName, NAME_MAX, NAMEABLE, NAMED_BY_FAMILY, nameFor } from './content/names';
 import { paintPortrait } from './render/people';
 import type { Decor } from './render/worldView';
 import { Controls } from './ui/input';
@@ -119,6 +122,11 @@ function applyLook(): void {
   const c = store.data.cosmetics;
   if (c.mower !== 'red' && !u.has(`mower-${c.mower}`)) c.mower = 'red';
   if (c.ride && !u.has('ride-deputy')) c.ride = false;
+  if (c.scooter && !u.has('scooter')) c.scooter = false;
+  // Natalie's scooter goes about half again as fast as walking.
+  const scooting = c.scooter && store.data.explorer === 'natalie';
+  hubView.scooter = scooting;
+  hub.player.maxSpeed = scooting ? 390 : 260;
   hubView.decor = decor();
   hubView.hat = explorerHat();
   hubView.mowerPaint = c.mower;
@@ -129,6 +137,11 @@ function applyLook(): void {
 function announceUnlocks(before: Set<string>): string[] {
   const after = unlockedRewards(store.data);
   const fresh = REWARDS.filter((r) => after.has(r.id) && !before.has(r.id));
+  // A brand-new scooter goes straight into use.
+  if (fresh.some((r) => r.id === 'scooter')) {
+    store.data.cosmetics.scooter = true;
+    store.save();
+  }
   applyLook();
   return fresh.map((r) => r.name);
 }
@@ -199,7 +212,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- Screens ---------------------------------------------------------------------------------
-const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday'];
+const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names'];
 
 function syncScreens(): void {
   document.body.dataset.scene = mode === 'game' && game instanceof WoodScene ? 'woodpile' : mode;
@@ -230,6 +243,7 @@ function open(id: string): void {
   else if (id === 'rewards') buildRewards();
   else if (id === 'who') buildWho();
   else if (id === 'herd') buildRoster();
+  else if (id === 'names') buildNames();
   else if (id === 'menu') $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
   syncScreens();
 }
@@ -347,6 +361,7 @@ function setExplorer(id: FamilyId): void {
   store.data.explorer = id;
   store.save();
   hub.setExplorer(id);
+  applyLook();
   refreshTitle();
 }
 $('who-done').addEventListener('click', () => {
@@ -442,6 +457,13 @@ function onHubEvent(e: HubEvent): void {
       break;
     case 'bray':
       sfx.bray();
+      break;
+    case 'yip':
+      if (Math.random() < 0.7) sfx.yip();
+      break;
+    case 'pupPet':
+      sfx.yip();
+      toast.show(`<b>${e.name}</b>${e.text}`, 2.8);
       break;
     case 'pet': {
       sfx.meow(1 + Math.random() * 0.2);
@@ -585,7 +607,8 @@ function hubFrame(dt: number): void {
     updateMissionHud();
     // Back at Grandpa's with everything: open the lockbox.
     const m = hub.mission;
-    if (m?.kind === 'hunt' && m.ready && Math.hypot(hub.player.x - activity('hunt').station.x, hub.player.y - activity('hunt').station.y) < 110 && !stack.length) {
+    const grandpa = hub.stationPos(activity('hunt'));
+    if (m?.kind === 'hunt' && m.ready && Math.hypot(hub.player.x - grandpa.x, hub.player.y - grandpa.y) < 110 && !stack.length) {
       dial[0] = 0;
       dial[1] = 0;
       syncDials();
@@ -704,7 +727,8 @@ $('lock-close').addEventListener('click', () => {
   sfx.click();
   close();
   // Step away so the lockbox doesn't pop straight back up.
-  hub.teleport(activity('hunt').station.x, activity('hunt').station.y + 150);
+  const g = hub.stationPos(activity('hunt'));
+  hub.teleport(g.x, g.y + 150);
 });
 $('lock-open').addEventListener('click', () => {
   if (dial[0] !== LOCKBOX_CODE[0] || dial[1] !== LOCKBOX_CODE[1]) {
@@ -791,7 +815,14 @@ function buildRewards(): void {
     const got = rewardUnlocked(s, r);
     const li = document.createElement('li');
     li.className = got ? 'got' : 'locked';
-    const need = r.stars !== undefined ? `${starSvg(false, 14)} ${r.stars} stars` : r.how === 'pets' ? `${s.pets.length}/${CAT_COUNT} cats petted` : 'Secret';
+    const need =
+      r.stars !== undefined
+        ? `${starSvg(false, 14)} ${r.stars} stars`
+        : r.how === 'pets'
+          ? `${s.pets.length}/${CAT_COUNT} cats petted`
+          : r.how === 'kitten'
+            ? `${Math.min(SCOOTER_STARS, activityStars(s, 'kitten').got)}/${SCOOTER_STARS} Kitten Cowgirl stars`
+            : 'Secret';
     let control = '';
     if (got) {
       if (r.kind === 'hat') control = `<button class="toggle ${c.hat === r.hat ? 'on' : ''}" data-hat="${r.hat}">${c.hat === r.hat ? 'Wearing' : 'Wear'}</button>`;
@@ -799,6 +830,7 @@ function buildRewards(): void {
         const paint = r.id.replace('mower-', '');
         control = `<button class="toggle ${c.mower === paint ? 'on' : ''}" data-mower="${paint}">${c.mower === paint ? 'In use' : 'Use'}</button>`;
       } else if (r.kind === 'ride') control = `<button class="toggle ${c.ride ? 'on' : ''}" data-flag="ride">${c.ride ? 'On' : 'Off'}</button>`;
+      else if (r.kind === 'scooter') control = `<button class="toggle ${c.scooter ? 'on' : ''}" data-flag="scooter">${c.scooter ? 'On' : 'Off'}</button>`;
       else if (r.id === 'evening' || r.id === 'holiday') control = `<button class="toggle ${c[r.id] ? 'on' : ''}" data-flag="${r.id}">${c[r.id] ? 'On' : 'Off'}</button>`;
       else control = '<span class="have">Done</span>';
     }
@@ -828,7 +860,7 @@ function buildRewards(): void {
   ul.querySelectorAll<HTMLElement>('[data-flag]').forEach((b) =>
     b.addEventListener('click', () => {
       sfx.click();
-      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday';
+      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday' | 'scooter';
       c[f] = !c[f];
       store.save();
       applyLook();
@@ -842,7 +874,7 @@ function openMap(): void {
   const panel = cv.parentElement!;
   const maxW = Math.min(Math.max(200, panel.clientWidth - 36), 560);
   const maxH = Math.max(200, window.innerHeight - 230);
-  mapHits = paintMap(cv, shared.map, { x: hub.player.x, y: hub.player.y, who: hub.explorer }, maxW, maxH);
+  mapHits = paintMap(cv, shared.map, { x: hub.player.x, y: hub.player.y, who: hub.explorer }, maxW, maxH, (id) => hub.stationPos(activity(id)));
 }
 $('map-canvas').addEventListener('click', (e) => {
   const r = (e.target as HTMLElement).getBoundingClientRect();
@@ -859,8 +891,9 @@ $('map-canvas').addEventListener('click', (e) => {
   }
   if (!best) return;
   sfx.click();
-  const a = activity(best.id);
-  hub.teleport(a.station.x, a.station.y + 70);
+  // Straight over to wherever they are right now.
+  const at = hub.stationPos(activity(best.id));
+  hub.teleport(at.x, at.y + 70);
   hubView.snap();
   closeAll();
 });
@@ -937,6 +970,102 @@ function buildRoster(): void {
     info.innerHTML = `<b>${k.name}</b><span class="trait">${t.label}</span><p>${t.blurb}</p>`;
     li.append(c, info);
     ul.append(li);
+  }
+}
+
+// --- Animal names ----------------------------------------------------------------------------
+/** Put the family's names on the cats (here and in Kitten Cowgirl) and the chihuahuas. */
+function applyNames(): void {
+  const n = store.data.names;
+  for (const lv of LEVELS) for (const k of lv.kittens) k.name = nameFor(n, k.id);
+  for (const c of hub.cats) c.name = nameFor(n, c.nameId);
+  for (const d of hub.pups) d.name = nameFor(n, d.def.id);
+}
+
+function animalCanvas(draw: (g: CanvasRenderingContext2D) => void): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 112;
+  c.height = 88;
+  const g = c.getContext('2d')!;
+  draw(g);
+  return c;
+}
+
+function buildNames(): void {
+  const ul = $('names-list');
+  ul.innerHTML = '';
+  for (const a of NAMEABLE) {
+    const li = document.createElement('li');
+    let pic: HTMLCanvasElement;
+    let what: string;
+    if (a.kind === 'cat') {
+      const k = LEVELS[0].kittens.find((x) => x.id === a.id)!;
+      pic = animalCanvas((g) => {
+        g.scale(2.6, 2.6);
+        drawKittenFigure(g, { x: 21, y: 29, faceX: 1, coat: k.coat, pose: 'sit', phase: 0, speed: 0, alarm: 0, happy: false, clock: 1 });
+      });
+      what = `Barn cat · ${PERSONALITIES[k.personality].label}`;
+    } else {
+      const d = CHIHUAHUAS.find((x) => x.id === a.id)!;
+      pic = animalCanvas((g) => {
+        g.scale(1.7, 1.7);
+        drawDog(g, { ...d, size: 1 }, { x: 30, y: 49, faceX: 1, pose: 'sit', phase: 0, clock: 0, wag: 0.5 });
+      });
+      what = "Grandpa's chihuahua";
+    }
+    const info = document.createElement('label');
+    info.className = 'name-info';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = NAME_MAX;
+    input.placeholder = a.name;
+    input.value = store.data.names[a.id] ?? '';
+    input.autocomplete = 'off';
+    input.setAttribute('autocapitalize', 'words');
+    input.setAttribute('enterkeyhint', 'done');
+    input.spellcheck = false;
+    const small = document.createElement('small');
+    small.textContent = what;
+    info.append(input, small);
+    const commit = () => {
+      const n = cleanName(input.value);
+      if (!n || n === a.name) delete store.data.names[a.id];
+      else store.data.names[a.id] = n;
+      input.value = store.data.names[a.id] ?? '';
+      store.save();
+      applyNames();
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+    });
+    li.append(pic, info);
+    ul.append(li);
+  }
+  const locked = $('names-locked');
+  locked.innerHTML = '';
+  for (const a of NAMED_BY_FAMILY) {
+    const li = document.createElement('li');
+    const dog = DOGS.find((d) => d.id === a.id);
+    const donkey = DONKEYS.find((d) => d.id === a.id);
+    const pic = animalCanvas((g) => {
+      if (dog) {
+        g.scale(1.8, 1.8);
+        drawDog(g, { ...dog, size: 1 }, { x: 28, y: 47, faceX: 1, pose: 'sit', phase: 0, clock: 0, wag: 0.5 });
+      } else if (donkey) {
+        g.scale(1.05, 1.05);
+        drawDonkey(g, donkey, { x: 50, y: 80, faceX: 1, walking: false, phase: 0, clock: 0, graze: false, bray: false });
+      }
+    });
+    const info = document.createElement('div');
+    info.className = 'name-info';
+    const b = document.createElement('b');
+    b.textContent = a.name;
+    const small = document.createElement('small');
+    small.textContent = `${a.what} · named by the family`;
+    info.append(b, small);
+    li.append(pic, info);
+    locked.append(li);
   }
 }
 
@@ -1185,6 +1314,7 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+applyNames();
 applyLook();
 refreshTitle();
 syncSound();

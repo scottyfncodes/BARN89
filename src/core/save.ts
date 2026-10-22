@@ -1,4 +1,5 @@
 import type { FamilyId, HatKind } from '../content/cast';
+import { cleanNames } from '../content/names';
 import type { BarnPlan } from '../content/sunday';
 
 /**
@@ -13,6 +14,8 @@ export interface Cosmetics {
   ride: boolean;
   evening: boolean;
   holiday: boolean;
+  /** Natalie on her e-scooter (when she's exploring). */
+  scooter: boolean;
 }
 
 export interface SaveData {
@@ -36,6 +39,8 @@ export interface SaveData {
   cosmetics: Cosmetics;
   /** One-time hints already shown. */
   seen: string[];
+  /** Names the family picked for the barn cats and Grandpa's chihuahuas, by animal id. */
+  names: Record<string, string>;
 }
 
 const KEY = 'barn89.save.v1';
@@ -55,8 +60,9 @@ export function freshSave(): SaveData {
     hunt: { found: [], done: false },
     barnPlan: null,
     sundays: 0,
-    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false },
+    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false },
     seen: [],
+    names: {},
   };
 }
 
@@ -104,6 +110,7 @@ export function normalize(raw: unknown): SaveData {
     sundays: typeof r.sundays === 'number' ? r.sundays : 0,
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },
     seen: arr(r.seen),
+    names: cleanNames(r.names),
   };
 }
 

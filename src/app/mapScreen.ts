@@ -33,6 +33,8 @@ export function paintMap(
   me: { x: number; y: number; who: FamilyId },
   maxW: number,
   maxH: number,
+  /** Where each activity's person is right now (defaults to their usual spot). */
+  where: (id: GameId) => { x: number; y: number } = (id) => ACTIVITIES.find((a) => a.id === id)!.station,
 ): MapHit[] {
   const aspect = map.width / map.height;
   let w = maxW;
@@ -129,7 +131,7 @@ export function paintMap(
   const hits: MapHit[] = [];
   const r = 19 / s;
   for (const a of ACTIVITIES) {
-    const { x, y } = a.station;
+    const { x, y } = where(a.id);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = '#fff8e9';

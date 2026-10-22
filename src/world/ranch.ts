@@ -78,7 +78,8 @@ function props(): PropDef[] {
     // Main house surroundings.
     { kind: 'trampoline', x: 810, y: 1012, w: 40, solid: true },
     { kind: 'bench', x: 1060, y: 935, w: 40 },
-    { kind: 'board', x: 1150, y: 960, solid: true },
+    // The treehouse at the south-east corner of the main house.
+    { kind: 'treehouse', x: 1150, y: 960, solid: true },
     { kind: 'doghouse', x: 650, y: 975, solid: true },
     // Jason's woodpile beside the woodshed.
     { kind: 'woodpile', x: 470, y: 1330, w: 120, solid: true },
@@ -115,7 +116,10 @@ function props(): PropDef[] {
     { kind: 'venueSign', x: 1985, y: 2215, solid: true },
     // The long table under the lights, where the family gathers now the weddings are done.
     { kind: 'longTable', x: 1670, y: 2890, w: 150, solid: true },
-    // A small wooden cross by Grandpa's front door.
+    // Grandpa's back yard: the putting green, and the chihuahuas' doggie door in the back wall.
+    { kind: 'puttingGreen', x: 1952, y: 738, w: 64 },
+    { kind: 'doggieDoor', x: 1540, y: 673 },
+    // A small wooden cross by Grandpa's door.
     { kind: 'wallCross', x: 1684, y: 672 },
     // The donkeys' name board, hung on the front of their pen.
     { kind: 'nameSign', x: 1180, y: 1902, w: 84, text: 'CHEWY   YODA' },
@@ -133,10 +137,8 @@ function trees(): TreeDef[] {
   const add = (x: number, y: number, r: number, variant: TreeDef['variant'] = 'oak') =>
     out.push({ x, y, r, variant, seed: Math.floor(rng.next() * 1e6) });
 
-  // Inside the driveway loop.
-  add(1100, 250, 50);
-  add(1200, 210, 56);
-  add(1270, 290, 44, 'bush');
+  // Inside the driveway loop: one giant tree in the middle of the north lawn.
+  add(1210, 300, 96);
   // North-west paddocks.
   add(180, 200, 44);
   add(170, 380, 40, 'bush');
@@ -289,6 +291,7 @@ export function createRanchMap(): RanchMap {
       { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
       { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
       { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
+      { id: 'treehouse', x: 1150, y: 1010, r: 80, title: 'The Treehouse', text: 'Up the ladder: a lookout window with the best view of the front lawn on the whole place.' },
       { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
     ],
     collectibles: [

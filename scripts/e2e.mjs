@@ -106,10 +106,10 @@ async function portrait() {
   await page.waitForTimeout(200);
   check('map opens and is drawn', (await page.evaluate(() => document.getElementById('map-canvas').getBoundingClientRect().width)) > 200);
   await page.screenshot({ path: `${OUT}/p-map.png` });
-  // Tap Jay's marker to travel.
+  // Tap Jay's marker (wherever he's got to) to travel.
   const jay = await page.evaluate(() => {
     const r = document.getElementById('map-canvas').getBoundingClientRect();
-    const st = { x: 1250, y: 668 };
+    const st = window.__b89.hub.npcs.find((n) => n.who === 'jay');
     const s = r.width / 2400;
     return { x: r.left + st.x * s, y: r.top + st.y * s };
   });

@@ -4,23 +4,25 @@ import { clamp, dist, lerp } from '../core/math';
 import { drawDog, drawDonkey } from '../render/animals';
 import { drawEmote, drawKittenFigure, star } from '../render/characters';
 import { C } from '../render/palette';
-import { drawPerson, paintPortrait, type HeldItem, type PersonAction } from '../render/people';
+import { drawPerson, paintPortrait, type PersonAction } from '../render/people';
 import type { BuildingSprites, TreeSprites } from '../render/sprites';
 import type { TerrainTiles } from '../render/terrain';
-import { drawMower, type MowerPaint } from '../render/vehicles';
+import { drawMower, drawScooter, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
-import { NPC_ROUTINES, type HubEvent, type Homestead, type Npc } from './homestead';
+import { MOWER_PARKED, type Npc, type Sport } from './family';
+import type { HubEvent, Homestead } from './homestead';
 import { HUNT_ITEMS, ORNAMENTS, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
 type Ctx = CanvasRenderingContext2D;
 
-const NPC_HOLD: Partial<Record<string, HeldItem>> = { megan: 'basket', jason: 'axe' };
 /** Where Grandpa keeps his little porch tree; found ornaments get hung on it. */
 export const PORCH_TREE = { x: 1562, y: 716 };
 
 export class HubView extends WorldView {
   hat: HatKind | undefined;
   mowerPaint: MowerPaint = 'red';
+  /** Natalie's riding her e-scooter. */
+  scooter = false;
   /** Screen rect kept clear of the HUD for edge markers. */
   guideRect = { left: 0, top: 0, right: 0, bottom: 0 };
   /** Cats already petted (faint heart under them). */
@@ -60,6 +62,9 @@ export class HubView extends WorldView {
         this.burst('heart', e.x, e.y - 18, '#ef5d84', 30, 3);
         this.petted.add(e.cat);
         break;
+      case 'pupPet':
+        this.burst('heart', e.x, e.y - 14, '#ef5d84', 26, 2);
+        break;
       case 'task':
         this.burst('spark', e.x, e.y - 20, C.gold, 90, 14);
         this.ring(e.x, e.y, 70, '#fff3b0');
@@ -90,20 +95,25 @@ export class HubView extends WorldView {
     const clock = h.clock;
     const me = FAMILY[h.explorer].look;
     const sp = Math.hypot(p.vx, p.vy);
-    const drawMe = (ctx: Ctx, ghost: boolean) =>
+    const riding = this.scooter && !h.gathered;
+    const drawMe = (ctx: Ctx, ghost: boolean) => {
+      // On the scooter: feet on the deck, hands on the bars, wheels turning.
+      if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, false, p.walkPhase * 2);
       drawPerson(ctx, me, {
         x: px,
-        y: py,
+        y: riding ? py - 6 : py,
         faceX: p.faceX,
-        speed01: clamp(sp / p.maxSpeed, 0, 1),
+        speed01: riding ? 0 : clamp(sp / p.maxSpeed, 0, 1),
         walkPhase: p.walkPhase * 0.85,
         clock,
-        action: p.throwT > 0 ? 'throw' : 'none',
+        action: p.throwT > 0 ? 'throw' : riding ? 'point' : 'none',
         actionT: p.throwT / 0.5,
         hat: this.hat,
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
-        ghost,
+        ghost: ghost || riding,
       });
+      if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, true, 0);
+    };
     const m = h.mission;
 
     this.renderFrame({
@@ -113,10 +123,13 @@ export class HubView extends WorldView {
         // Soft rings where activities start.
         if (!m) {
           for (const a of ACTIVITIES) {
-            if (!inBox(a.station, v, 80)) continue;
+            // The ring goes wherever the person is (Megan on the mower gets a bigger one).
+            const st = h.stationPos(a);
+            if (!inBox(st, v, 80)) continue;
             const near = h.nearStation?.id === a.id;
+            const riding = a.who === 'megan' && h.family.mow && h.family.mow.phase !== 'walk';
             ctx.beginPath();
-            ctx.ellipse(a.station.x, a.station.y + 4, 46, 18, 0, 0, Math.PI * 2);
+            ctx.ellipse(st.x, st.y + 4, riding ? 58 : 46, riding ? 26 : 18, 0, 0, Math.PI * 2);
             ctx.fillStyle = near ? 'rgba(255,236,150,0.45)' : 'rgba(255,248,220,0.22)';
             ctx.fill();
             ctx.setLineDash([7, 6]);
@@ -152,11 +165,18 @@ export class HubView extends WorldView {
       actors: (items, v) => {
         const ctx = this.ctx;
         items.push({ y: py, draw: () => drawMe(ctx, false) });
+        const ride = h.family.mow && h.family.mow.phase !== 'walk' ? h.family.mow : null;
         for (const n of h.npcs) {
           const x = lerp(n.px, n.x, alpha);
           const y = lerp(n.py, n.y, alpha);
           if (!inBox({ x, y }, v, 40)) continue;
           const L = FAMILY[n.who].look;
+          if (ride && n.outing === 'mow') {
+            // Megan out on Jay's mower.
+            const heading = ride.heading;
+            items.push({ y, draw: () => drawMower(ctx, x, y, heading, this.mowerPaint, L, clock, !n.attending) });
+            continue;
+          }
           const moving = Math.hypot(n.x - n.px, n.y - n.py) > 0.05;
           items.push({
             y,
@@ -169,17 +189,36 @@ export class HubView extends WorldView {
                 walkPhase: n.walkPhase,
                 clock: clock + n.home.x,
                 // Tools stay put at the breakfast table.
-                hold: h.gathered ? null : (NPC_HOLD[n.who] ?? null),
-                ...npcGesture(n),
+                hold: h.gathered ? null : n.hold,
+                ...npcGesture(n, clock),
               }),
           });
         }
-        // Jay's mower parked at his station, ready to go.
-        const mowSt = ACTIVITIES.find((a) => a.id === 'mower')!.station;
-        if (inBox(mowSt, v, 60)) {
-          const mx = mowSt.x + 52;
-          const my = mowSt.y + 8;
-          items.push({ y: my, draw: () => drawMower(ctx, mx, my, -0.3, this.mowerPaint, null, clock, false) });
+        // Jay's mower parked at his spot, ready to go (unless Megan's got it).
+        if (!ride && inBox(MOWER_PARKED, v, 60)) {
+          const { x: mx, y: my, heading } = MOWER_PARKED;
+          items.push({ y: my, draw: () => drawMower(ctx, mx, my, heading, this.mowerPaint, null, clock, false) });
+        }
+        // Jay and Jason's ball, and Grandpa's golf ball.
+        const sb = h.family.sportBall(h.npcs);
+        if (sb && inBox(sb, v, 40)) items.push({ y: sb.y + 1, draw: () => drawSportBall(ctx, sb.x, sb.y, sb.lift, sb.sport, clock) });
+        const gb = h.family.puttBall();
+        if (gb && inBox(gb, v, 30)) {
+          items.push({
+            y: gb.y,
+            draw: () => {
+              ctx.save();
+              ctx.globalAlpha = gb.alpha;
+              ctx.beginPath();
+              ctx.arc(gb.x, gb.y - 1.6, 2.2, 0, Math.PI * 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.strokeStyle = C.ink;
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+              ctx.restore();
+            },
+          });
         }
         for (const d of h.dogs) {
           const x = lerp(d.px, d.x, alpha);
@@ -219,6 +258,28 @@ export class HubView extends WorldView {
                 clock: clock + d.x * 0.01,
                 graze: d.state === 'graze' || d.state === 'eat',
                 bray: d.brayT > 0,
+              }),
+          });
+        }
+        // Grandpa's chihuahuas (unless they're indoors).
+        for (const d of h.pups) {
+          if (d.state === 'inside') continue;
+          const x = lerp(d.px, d.x, alpha);
+          const y = lerp(d.py, d.y, alpha);
+          if (!inBox({ x, y }, v, 20)) continue;
+          const moving = Math.hypot(d.x - d.px, d.y - d.py) > 0.2;
+          const fast = Math.hypot(d.x - d.px, d.y - d.py) > 1.6;
+          items.push({
+            y,
+            draw: () =>
+              drawDog(ctx, d.def, {
+                x,
+                y,
+                faceX: d.faceX,
+                pose: moving ? (fast ? 'run' : 'walk') : d.state === 'guard' ? 'stand' : 'sit',
+                phase: d.phase,
+                clock: clock * 1.4 + d.phase,
+                wag: d.heartT > 0 ? 1 : 0.5,
               }),
           });
         }
@@ -288,6 +349,9 @@ export class HubView extends WorldView {
           drawEmote(ctx, c.emote, c.x, c.y - lift, Math.min(1, c.emoteT * 4 + 0.3), clock);
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
+        h.pups.forEach((d, i) => {
+          if (d.yipT > 0 && d.state !== 'inside') this.bubbleText(ctx, d.x + d.faceX * 8, d.y - 30 - i * 16, 'yip!');
+        });
         // Name tags over family members when you're close.
         for (const n of h.gathered ? [] : h.npcs) {
           if (dist(n, p) > 240) continue;
@@ -297,10 +361,11 @@ export class HubView extends WorldView {
         // Gold star over activities you haven't tried yet.
         if (!m && !h.gathered) {
           for (const a of ACTIVITIES) {
-            if (!this.untried.has(a.id) || !inBox(a.station, v, 60)) continue;
+            const st = h.stationPos(a);
+            if (!this.untried.has(a.id) || !inBox(st, v, 60)) continue;
             const who = FAMILY[a.who].look.scale;
-            const sx = a.station.x + 16;
-            const sy = a.station.y - 70 * who - 18 + Math.sin(clock * 3) * 2;
+            const sx = st.x + 16;
+            const sy = st.y - 70 * who - 18 + Math.sin(clock * 3) * 2;
             star(ctx, sx, sy, 8, C.gold);
             ctx.strokeStyle = C.ink;
             ctx.lineWidth = 1.2;
@@ -331,7 +396,7 @@ export class HubView extends WorldView {
             c.fillText('?', 0, 1);
           });
         } else if (m?.kind === 'hunt' && m.ready) {
-          const g = ACTIVITIES.find((a) => a.id === 'hunt')!.station;
+          const g = h.stationPos(ACTIVITIES.find((a) => a.id === 'hunt')!);
           this.edgeMarker(ctx, left, top, z, g.x, g.y, this.guideRect, (c) => {
             c.fillStyle = C.ink;
             c.font = '900 13px ui-rounded, system-ui, sans-serif';
@@ -408,20 +473,27 @@ export class HubView extends WorldView {
 const MARKER_RANGE = 1000;
 
 /** What a family member's hands are doing right now: celebrating, waving hello, or their routine. */
-function npcGesture(n: Npc): { action: PersonAction; actionT?: number; axe?: number } {
+function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: number; axe?: number; tool?: number } {
   if (n.cheerT > 0) return { action: 'cheer' };
   if (n.waveT > 0) return { action: 'wave' };
-  if (n.busyT <= 0) return { action: 'none' };
-  const R = NPC_ROUTINES[n.who];
-  const k = 1 - n.busyT / R.gestureT;
-  switch (R.gesture) {
+  if (n.busyT <= 0 || !n.gesture) return { action: 'none' };
+  const k = 1 - n.busyT / n.gestureT;
+  switch (n.gesture) {
     case 'toss':
+    case 'throw':
       return { action: 'throw', actionT: 1 - k };
+    case 'catch':
+      return { action: 'point' };
     case 'swing': {
       // Lift the axe up behind the head, then bring it down easy.
       const e = k < 0.55 ? k / 0.55 : 1 - (k - 0.55) / 0.45;
       return { action: 'none', axe: 0.6 + (-2.1 - 0.6) * e * e * (3 - 2 * e) };
     }
+    case 'rake':
+      return { action: 'none', tool: Math.sin(clock * 5) };
+    case 'putt':
+      // Slow back, smooth through, hold the finish.
+      return { action: 'none', tool: k < 0.35 ? -k / 0.35 : Math.min(1, -1 + ((k - 0.35) / 0.2) * 2) };
     case 'point':
       return { action: 'point' };
     case 'wave':
@@ -429,6 +501,64 @@ function npcGesture(n: Npc): { action: PersonAction; actionT?: number; axe?: num
     default:
       return { action: 'none' };
   }
+}
+
+/** Football (spiral), baseball or soccer ball, with its shadow on the grass. */
+function drawSportBall(ctx: Ctx, x: number, y: number, lift: number, sport: Sport, clock: number): void {
+  ctx.beginPath();
+  ctx.ellipse(x, y, sport === 'soccer' ? 5 : 4, 1.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  const by = y - lift - (sport === 'soccer' ? 4.5 : 0);
+  ctx.save();
+  ctx.translate(x, by);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.1;
+  if (sport === 'football') {
+    ctx.rotate(-0.5);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5.4, 3.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#8a4b2a';
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#fffaf0';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(-2, 0);
+    ctx.lineTo(2, 0);
+    for (const lx of [-1, 0, 1]) {
+      ctx.moveTo(lx, -0.9);
+      ctx.lineTo(lx, 0.9);
+    }
+    ctx.stroke();
+  } else if (sport === 'baseball') {
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#fffaf0';
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#d9434f';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.arc(-2.6, 0, 2, -0.9, 0.9);
+    ctx.arc(2.6, 0, 2, Math.PI - 0.9, Math.PI + 0.9);
+    ctx.stroke();
+  } else {
+    ctx.rotate(clock * 6);
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fffaf0';
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = C.ink;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1.4, 0, Math.PI * 2);
+    ctx.arc(2.9, 1.6, 0.9, 0, Math.PI * 2);
+    ctx.arc(-2.9, 1.6, 0.9, 0, Math.PI * 2);
+    ctx.arc(0, -3.2, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function inBox(p: { x: number; y: number }, v: Box, pad: number): boolean {

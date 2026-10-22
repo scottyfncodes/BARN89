@@ -153,7 +153,7 @@ export const FAMILY_ORDER: FamilyId[] = ['megan', 'jason', 'jay', 'natalie', 'gr
 export interface DogDef {
   id: string;
   name: string;
-  kind: 'collie' | 'lab' | 'terrier';
+  kind: 'collie' | 'lab' | 'terrier' | 'chihuahua';
   base: string;
   patch: string;
   blurb: string;
@@ -163,8 +163,17 @@ export interface DogDef {
 }
 
 export const DOGS: DogDef[] = [
-  { id: 'scout', name: 'Scout', kind: 'terrier', base: '#2b2622', patch: '#f2efe8', size: 0.95, collar: '#2f5fb8', blurb: 'Scruffy, wiry, about thirty-five pounds of nose. Has found every snake on the property.' },
-  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.25, collar: '#8a8f96', blurb: 'Eighty pounds of black Lab. Will lean on you. Will find the chew toy.' },
+  { id: 'axel', name: 'Axel', kind: 'terrier', base: '#2b2622', patch: '#f2efe8', size: 0.82, collar: '#2f5fb8', blurb: 'Scruffy, wiry, about twenty-five pounds of nose. Has found every snake on the property.' },
+  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.36, collar: '#8a8f96', blurb: 'Ninety pounds of black Lab. Will lean on you. Will find the chew toy.' },
+];
+
+/**
+ * Grandpa's two little black chihuahuas. They stay in his fenced back yard and come and go
+ * through the doggie door. Their names are placeholders: rename them in the game (Animal names).
+ */
+export const CHIHUAHUAS: DogDef[] = [
+  { id: 'pip', name: 'Pip', kind: 'chihuahua', base: '#1d1b1f', patch: '#4a4248', size: 0.5, collar: '#d9434f', blurb: 'Six pounds. Guards the back yard from everything, loudly.' },
+  { id: 'peanut', name: 'Peanut', kind: 'chihuahua', base: '#232026', patch: '#544a50', size: 0.46, collar: '#3d7fd6', blurb: 'Slightly smaller, slightly louder. First through the doggie door.' },
 ];
 
 export interface DonkeyDef {

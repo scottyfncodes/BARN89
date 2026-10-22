@@ -1274,37 +1274,148 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fill();
       break;
     }
-    case 'board': {
-      // The ranch activity board: two posts, a little roof, and notes pinned all over it.
+    case 'treehouse': {
+      // The treehouse at the corner of the main house: an old oak, a platform, a little house, a ladder.
       ctx.beginPath();
-      ctx.ellipse(x + 3, y + 2, 34, 6, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 10, y + 2, 50, 13, 0, 0, Math.PI * 2);
       ctx.fillStyle = C.shadow;
       ctx.fill();
-      ctx.fillStyle = C.woodDark;
-      ctx.fillRect(x - 28, y - 58, 6, 58);
-      ctx.fillRect(x + 22, y - 58, 6, 58);
-      ctx.strokeRect(x - 28, y - 58, 6, 58);
-      ctx.strokeRect(x + 22, y - 58, 6, 58);
-      ctx.fillStyle = C.woodLight;
-      ctx.fillRect(x - 32, y - 56, 64, 34);
-      ctx.strokeRect(x - 32, y - 56, 64, 34);
-      const notes: [number, number, string][] = [[-27, -52, '#fffaf0'], [-9, -50, '#ffe58a'], [9, -53, '#bfe3f2'], [-20, -36, '#f7c6cf'], [2, -37, '#fffaf0'], [17, -38, '#cfe8b4']];
-      for (const [nx, ny, col] of notes) {
+      const leaves = (cx: number, cy: number, rr: number, col: string) => {
+        ctx.beginPath();
+        ctx.arc(x + cx, y + cy, rr, 0, Math.PI * 2);
         ctx.fillStyle = col;
-        ctx.fillRect(x + nx, y + ny, 13, 12);
-        ctx.fillStyle = C.barnRed;
-        ctx.fillRect(x + nx + 5, y + ny + 1, 3, 2);
-        ctx.fillStyle = 'rgba(59,42,32,0.45)';
-        ctx.fillRect(x + nx + 2, y + ny + 6, 9, 1);
-        ctx.fillRect(x + nx + 2, y + ny + 9, 6, 1);
-      }
-      ctx.fillStyle = C.roofRed;
+        ctx.fill();
+        ctx.stroke();
+      };
+      // Canopy behind the house.
+      leaves(-34, -118, 34, '#4f8f3a');
+      leaves(32, -122, 34, '#4f8f3a');
+      leaves(0, -150, 40, '#579a40');
+      // Trunk, forking under the platform.
+      ctx.fillStyle = C.woodDark;
       ctx.beginPath();
-      ctx.moveTo(x - 38, y - 55);
-      ctx.lineTo(x, y - 68);
-      ctx.lineTo(x + 38, y - 55);
+      ctx.moveTo(x - 10, y);
+      ctx.lineTo(x - 7, y - 70);
+      ctx.lineTo(x + 7, y - 70);
+      ctx.lineTo(x + 10, y);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+      // Platform and railing.
+      ctx.fillStyle = C.woodLight;
+      ctx.fillRect(x - 40, y - 76, 80, 7);
+      ctx.strokeRect(x - 40, y - 76, 80, 7);
+      ctx.fillStyle = C.wood;
+      for (const px of [-38, -20, 20, 36]) {
+        ctx.fillRect(x + px, y - 90, 3, 14);
+        ctx.strokeRect(x + px, y - 90, 3, 14);
+      }
+      ctx.fillRect(x - 40, y - 92, 80, 3);
+      ctx.strokeRect(x - 40, y - 92, 80, 3);
+      // The house: plank walls, a window, a doorway, a red roof.
+      ctx.fillStyle = C.wood;
+      ctx.fillRect(x - 26, y - 112, 50, 36);
+      ctx.strokeRect(x - 26, y - 112, 50, 36);
+      ctx.strokeStyle = 'rgba(59,42,32,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let py = y - 103; py < y - 77; py += 8) {
+        ctx.moveTo(x - 25, py);
+        ctx.lineTo(x + 23, py);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = '#2b1a12';
+      ctx.fillRect(x - 18, y - 104, 12, 11);
+      ctx.strokeRect(x - 18, y - 104, 12, 11);
+      ctx.fillStyle = '#9cc7d9';
+      ctx.fillRect(x - 16.5, y - 102.5, 9, 8);
+      ctx.fillStyle = '#2b1a12';
+      ctx.beginPath();
+      ctx.roundRect(x + 4, y - 100, 13, 24, [6, 6, 0, 0]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = C.roofRed;
+      ctx.beginPath();
+      ctx.moveTo(x - 33, y - 110);
+      ctx.lineTo(x - 1, y - 132);
+      ctx.lineTo(x + 31, y - 110);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Leaves in front, round the edges.
+      leaves(-46, -96, 15, '#62a648');
+      leaves(44, -102, 14, '#62a648');
+      leaves(-20, -138, 14, '#62a648');
+      // Ladder down the right side.
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      ctx.moveTo(x + 26, y - 70);
+      ctx.lineTo(x + 34, y);
+      ctx.moveTo(x + 38, y - 70);
+      ctx.lineTo(x + 46, y);
+      ctx.stroke();
+      ctx.strokeStyle = C.woodLight;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.strokeStyle = C.woodLight;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let i = 1; i < 6; i++) {
+        const ry = y - 70 + i * 11.5;
+        const off = (i * 11.5 * 8) / 70;
+        ctx.moveTo(x + 26 + off, ry);
+        ctx.lineTo(x + 38 + off, ry);
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'puttingGreen': {
+      // Grandpa's putting green: a patch of short grass, the cup, and a flag.
+      const w = p.w ?? 60;
+      ctx.beginPath();
+      ctx.ellipse(x - 8, y, w / 2, w / 4, -0.08, 0, Math.PI * 2);
+      ctx.fillStyle = '#a9da6e';
+      ctx.fill();
+      ctx.strokeStyle = '#7fb94c';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x, y, 3.4, 1.7, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#1f2a14';
+      ctx.fill();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 26);
+      ctx.stroke();
+      const flap = Math.sin(clock * 3) * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 26);
+      ctx.lineTo(x + 11, y - 22 + flap);
+      ctx.lineTo(x, y - 18);
+      ctx.closePath();
+      ctx.fillStyle = C.barnRed;
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      break;
+    }
+    case 'doggieDoor': {
+      // A flap in the bottom of Grandpa's back wall, just the right size for a chihuahua.
+      ctx.fillStyle = '#3b3a3f';
+      ctx.beginPath();
+      ctx.roundRect(x - 7, y - 19, 14, 15, [4, 4, 1, 1]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y - 13);
+      ctx.lineTo(x + 5, y - 13);
       ctx.stroke();
       break;
     }
@@ -1656,7 +1767,7 @@ export function festoonBulbs(p: PropDef): { x: number; y: number; out: boolean }
 
 /** Things drawn flat on the ground in the dynamic layer (no height). */
 export function propIsFlat(p: PropDef): boolean {
-  return p.kind === 'flowers' || p.kind === 'napHay';
+  return p.kind === 'flowers' || p.kind === 'napHay' || p.kind === 'puttingGreen';
 }
 
 /* ------------------------------------------------------------------------------------------ */

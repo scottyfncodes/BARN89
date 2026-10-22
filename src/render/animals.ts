@@ -60,6 +60,9 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   const bodyY = lie ? -7 : sit ? -13 : -16 - bob;
   const fluffy = d.kind === 'collie';
   const terrier = d.kind === 'terrier';
+  const chi = d.kind === 'chihuahua';
+  // Chihuahuas: matchstick legs.
+  const lw = chi ? 3.2 : 4.5;
 
   // Tail.
   const wag = Math.sin(s.clock * (8 + s.wag * 12)) * (4 + s.wag * 7);
@@ -85,18 +88,18 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ellipse(ctx, 0, bodyY, 16, 6.5);
     fillStroke(ctx, d.base, 1.5);
     if (terrier) wiryCoat(ctx, d, 0, bodyY, 16, 6.5);
-    limb(ctx, 10, -3, -1.5, 9, 4.5, d.base);
+    limb(ctx, 10, -3, -1.5, 9, lw, d.base);
   } else if (sit) {
     // Haunch and straight front legs.
     ellipse(ctx, -4, -8, 10, 8);
     fillStroke(ctx, d.base, 1.5);
     ellipse(ctx, 4, -14, 7, 10, -0.5);
     fillStroke(ctx, d.base, 1.5);
-    limb(ctx, 6, -10, 0, 10, 4.5, d.base);
-    limb(ctx, 9, -10, 0, 10, 4.5, d.kind === 'collie' ? d.patch : d.base);
+    limb(ctx, 6, -10, 0, 10, lw, d.base);
+    limb(ctx, 9, -10, 0, 10, lw, d.kind === 'collie' ? d.patch : d.base);
   } else {
-    limb(ctx, 9, bodyY + 4, -sw, 13 + bob, 4.5, d.base);
-    limb(ctx, -9, bodyY + 4, sw, 13 + bob, 4.5, d.base);
+    limb(ctx, 9, bodyY + 4, -sw, 13 + bob, lw, d.base);
+    limb(ctx, -9, bodyY + 4, sw, 13 + bob, lw, d.base);
     ellipse(ctx, 0, bodyY, 15, 7.5);
     fillStroke(ctx, d.base, 1.6);
     if (terrier) wiryCoat(ctx, d, 0, bodyY, 15, 7.5);
@@ -105,8 +108,8 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
       ctx.fillStyle = d.patch;
       ctx.fill();
     }
-    limb(ctx, 11, bodyY + 5, sw, 12 + bob, 4.5, d.kind === 'collie' ? d.patch : d.base);
-    limb(ctx, -7, bodyY + 5, -sw, 12 + bob, 4.5, d.base);
+    limb(ctx, 11, bodyY + 5, sw, 12 + bob, lw, d.kind === 'collie' ? d.patch : d.base);
+    limb(ctx, -7, bodyY + 5, -sw, 12 + bob, lw, d.base);
   }
 
   // Head.
@@ -115,9 +118,16 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   ellipse(ctx, hx, hy, 7.5, 7);
   fillStroke(ctx, d.base, 1.5);
   // Snout.
-  ellipse(ctx, hx + 7, hy + 2.5, 5.5, 3.6);
-  fillStroke(ctx, terrier ? d.base : d.patch, 1.3);
-  ellipse(ctx, hx + 11.6, hy + 1.2, 1.8, 1.5);
+  if (chi) {
+    // Short little snout on an apple head.
+    ellipse(ctx, hx + 5.5, hy + 2.6, 3.8, 2.7);
+    fillStroke(ctx, d.base, 1.3);
+    ellipse(ctx, hx + 8.8, hy + 1.8, 1.5, 1.3);
+  } else {
+    ellipse(ctx, hx + 7, hy + 2.5, 5.5, 3.6);
+    fillStroke(ctx, terrier ? d.base : d.patch, 1.3);
+    ellipse(ctx, hx + 11.6, hy + 1.2, 1.8, 1.5);
+  }
   ctx.fillStyle = C.ink;
   ctx.fill();
   if (d.kind === 'collie') {
@@ -137,6 +147,23 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ctx.lineTo(hx + 1.5, hy - 6);
     ctx.closePath();
     fillStroke(ctx, d.base, 1.2);
+  } else if (chi) {
+    // Two enormous upright ears, flared out.
+    for (const [ex, lean] of [[-5, -5], [0.5, 3.5]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.moveTo(hx + ex - 3.5, hy - 4);
+      ctx.lineTo(hx + ex + lean, hy - 19);
+      ctx.lineTo(hx + ex + 4.5, hy - 5);
+      ctx.closePath();
+      fillStroke(ctx, d.base, 1.2);
+      ctx.beginPath();
+      ctx.moveTo(hx + ex - 1.2, hy - 6);
+      ctx.lineTo(hx + ex + lean * 0.8, hy - 15);
+      ctx.lineTo(hx + ex + 2.4, hy - 6.5);
+      ctx.closePath();
+      ctx.fillStyle = d.patch;
+      ctx.fill();
+    }
   } else if (terrier) {
     // Two upright, pointed ears.
     for (const [ex, lean] of [[-4.5, -1], [-0.5, 1.5]] as [number, number][]) {
@@ -169,8 +196,8 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     fillStroke(ctx, d.patch, 1.2);
   }
   // Eye.
-  ellipse(ctx, hx + 3.5, hy - 1.5, 1.3, 1.6);
-  ctx.fillStyle = C.ink;
+  ellipse(ctx, hx + 3.5, hy - 1.5, chi ? 1.9 : 1.3, chi ? 2.2 : 1.6);
+  ctx.fillStyle = chi ? '#120f12' : C.ink;
   ctx.fill();
   ellipse(ctx, hx + 3.9, hy - 2.1, 0.5, 0.5);
   ctx.fillStyle = '#ffffff';
