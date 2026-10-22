@@ -3,7 +3,7 @@ import { clamp, hash2, lerp } from '../../core/math';
 import { star } from '../../render/characters';
 import { C } from '../../render/palette';
 import { drawPerson } from '../../render/people';
-import { RACK_W, ROW_H, type LogSpec, type WoodEvent, type WoodGame } from './woodpile';
+import { landingFit, RACK_W, ROW_H, type Fit, type LogSpec, type WoodEvent, type WoodGame } from './woodpile';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -175,6 +175,7 @@ export class WoodView {
     this.drawRack(ctx);
     this.drawBlock(ctx);
     this.drawMeter(ctx);
+    this.drawSteps(ctx);
     this.drawBits(ctx);
     // Vignette.
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -342,34 +343,46 @@ export class WoodView {
       const lean = working ? Math.sin(g.clock * 7) * wob * 3 + wob * 4 : 0;
       for (const p of row) this.drawPieceEnd(ctx, x0 + p.x + lean * (1 - 0), y0 - ri * ROW_H, p.w, p.shade);
     });
-    // Drop guide: where the next piece should go.
+    // The target: a glowing outline of the piece, snug against the last one.
     const slot = g.rowRight;
     const rowY = y0 - g.rowIndex * ROW_H;
-    if (g.slider || g.drop) {
+    const s = g.slider;
+    const w = s?.w ?? g.drop?.w ?? 34;
+    if (s || g.drop) {
+      const fit = s ? landingFit(s.x, slot) : 'snug';
+      const glow = fit === 'snug' ? 1 : 0.45 + Math.sin(g.clock * 6) * 0.15;
       ctx.save();
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(255,248,220,0.9)';
-      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x0 + slot, rowY - ROW_H - 40);
-      ctx.lineTo(x0 + slot, rowY);
+      ctx.roundRect(x0 + slot + 1, rowY - ROW_H + 1, w - 2, ROW_H - 2, 4);
+      ctx.fillStyle = `rgba(242,197,61,${0.25 + glow * 0.35})`;
+      ctx.fill();
+      ctx.setLineDash([5, 4]);
+      ctx.lineDashOffset = -g.clock * 12;
+      ctx.strokeStyle = fit === 'snug' ? C.ink : 'rgba(59,42,32,0.75)';
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
-      ctx.fillStyle = 'rgba(255,248,220,0.95)';
-      ctx.beginPath();
-      ctx.moveTo(x0 + slot - 6, rowY - ROW_H - 4);
-      ctx.lineTo(x0 + slot + 6, rowY - ROW_H - 4);
-      ctx.lineTo(x0 + slot, rowY - ROW_H + 4);
-      ctx.closePath();
-      ctx.fill();
-    }
-    if (g.slider) {
-      const s = g.slider;
-      const y = rowY - 46;
-      this.drawPieceEnd(ctx, x0 + s.x, y, s.w, s.shade);
-      // Little hands-free "hover" shadow on the row.
-      ctx.fillStyle = 'rgba(40,30,15,0.18)';
-      ctx.fillRect(x0 + s.x + 3, rowY - 3, s.w - 6, 3);
+      if (s) {
+        // A line straight down from the piece shows where it'll land: green is snug.
+        const col = FIT_COLOR[fit];
+        const cx = x0 + s.x + s.w / 2;
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx, rowY - 34 + 2);
+        ctx.lineTo(cx, rowY - 4);
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = col;
+        ctx.fillRect(x0 + s.x + 3, rowY - 4, s.w - 6, 4);
+        ctx.font = '900 12px ui-rounded, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = C.ink;
+        ctx.fillText(fit === 'snug' ? 'NOW!' : 'drop here', Math.max(x0 + 34, x0 + slot + w / 2), rowY - ROW_H - 42 - (fit === 'snug' ? Math.sin(g.clock * 14) : 0));
+        this.drawPieceEnd(ctx, x0 + s.x, rowY - 34, s.w, s.shade);
+      }
     }
     if (g.drop) {
       const d = g.drop;
@@ -382,11 +395,47 @@ export class WoodView {
       this.drawPieceEnd(ctx, -f.w / 2, ROW_H / 2, f.w, f.shade, Math.min(1, f.life * 2));
       ctx.restore();
     }
-    // Progress label on the shed.
-    ctx.font = '900 13px Rockwell, "Roboto Slab", Georgia, serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(59,42,32,0.55)';
-    ctx.fillText(`${g.stacked} / ${g.round.goal}`, x0 + RACK_W / 2, topY - 10);
+  }
+
+  /** "1 Split, 2 Stack": which half of the job you're on, and how many pieces are waiting. */
+  private drawSteps(ctx: Ctx): void {
+    const g = this.game;
+    if (g.phase === 'celebrating' || g.phase === 'complete') return;
+    const L = this.L;
+    const stacking = g.phase === 'split' || g.phase === 'slide' || g.phase === 'drop';
+    const waiting = g.queue.length + (g.slider || g.drop ? 1 : 0);
+    const steps = [
+      { n: '1', label: 'SPLIT', on: !stacking },
+      { n: '2', label: stacking && waiting ? `STACK  ${waiting} left` : 'STACK', on: stacking },
+    ];
+    const w = 124;
+    const h = 30;
+    const cx = L.meterX + L.meterW / 2;
+    const y = L.meterY - 58;
+    ctx.save();
+    ctx.font = '900 13px ui-rounded, system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    steps.forEach((st, i) => {
+      const x = cx - w - 4 + i * (w + 8);
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 15);
+      ctx.fillStyle = st.on ? C.gold : 'rgba(255,248,233,0.7)';
+      ctx.fill();
+      ctx.strokeStyle = st.on ? C.ink : 'rgba(59,42,32,0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + 16, y + h / 2, 9, 0, Math.PI * 2);
+      ctx.fillStyle = st.on ? C.ink : 'rgba(59,42,32,0.35)';
+      ctx.fill();
+      ctx.fillStyle = st.on ? C.gold : '#fff8e9';
+      ctx.textAlign = 'center';
+      ctx.fillText(st.n, x + 16, y + h / 2 + 1);
+      ctx.fillStyle = st.on ? C.ink : 'rgba(59,42,32,0.45)';
+      ctx.textAlign = 'left';
+      ctx.fillText(st.label, x + 31, y + h / 2 + 1);
+    });
+    ctx.restore();
   }
 
   private drawLog(ctx: Ctx, cx: number, base: number, log: LogSpec, split: number, halved: boolean): void {
@@ -557,10 +606,23 @@ export class WoodView {
     ctx.fill();
     const sw = g.sweetW * w;
     const sc = x + g.sweet * w;
-    ctx.fillStyle = '#7cc05a';
+    // The zones light up while the marker is in them: that's when to tap.
+    const d = Math.abs(g.meter - g.sweet);
+    const inGold = d < g.sweetW / 6;
+    const inGreen = d < g.sweetW / 2;
+    ctx.fillStyle = inGreen && !inGold ? '#9be06e' : '#7cc05a';
     ctx.fillRect(sc - sw / 2, y, sw, h);
-    ctx.fillStyle = C.gold;
+    ctx.fillStyle = inGold ? '#ffe680' : C.gold;
     ctx.fillRect(sc - sw / 6, y, sw / 3, h);
+    if (inGold && (g.phase === 'aim' || g.phase === 'ready')) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,214,80,0.9)';
+      ctx.shadowBlur = 16;
+      ctx.strokeStyle = '#fff3b0';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(sc - sw / 6, y - 2, sw / 3, h + 4);
+      ctx.restore();
+    }
     ctx.strokeStyle = C.ink;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -618,6 +680,8 @@ export class WoodView {
     }
   }
 }
+
+const FIT_COLOR: Record<Fit, string> = { snug: '#3f9a3f', ok: '#c48e1c', gappy: '#d06a14', tumble: '#c8443a' };
 
 function mix(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16);

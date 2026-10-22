@@ -219,3 +219,213 @@ export function drawScooter(ctx: Ctx, x: number, y: number, faceX: number, front
   ctx.stroke();
   ctx.restore();
 }
+
+export const TRUCK_PAINT = {
+  white: { body: '#f4f3ee', panel: '#d9d9d2', roof: '#ffffff' },
+  charcoal: { body: '#3e4249', panel: '#2d3036', roof: '#4c5159' },
+} as const;
+
+export type TruckPaint = keyof typeof TRUCK_PAINT;
+
+/** A pickup seen from above, nose along `heading`; `len` is bumper to bumper. */
+export function drawPickup(ctx: Ctx, x: number, y: number, heading: number, paint: TruckPaint, len = 100): void {
+  const col = TRUCK_PAINT[paint];
+  const W = len * 0.44;
+  const H = len / 2;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(heading);
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.roundRect(-H + 4, -W / 2 + 5, len, W, 9);
+  ctx.fillStyle = C.shadowDeep;
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  // Tyres peek out past the body.
+  ctx.fillStyle = '#26262b';
+  for (const wx of [-H * 0.62, H * 0.58])
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.roundRect(wx - 9, s * (W / 2) - 4, 18, 8, 3);
+      ctx.fill();
+      ctx.stroke();
+    }
+  // Body.
+  ctx.beginPath();
+  ctx.roundRect(-H, -W / 2, len, W, 9);
+  ctx.fillStyle = col.body;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Bed with its liner, and the tailgate.
+  const bedEnd = -H * 0.12;
+  ctx.beginPath();
+  ctx.roundRect(-H + 4, -W / 2 + 4, bedEnd + H - 6, W - 8, 4);
+  ctx.fillStyle = '#2e2f33';
+  ctx.fill();
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 1; i < 4; i++) {
+    const ly = -W / 2 + 4 + ((W - 8) * i) / 4;
+    ctx.moveTo(-H + 7, ly);
+    ctx.lineTo(bedEnd - 4, ly);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  // Cab roof between the rear window and the windshield.
+  const cabFront = H * 0.36;
+  ctx.fillStyle = '#9fd3ea';
+  ctx.beginPath();
+  ctx.roundRect(bedEnd + 2, -W / 2 + 6, 6, W - 12, 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cabFront - 2, -W / 2 + 6);
+  ctx.lineTo(cabFront + 8, -W / 2 + 8);
+  ctx.lineTo(cabFront + 8, W / 2 - 8);
+  ctx.lineTo(cabFront - 2, W / 2 - 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(bedEnd + 9, -W / 2 + 5, cabFront - bedEnd - 12, W - 10, 5);
+  ctx.fillStyle = col.roof;
+  ctx.fill();
+  ctx.stroke();
+  // Hood seam and mirrors.
+  ctx.strokeStyle = col.panel;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(cabFront + 14, -W / 2 + 7);
+  ctx.quadraticCurveTo(H - 4, 0, cabFront + 14, W / 2 - 7);
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  ctx.fillStyle = col.body;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.roundRect(cabFront - 6, s * (W / 2 + 2) - 3, 7, 6, 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  // Headlights.
+  ctx.fillStyle = '#fff3c4';
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.roundRect(H - 5, s * (W / 2 - 7) - 3, 4, 6, 1);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * Jason's motorcycle, side on, facing `faceX`. Riders (if any) are drawn between the two
+ * passes: `front` adds the tank, bars and front fork over their legs.
+ */
+export function drawMotorcycle(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number, lean = 0): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.rotate(lean);
+  ctx.strokeStyle = C.ink;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (front) {
+    // Tank, front fork and handlebars.
+    ctx.beginPath();
+    ctx.ellipse(6, -21, 10, 5.5, -0.1, 0, Math.PI * 2);
+    ctx.fillStyle = '#1f2a44';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(1, -23);
+    ctx.lineTo(9, -24);
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(22, -9);
+    ctx.lineTo(16, -30);
+    ctx.stroke();
+    ctx.strokeStyle = '#c9ced4';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(16, -30);
+    ctx.lineTo(12, -33);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 30, 4.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  // Wheels with spokes.
+  for (const wx of [-20, 22]) {
+    ctx.beginPath();
+    ctx.arc(wx, -9, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#26262b';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(wx, -9, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#9aa5ad';
+    ctx.fill();
+    ctx.strokeStyle = '#5d636b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = spin + (i * Math.PI) / 3;
+      ctx.moveTo(wx + Math.cos(a) * 5, -9 + Math.sin(a) * 5);
+      ctx.lineTo(wx - Math.cos(a) * 5, -9 - Math.sin(a) * 5);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+  }
+  // Frame, engine, exhaust and the long seat.
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-20, -9);
+  ctx.lineTo(-6, -18);
+  ctx.lineTo(16, -18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(-6, -16, 16, 10, 3);
+  ctx.fillStyle = '#5d636b';
+  ctx.fill();
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-2, -6);
+  ctx.lineTo(-26, -5);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = '#c9ced4';
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  ctx.beginPath();
+  ctx.roundRect(-24, -24, 26, 6, 3);
+  ctx.fillStyle = '#2b2a30';
+  ctx.fill();
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // Rear fender.
+  ctx.beginPath();
+  ctx.arc(-20, -9, 11, Math.PI * 1.1, Math.PI * 1.75);
+  ctx.strokeStyle = '#1f2a44';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+}

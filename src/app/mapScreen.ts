@@ -35,6 +35,8 @@ export function paintMap(
   maxH: number,
   /** Where each activity's person is right now (defaults to their usual spot). */
   where: (id: GameId) => { x: number; y: number } = (id) => ACTIVITIES.find((a) => a.id === id)!.station,
+  /** Activities to leave off the map (still locked). */
+  hide: (id: GameId) => boolean = () => false,
 ): MapHit[] {
   const aspect = map.width / map.height;
   let w = maxW;
@@ -131,6 +133,7 @@ export function paintMap(
   const hits: MapHit[] = [];
   const r = 19 / s;
   for (const a of ACTIVITIES) {
+    if (hide(a.id)) continue;
     const { x, y } = where(a.id);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);

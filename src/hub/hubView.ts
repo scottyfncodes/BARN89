@@ -7,11 +7,11 @@ import { C } from '../render/palette';
 import { drawPerson, paintPortrait, type PersonAction } from '../render/people';
 import type { BuildingSprites, TreeSprites } from '../render/sprites';
 import type { TerrainTiles } from '../render/terrain';
-import { drawMower, drawScooter, type MowerPaint } from '../render/vehicles';
+import { drawMotorcycle, drawMower, drawScooter, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
-import { MOWER_PARKED, type Npc, type Sport } from './family';
+import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
 import type { HubEvent, Homestead } from './homestead';
-import { HUNT_ITEMS, ORNAMENTS, ROUNDS_TASKS, type OrnamentDef } from './missions';
+import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -123,6 +123,8 @@ export class HubView extends WorldView {
         // Soft rings where activities start.
         if (!m) {
           for (const a of ACTIVITIES) {
+            if (a.id === 'race' && !h.raceOpen) continue;
+            if (!a.fixed && onOuting(h, a.who)) continue;
             // The ring goes wherever the person is (Megan on the mower gets a bigger one).
             const st = h.stationPos(a);
             if (!inBox(st, v, 80)) continue;
@@ -136,6 +138,24 @@ export class HubView extends WorldView {
             ctx.lineDashOffset = -clock * 10;
             ctx.strokeStyle = near ? 'rgba(255,246,200,0.95)' : 'rgba(255,248,220,0.55)';
             ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+        if (m?.kind === 'race') {
+          // The next gate glows; the one after is faint, so you can see where you're headed.
+          for (let i = m.gate; i < Math.min(RACE_COURSE.length, m.gate + 2); i++) {
+            const g = RACE_COURSE[i];
+            if (!inBox(g, v, 80)) continue;
+            const next = i === m.gate;
+            const pulse = 0.5 + 0.5 * Math.sin(clock * 5);
+            ctx.beginPath();
+            ctx.ellipse(g.x, g.y, RACE_GATE_R, RACE_GATE_R * 0.42, 0, 0, Math.PI * 2);
+            ctx.fillStyle = next ? `rgba(255,220,110,${0.3 + pulse * 0.2})` : 'rgba(255,255,255,0.14)';
+            ctx.fill();
+            ctx.setLineDash(next ? [] : [6, 6]);
+            ctx.strokeStyle = next ? '#fff3b0' : 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = next ? 3.5 : 2;
             ctx.stroke();
             ctx.setLineDash([]);
           }
@@ -164,13 +184,58 @@ export class HubView extends WorldView {
       },
       actors: (items, v) => {
         const ctx = this.ctx;
-        items.push({ y: py, draw: () => drawMe(ctx, false) });
+        // Jason's motorcycle: parked, or out with Jason and Natalie (or the explorer) aboard.
+        const moto = h.family.moto;
+        const seated = (seat: MotoSeat) => {
+          if (moto?.player === seat) return 'me';
+          const n = h.npcs.find((x) => x.who === MOTO_RIDERS[seat]);
+          return n && n.outing === 'moto' && moto && moto.phase !== 'gather' ? n : null;
+        };
+        const driver = seated('driver');
+        const passenger = seated('passenger');
+        const lead = driver ?? passenger;
+        const bx = lead === 'me' ? px : lead ? lerp(lead.px, lead.x, alpha) : MOTO_PARKED.x;
+        const by = lead === 'me' ? py : lead ? lerp(lead.py, lead.y, alpha) : MOTO_PARKED.y;
+        const bf = moto && lead ? moto.faceX : 1;
+        if (inBox({ x: bx, y: by }, v, 60)) {
+          const spin = clock * (lead ? 18 : 0);
+          const rider = (r: Npc | 'me' | null, seat: MotoSeat) => {
+            if (!r) return;
+            const L = r === 'me' ? me : FAMILY[r.who].look;
+            const off = seat === 'driver' ? 3 : -11;
+            drawPerson(ctx, L, { x: bx + bf * off, y: by - 7, faceX: bf, speed01: 0, walkPhase: 0, clock, action: seat === 'driver' ? 'point' : 'none', hat: r === 'me' ? this.hat : undefined, ghost: true });
+          };
+          items.push({
+            y: by,
+            draw: () => {
+              drawMotorcycle(ctx, bx, by, bf, false, spin);
+              rider(passenger, 'passenger');
+              rider(driver, 'driver');
+              drawMotorcycle(ctx, bx, by, bf, true, spin);
+            },
+          });
+        }
+        if (!moto?.player) items.push({ y: py, draw: () => drawMe(ctx, false) });
         const ride = h.family.mow && h.family.mow.phase !== 'walk' ? h.family.mow : null;
         for (const n of h.npcs) {
           const x = lerp(n.px, n.x, alpha);
           const y = lerp(n.py, n.y, alpha);
           if (!inBox({ x, y }, v, 40)) continue;
           const L = FAMILY[n.who].look;
+          if (n.outing === 'moto' && moto && moto.phase !== 'gather') continue;
+          if (n.outing === 'race') {
+            // Your rival, on a scooter of their own.
+            const fx = n.faceX;
+            items.push({
+              y,
+              draw: () => {
+                drawScooter(ctx, x, y, fx, false, clock * 12);
+                drawPerson(ctx, L, { x, y: y - 6, faceX: fx, speed01: 0, walkPhase: 0, clock: clock + n.home.x, action: 'point', ghost: true });
+                drawScooter(ctx, x, y, fx, true, 0);
+              },
+            });
+            continue;
+          }
           if (ride && n.outing === 'mow') {
             // Megan out on Jay's mower.
             const heading = ride.heading;
@@ -193,6 +258,12 @@ export class HubView extends WorldView {
                 ...npcGesture(n, clock),
               }),
           });
+        }
+        // The start line by the treehouse, once scooter races are open.
+        if ((h.raceOpen || m?.kind === 'race') && inBox(RACE_START, v, 60)) items.push({ y: RACE_START.y - 30, draw: () => drawStartLine(ctx, RACE_START.x, RACE_START.y, clock) });
+        if (m?.kind === 'race') {
+          const g = RACE_COURSE[m.gate];
+          if (g && g !== RACE_START && inBox(g, v, 60)) items.push({ y: g.y, draw: () => drawGateFlags(ctx, g.x, g.y, m.gate, clock) });
         }
         // Jay's mower parked at his spot, ready to go (unless Megan's got it).
         if (!ride && inBox(MOWER_PARKED, v, 60)) {
@@ -341,7 +412,9 @@ export class HubView extends WorldView {
           });
         }
       },
-      ghosts: (ctx) => drawMe(ctx, true),
+      ghosts: (ctx) => {
+        if (!h.family.moto?.player) drawMe(ctx, true);
+      },
       overlay: (ctx, v) => {
         for (const c of h.cats) {
           if (c.emote === 'none' || !inBox(c, v, 20)) continue;
@@ -354,7 +427,7 @@ export class HubView extends WorldView {
         });
         // Name tags over family members when you're close.
         for (const n of h.gathered ? [] : h.npcs) {
-          if (dist(n, p) > 240) continue;
+          if (dist(n, p) > 240 || onOuting(h, n.who)) continue;
           const L = FAMILY[n.who];
           this.bubbleText(ctx, n.x, n.y - 64 * L.look.scale - 12, L.name, C.barnRed);
         }
@@ -362,7 +435,7 @@ export class HubView extends WorldView {
         if (!m && !h.gathered) {
           for (const a of ACTIVITIES) {
             const st = h.stationPos(a);
-            if (!this.untried.has(a.id) || !inBox(st, v, 60)) continue;
+            if (!this.untried.has(a.id) || !inBox(st, v, 60) || (a.id === 'race' && !h.raceOpen) || (!a.fixed && onOuting(h, a.who))) continue;
             const who = FAMILY[a.who].look.scale;
             const sx = st.x + 16;
             const sy = st.y - 70 * who - 18 + Math.sin(clock * 3) * 2;
@@ -386,6 +459,15 @@ export class HubView extends WorldView {
               c.fillText(String(ROUNDS_TASKS.indexOf(t) + 1), 0, 1);
             });
           }
+        } else if (m?.kind === 'race') {
+          const g = RACE_COURSE[m.gate];
+          if (g) this.edgeMarker(ctx, left, top, z, g.x, g.y, this.guideRect, (c) => {
+            c.fillStyle = C.ink;
+            c.font = '900 13px ui-rounded, system-ui, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(String((m.gate % RACE_GATES.length) + 1), 0, 1);
+          });
         } else if (m?.kind === 'hunt' && m.hintT > 0) {
           const it = h.huntTarget();
           if (it) this.edgeMarker(ctx, left, top, z, it.x, it.y, this.guideRect, (c) => {
@@ -503,6 +585,75 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
   }
 }
 
+/** Two posts and a checkered banner: the scooter race start and finish. */
+function drawStartLine(ctx: Ctx, x: number, y: number, clock: number): void {
+  const half = 46;
+  ctx.save();
+  ctx.translate(x, y);
+  // Checkered line on the grass.
+  for (let i = -6; i < 6; i++)
+    for (let j = 0; j < 2; j++) {
+      ctx.fillStyle = (i + j) % 2 ? 'rgba(255,255,255,0.85)' : 'rgba(43,42,48,0.75)';
+      ctx.fillRect(i * 7.6, -4 + j * 4, 7.6, 4);
+    }
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.6;
+  for (const s of [-1, 1]) {
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(s * half - 2, -54, 4, 54);
+    ctx.strokeRect(s * half - 2, -54, 4, 54);
+  }
+  // The banner, flapping a little.
+  const sag = Math.sin(clock * 2.4) * 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-half, -54);
+  ctx.quadraticCurveTo(0, -48 + sag, half, -54);
+  ctx.lineTo(half, -42);
+  ctx.quadraticCurveTo(0, -36 + sag, -half, -42);
+  ctx.closePath();
+  ctx.save();
+  ctx.clip();
+  for (let i = -8; i < 8; i++)
+    for (let j = 0; j < 3; j++) {
+      ctx.fillStyle = (i + j) % 2 ? '#fffaf0' : '#2b2a30';
+      ctx.fillRect(i * 6, -56 + j * 6 + sag * 0.5, 6, 6);
+    }
+  ctx.restore();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Little flags either side of the next race gate, with its number. */
+function drawGateFlags(ctx: Ctx, x: number, y: number, gate: number, clock: number): void {
+  ctx.save();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  for (const s of [-1, 1]) {
+    const fx = x + s * (RACE_GATE_R - 6);
+    ctx.beginPath();
+    ctx.moveTo(fx, y);
+    ctx.lineTo(fx, y - 30);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(fx, y - 30);
+    ctx.lineTo(fx + 12, y - 26 + Math.sin(clock * 4 + s) * 1.5);
+    ctx.lineTo(fx, y - 21);
+    ctx.closePath();
+    ctx.fillStyle = C.gold;
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.font = '900 13px ui-rounded, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#fff8e9';
+  const label = String((gate % RACE_GATES.length) + 1);
+  ctx.strokeText(label, x, y - 18);
+  ctx.fillStyle = C.ink;
+  ctx.fillText(label, x, y - 18);
+  ctx.restore();
+}
+
 /** Football (spiral), baseball or soccer ball, with its shadow on the grass. */
 function drawSportBall(ctx: Ctx, x: number, y: number, lift: number, sport: Sport, clock: number): void {
   ctx.beginPath();
@@ -559,6 +710,14 @@ function drawSportBall(ctx: Ctx, x: number, y: number, lift: number, sport: Spor
     ctx.fill();
   }
   ctx.restore();
+}
+
+/** Out on the motorcycle or racing: no ring, star or name tag following them about. */
+function onOuting(h: Homestead, who: string): boolean {
+  const n = h.npcs.find((x) => x.who === who);
+  if (!n) return false;
+  if (n.outing === 'race') return true;
+  return n.outing === 'moto' && !!h.family.moto && h.family.moto.phase !== 'gather';
 }
 
 function inBox(p: { x: number; y: number }, v: Box, pad: number): boolean {

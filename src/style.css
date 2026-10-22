@@ -1495,3 +1495,8 @@ body[data-scene='woodpile'] #hint {
     margin-top: 2px;
   }
 }
+
+.big-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

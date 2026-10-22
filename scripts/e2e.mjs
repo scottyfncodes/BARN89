@@ -99,7 +99,7 @@ async function portrait() {
   // Board and map.
   await page.click('#hub-hud [data-open="board"]');
   check('activity board opens', await visible(page, '#board'));
-  check('board lists five activities', (await page.locator('#board-list li').count()) === 5);
+  check('board lists six activities', (await page.locator('#board-list li').count()) === 6);
   await page.screenshot({ path: `${OUT}/p-board.png` });
   await page.click('#board [data-close]');
   await page.click('#hub-hud [data-open="map"]');

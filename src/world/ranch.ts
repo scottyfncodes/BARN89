@@ -78,6 +78,10 @@ function props(): PropDef[] {
     // Main house surroundings.
     { kind: 'trampoline', x: 810, y: 1012, w: 40, solid: true },
     { kind: 'bench', x: 1060, y: 935, w: 40 },
+    // Jason's big white truck, beside the main house.
+    { kind: 'pickup', x: 548, y: 790, w: 108, angle: Math.PI / 2, color: 'white', solid: true },
+    // Grandpa's (Jimmy's) dark charcoal truck, on his drive by the shop.
+    { kind: 'pickup', x: 1832, y: 352, w: 98, angle: Math.PI / 2, color: 'charcoal', solid: true },
     // The treehouse at the south-east corner of the main house.
     { kind: 'treehouse', x: 1150, y: 960, solid: true },
     { kind: 'doghouse', x: 650, y: 975, solid: true },

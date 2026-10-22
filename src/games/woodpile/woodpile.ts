@@ -79,6 +79,16 @@ export interface WoodResult {
 type Phase = 'ready' | 'arrive' | 'aim' | 'swing' | 'stuck' | 'split' | 'slide' | 'drop' | 'toss' | 'celebrating' | 'complete';
 
 const PIECE_W: Record<LogKind, number> = { small: 30, round: 38, big: 34 };
+
+export type Fit = 'snug' | 'ok' | 'gappy' | 'tumble';
+
+/** How a piece dropped at `x` lands against the open slot at `slot`. */
+export function landingFit(x: number, slot: number): Fit {
+  // Landing on top of the last piece rolls it off; a little overlap just gets nudged into place.
+  if (x < slot - 12) return 'tumble';
+  const gap = Math.abs(x - slot);
+  return gap <= 5 ? 'snug' : gap <= 15 ? 'ok' : 'gappy';
+}
 const PIECES: Record<LogKind, number> = { small: 2, round: 2, big: 4 };
 
 /** Woodpile: time the swing to split each log, then drop the pieces snugly onto the rack. */
@@ -258,16 +268,16 @@ export class WoodGame {
     const slot = this.rowRight;
     const ri = this.rowIndex;
     this.maxPts += 40;
-    if (d.x < slot - 12) {
+    const fit = landingFit(d.x, slot);
+    if (fit === 'tumble') {
       // Landed on the last piece and rolled off.
       this.wobble += 0.2;
       this.fallers.push({ w: d.w, x: d.x, y: -ri * ROW_H - ROW_H, vy: -60, vx: -40, rot: 0, vr: -3, shade: d.shade, life: 1.4 });
       this.events.push({ type: 'tumble' });
     } else {
-      // A little overlap just gets nudged into place.
       const gap = Math.abs(d.x - slot);
       const x = Math.max(slot, d.x);
-      const grade = gap <= 5 ? 'snug' : gap <= 15 ? 'ok' : 'gappy';
+      const grade = fit;
       if (grade === 'snug') {
         this.stackPts += 40;
         this.snugs++;

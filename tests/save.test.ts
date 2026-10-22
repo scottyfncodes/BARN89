@@ -131,3 +131,12 @@ describe('progression', () => {
     for (const r of REWARDS) if (r.stars !== undefined) expect(r.stars, r.id).toBeLessThanOrEqual(MAX_STARS);
   });
 });
+
+describe('scooter races', () => {
+  it('open up along with the scooter', () => {
+    const s = freshSave();
+    expect(isUnlocked(s, 'race-1')).toBe(false);
+    s.stars['kitten-1'] = 3;
+    expect(isUnlocked(s, 'race-1')).toBe(true);
+  });
+});

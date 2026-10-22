@@ -1,7 +1,7 @@
 import type { SaveData } from '../core/save';
 import type { FamilyId, HatKind } from './cast';
 
-export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt';
+export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt' | 'race';
 
 export interface Challenge {
   id: string;
@@ -18,6 +18,8 @@ export interface Activity {
   line: string;
   /** Where they stand on the homestead. */
   station: { x: number; y: number };
+  /** Starts at a fixed spot rather than wherever the person has wandered to. */
+  fixed?: boolean;
   challenges: Challenge[];
 }
 
@@ -73,6 +75,16 @@ export const ACTIVITIES: Activity[] = [
     station: { x: 1625, y: 728 },
     challenges: [{ id: 'hunt-1', game: 'hunt', name: 'Lost and Found', blurb: 'Follow his clues, then crack the lockbox.' }],
   },
+  {
+    id: 'race',
+    title: 'Scooter Races',
+    who: 'natalie',
+    line: 'Two laps round the place on the scooters. First one back wins!',
+    // The start line by the treehouse (see RACE_START in hub/missions.ts).
+    station: { x: 1000, y: 1110 },
+    fixed: true,
+    challenges: [{ id: 'race-1', game: 'race', name: 'Round the Place', blurb: 'Two laps through the gates, through the arena and back. Beat your rival home.' }],
+  },
 ];
 
 /** How-to lines shown on each activity's intro card (HTML, <b> for verbs). */
@@ -90,16 +102,22 @@ export const HOWTO: Record<GameId, string[]> = {
     'Lost a patch? An arrow at the edge points to the nearest tall grass.',
   ],
   woodpile: [
-    '<b>Tap</b> when the marker is in the <b>gold</b> to split the log clean. Green is fine. Miss and the axe sticks.',
-    'Then <b>tap</b> to drop each piece <b>snug</b> against the last one on the rack.',
+    'Two steps, over and over. <b>1, split</b>: tap when the marker is in the <b>gold</b> (it lights up). Green is fine; miss and the axe sticks.',
+    '<b>2, stack</b>: each piece slides along the rack. Tap when the line under it turns <b>green</b> over the glowing spot.',
     'Gappy stacks wobble, and a wobbly row falls over.',
-    'Mossy, mushroomy logs are rotten: <b>Toss it</b> onto the burn pile instead.',
+    'Mossy, mushroomy logs are rotten: tap <b>Toss rotten</b> instead of splitting them.',
   ],
   rounds: [
     'Six chores around the homestead. Do them <b>in any order</b>, as fast as you can.',
     'Walk into a glowing ring and tap the button to do the chore.',
     'The eggs go to the kitchen, so collect them first.',
     'Numbered arrows at the screen edge point to chores you can do next.',
+  ],
+  race: [
+    'Everyone rides a scooter. <b>Drag</b> to steer, same as walking.',
+    'Ride through the <b>glowing gates</b> in order. The arrow at the edge points to the next one.',
+    'Two laps, through the arena and round the jumps. Your rival is racing too.',
+    'Win and finish fast for three stars.',
   ],
   hunt: [
     'Grandpa gives you a clue. Find the spot, and the lost thing will glint when you are close.',
@@ -129,6 +147,8 @@ export const MAX_STARS = ALL_CHALLENGES.length * 3;
 
 /** A challenge opens once the one before it in the same game has at least one star. */
 export function isUnlocked(s: SaveData, id: string): boolean {
+  // Scooter races come with Natalie's scooter.
+  if (id.startsWith('race-') && !rewardUnlocked(s, REWARDS.find((r) => r.id === 'scooter')!)) return false;
   for (const a of ACTIVITIES) {
     const i = a.challenges.findIndex((c) => c.id === id);
     if (i < 0) continue;
@@ -168,7 +188,7 @@ export const REWARDS: Reward[] = [
   { id: 'hat-santa', name: 'Santa hat', desc: 'Festive. Slightly floppy.', stars: 12, kind: 'hat', hat: 'santa' },
   { id: 'holiday', name: 'Christmas lights', desc: 'Lights on every roof, and a little snow.', stars: 15, kind: 'decor' },
   { id: 'mower-gold', name: 'Golden mower', desc: 'For the true Yard Boss.', stars: 20, kind: 'mower' },
-  { id: 'scooter', name: "Natalie's e-scooter", desc: 'Natalie zips around the homestead on her e-scooter whenever she is the one exploring.', how: 'kitten', kind: 'scooter' },
+  { id: 'scooter', name: "Natalie's e-scooter", desc: 'Natalie zips around the homestead on her e-scooter whenever she is the one exploring. Scooter races open up too.', how: 'kitten', kind: 'scooter' },
   { id: 'hat-beanie', name: 'Barn cat beanie', desc: 'Pet every barn cat on the homestead.', how: 'pets', kind: 'hat', hat: 'beanie' },
   { id: 'bulbs', name: 'Fixed string lights', desc: "Finish Grandpa's Treasure Hunt. Every old bulb at Barn 89 shines again.", how: 'hunt', kind: 'decor' },
 ];

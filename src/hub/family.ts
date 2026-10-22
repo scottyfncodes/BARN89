@@ -62,7 +62,7 @@ export interface Npc {
   /** Stopped to talk to you. */
   attending: boolean;
   /** On an outing that moves them about (see FamilyLife). */
-  outing: 'mow' | 'sport' | null;
+  outing: 'mow' | 'sport' | 'moto' | 'race' | null;
 }
 
 const station = (who: FamilyId): Vec => ({ ...ACTIVITIES.find((a) => a.who === who)!.station });
@@ -137,6 +137,74 @@ export interface SportSession {
   flying: { from: Vec; to: Vec; t: number; flight: number } | null;
 }
 
+/* --- Jason and Natalie on Jason's motorcycle ----------------------------------------------- */
+
+/** Where the motorcycle lives, nose east, just south of Jason's truck. */
+export const MOTO_PARKED = { x: 548, y: 874 };
+/**
+ * A ride along the property's roads: down the access road to the barns and back, then a lap
+ * of the driveway loop and the north drive, and home.
+ */
+export const MOTO_ROUTE: Vec[] = [
+  { x: 430, y: 770 },
+  { x: 350, y: 840 },
+  { x: 300, y: 1000 },
+  { x: 290, y: 1200 },
+  { x: 330, y: 1380 },
+  { x: 460, y: 1530 },
+  { x: 640, y: 1690 },
+  { x: 840, y: 1870 },
+  { x: 1020, y: 2030 },
+  { x: 1200, y: 2180 },
+  { x: 1380, y: 2265 },
+  { x: 1600, y: 2272 },
+  { x: 1880, y: 2280 },
+  { x: 1600, y: 2272 },
+  { x: 1380, y: 2265 },
+  { x: 1200, y: 2180 },
+  { x: 1020, y: 2030 },
+  { x: 840, y: 1870 },
+  { x: 640, y: 1690 },
+  { x: 460, y: 1530 },
+  { x: 330, y: 1380 },
+  { x: 290, y: 1200 },
+  { x: 300, y: 1000 },
+  { x: 350, y: 840 },
+  { x: 450, y: 700 },
+  { x: 600, y: 600 },
+  { x: 760, y: 560 },
+  { x: 900, y: 500 },
+  { x: 1020, y: 590 },
+  { x: 1160, y: 625 },
+  { x: 1300, y: 570 },
+  { x: 1440, y: 400 },
+  { x: 1540, y: 220 },
+  { x: 1590, y: 100 },
+  { x: 1400, y: 92 },
+  { x: 1100, y: 87 },
+  { x: 830, y: 95 },
+  { x: 845, y: 330 },
+  { x: 900, y: 480 },
+  { x: 760, y: 560 },
+  { x: 600, y: 600 },
+  { x: 450, y: 700 },
+  { x: 430, y: 770 },
+];
+
+export type MotoSeat = 'driver' | 'passenger';
+export const MOTO_RIDERS: Record<MotoSeat, FamilyId> = { driver: 'jason', passenger: 'natalie' };
+
+export interface MotoRide {
+  phase: 'gather' | 'ride' | 'park';
+  x: number;
+  y: number;
+  faceX: number;
+  wp: number;
+  /** Seat the explorer is in, if they came along. */
+  player: MotoSeat | null;
+  t: number;
+}
+
 /* --- Grandpa's putts ----------------------------------------------------------------------- */
 
 export interface Putt {
@@ -153,6 +221,9 @@ export class FamilyLife {
   mow: MowRide | null = null;
   sport: SportSession | null = null;
   putt: Putt | null = null;
+  moto: MotoRide | null = null;
+  /** Seconds until Jason and Natalie next head out on the motorcycle (by themselves). */
+  motoT: number;
   /** Seconds until Jay and Jason next head out to practise. */
   sportT: number;
   private sportN = 0;
@@ -163,6 +234,7 @@ export class FamilyLife {
     private readonly rng: Rng,
   ) {
     this.sportT = rng.range(20, 40);
+    this.motoT = rng.range(60, 110);
   }
 
   create(who: FamilyId): Npc {
@@ -200,6 +272,7 @@ export class FamilyLife {
     this.mow = null;
     this.sport = null;
     this.putt = null;
+    this.moto = null;
     for (const n of npcs) {
       n.outing = null;
       n.target = null;
@@ -216,19 +289,21 @@ export class FamilyLife {
   }
 
   update(npcs: Npc[], player: Vec & { vx: number; vy: number }, dt: number, gathered: boolean): void {
+    // On the back of the motorcycle, nobody needs to stop and chat.
+    const riding = !!this.moto?.player;
     const by = (w: FamilyId) => npcs.find((n) => n.who === w);
     for (const n of npcs) {
       n.px = n.x;
       n.py = n.y;
       const d = dist(n, player);
       const near = d < 170;
-      if (near && !n.near) n.waveT = 1.4;
+      if (near && !n.near && n.outing !== 'race') n.waveT = 1.4;
       n.near = near;
       n.waveT = Math.max(0, n.waveT - dt);
       n.cheerT = Math.max(0, n.cheerT - dt);
       n.busyT = Math.max(0, n.busyT - dt);
       if (gathered) continue;
-      n.attending = d < NPC_ATTEND;
+      n.attending = d < NPC_ATTEND && !riding;
       if (n.attending) {
         // Drop everything to talk (a putt already rolling finishes on its own).
         if (n.gesture !== 'throw' && n.gesture !== 'catch') n.busyT = 0;
@@ -236,8 +311,9 @@ export class FamilyLife {
         continue;
       }
       if (n.outing === 'mow') this.updateMow(n, dt);
-      else if (n.outing !== 'sport') this.updateRoutine(n, dt);
+      else if (!n.outing) this.updateRoutine(n, dt);
     }
+    if (!gathered) this.updateMoto(npcs, dt);
     this.updatePutt(dt, by('grandpa'));
     const jay = by('jay');
     const jason = by('jason');
@@ -445,6 +521,116 @@ export class FamilyLife {
       n.stayT = this.rng.range(...n.stop.stay);
       n.target = { ...n.stop.at };
     }
+  }
+
+  /* --- Jason and Natalie on the motorcycle ------------------------------------------------- */
+
+  /**
+   * Head out on the motorcycle. `player` is the seat the explorer takes (they're standing at
+   * the bike); otherwise both riders are family members and walk over first.
+   */
+  startMoto(npcs: Npc[], player: MotoSeat | null): boolean {
+    if (this.moto) return false;
+    const riders = (Object.keys(MOTO_RIDERS) as MotoSeat[]).filter((s) => s !== player).map((s) => npcs.find((n) => n.who === MOTO_RIDERS[s]));
+    if (riders.some((n) => !n || n.outing)) return false;
+    for (const n of riders as Npc[]) {
+      n.outing = 'moto';
+      n.hold = null;
+      n.target = null;
+      n.path = null;
+      n.busyT = 0;
+    }
+    this.moto = { phase: 'gather', x: MOTO_PARKED.x, y: MOTO_PARKED.y, faceX: 1, wp: 0, player, t: 0 };
+    return true;
+  }
+
+  /** The explorer hops off wherever the bike is; the family member rides it home. */
+  hopOff(npcs: Npc[]): Vec | null {
+    const m = this.moto;
+    if (!m?.player) return null;
+    const at = { x: m.x, y: m.y + 26 };
+    if (m.player === 'driver') {
+      // Nobody left to ride it back: it's parked where Jason keeps it, and Natalie walks home.
+      this.endMoto(npcs, true);
+    } else {
+      m.player = null;
+      if (m.phase === 'ride') m.phase = 'park';
+    }
+    return at;
+  }
+
+  private riderSpot(seat: MotoSeat): Vec {
+    return { x: MOTO_PARKED.x + (seat === 'driver' ? 4 : -12), y: MOTO_PARKED.y + 2 };
+  }
+
+  private updateMoto(npcs: Npc[], dt: number): void {
+    const riders = npcs.filter((n) => n.outing === 'moto');
+    if (!this.moto) {
+      const jason = npcs.find((n) => n.who === MOTO_RIDERS.driver);
+      const nat = npcs.find((n) => n.who === MOTO_RIDERS.passenger);
+      if (!jason || !nat) return;
+      this.motoT -= dt;
+      const free = (n: Npc) => !n.outing && !n.attending && n.busyT <= 0;
+      if (this.motoT <= 0 && free(jason) && free(nat)) this.startMoto(npcs, null);
+      return;
+    }
+    const m = this.moto;
+    m.t += dt;
+    if (m.phase === 'gather') {
+      let all = true;
+      for (const n of riders) {
+        const seat: MotoSeat = n.who === MOTO_RIDERS.driver ? 'driver' : 'passenger';
+        if (!(this.walk(n, this.riderSpot(seat), dt, 70) || dist(n, this.riderSpot(seat)) < 2)) all = false;
+      }
+      if (all) m.phase = 'ride';
+      return;
+    }
+    // Walking up to them while they ride by pauses the ride for a chat.
+    if (!m.player && riders.some((n) => n.attending)) return;
+    const goal = m.phase === 'ride' ? MOTO_ROUTE[m.wp] : MOTO_PARKED;
+    const dx = goal.x - m.x;
+    const dy = goal.y - m.y;
+    const d = Math.hypot(dx, dy);
+    const step = Math.min(d, (m.phase === 'park' ? 90 : 175) * dt);
+    if (d > 0.01) {
+      m.x += (dx / d) * step;
+      m.y += (dy / d) * step;
+      if (Math.abs(dx) > 1) m.faceX = dx > 0 ? 1 : -1;
+    }
+    for (const n of riders) {
+      n.x = m.x;
+      n.y = m.y;
+      n.faceX = m.faceX;
+    }
+    if (d < 6) {
+      if (m.phase === 'park') this.endMoto(npcs, false);
+      else if (++m.wp >= MOTO_ROUTE.length) m.phase = 'park';
+    }
+  }
+
+  private endMoto(npcs: Npc[], instant: boolean): void {
+    this.moto = null;
+    this.motoT = this.rng.range(90, 150);
+    for (const n of npcs) {
+      if (n.outing !== 'moto') continue;
+      n.outing = null;
+      if (instant) {
+        n.x = n.px = MOTO_PARKED.x - 20;
+        n.y = n.py = MOTO_PARKED.y + 24;
+      } else {
+        n.x = n.px = MOTO_PARKED.x + (n.who === MOTO_RIDERS.driver ? 10 : -26);
+        n.y = n.py = MOTO_PARKED.y + 22;
+      }
+      n.stop = NPC_ROUTINES[n.who][0];
+      n.hold = n.stop.hold;
+      n.stayT = this.rng.range(...n.stop.stay);
+      n.target = { ...n.stop.at };
+    }
+  }
+
+  /** Where the explorer gets off at the end of a ride they came along on. */
+  motoDropOff(): Vec {
+    return { x: MOTO_PARKED.x - 10, y: MOTO_PARKED.y + 34 };
   }
 
   /** Where the ball is (world point, and height above the ground), for drawing. */

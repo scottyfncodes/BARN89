@@ -36,7 +36,7 @@ import { MOW_LEVELS } from './games/mower/levels';
 import { WOOD_ROUNDS } from './games/woodpile/woodpile';
 import { Homestead, LONG_TABLE, type HubEvent } from './hub/homestead';
 import { HubView } from './hub/hubView';
-import { HUNT_ITEMS, LOCKBOX_CODE, ROUNDS_TASKS } from './hub/missions';
+import { HUNT_ITEMS, LOCKBOX_CODE, RACE_GATES, RACE_LAPS, RACE_STAR_TIMES, ROUNDS_TASKS } from './hub/missions';
 import { drawDog, drawDonkey } from './render/animals';
 import { drawKittenFigure } from './render/characters';
 import { cleanName, NAME_MAX, NAMEABLE, NAMED_BY_FAMILY, nameFor } from './content/names';
@@ -88,6 +88,7 @@ let playT = 0;
 let lastStation: string | null = null;
 let lastAction = '';
 let lastMission = '';
+let motoEngine = false;
 let mapHits: MapHit[] = [];
 let introActivity: GameId = 'kitten';
 let introChallenge = '';
@@ -123,8 +124,9 @@ function applyLook(): void {
   if (c.mower !== 'red' && !u.has(`mower-${c.mower}`)) c.mower = 'red';
   if (c.ride && !u.has('ride-deputy')) c.ride = false;
   if (c.scooter && !u.has('scooter')) c.scooter = false;
-  // Natalie's scooter goes about half again as fast as walking.
-  const scooting = c.scooter && store.data.explorer === 'natalie';
+  // Natalie's scooter goes about half again as fast as walking; in a race, everyone rides one.
+  const scooting = hub.mission?.kind === 'race' || (c.scooter && store.data.explorer === 'natalie');
+  hub.raceOpen = isUnlocked(store.data, 'race-1');
   hubView.scooter = scooting;
   hub.player.maxSpeed = scooting ? 390 : 260;
   hubView.decor = decor();
@@ -232,6 +234,10 @@ function syncScreens(): void {
     if (mode === 'game') controls.reset();
   }
   if (covered && mode === 'hub') controls.reset();
+  if ((covered || mode !== 'hub') && motoEngine) {
+    sfx.setEngine(-1);
+    motoEngine = false;
+  }
   if (mode === 'game' && game instanceof WoodScene) controls.tapMode = !covered && !paused && !resultsUp;
   resize();
 }
@@ -458,6 +464,10 @@ function onHubEvent(e: HubEvent): void {
     case 'bray':
       sfx.bray();
       break;
+    case 'moto':
+      if (e.ride) toast.show(`<b>Hop on!</b>${e.partner}'s on the way. Hold on tight.`, 3);
+      else sfx.setEngine(-1);
+      break;
     case 'yip':
       if (Math.random() < 0.7) sfx.yip();
       break;
@@ -501,6 +511,36 @@ function onHubEvent(e: HubEvent): void {
     case 'sunday':
       openSunday();
       break;
+    case 'raceGo':
+      sfx.whistle();
+      toast.show('<b>Go!</b>Follow the glowing gates.', 1.6);
+      break;
+    case 'raceGate':
+      sfx.tick();
+      break;
+    case 'raceRival':
+      sfx.denied();
+      toast.show(`<b>${e.name} crossed the line!</b>Finish anyway, for the time.`, 2.6);
+      break;
+    case 'raceDone': {
+      sfx.victory();
+      const [s3, s2] = RACE_STAR_TIMES;
+      // Fast gets stars; winning is what gets the third.
+      let stars = e.seconds <= s3 ? 3 : e.seconds <= s2 ? 2 : 1;
+      if (!e.won) stars = Math.min(stars, 2);
+      showResults('race-1', {
+        stars,
+        score: Math.max(0, Math.round(3000 - e.seconds * 40 + (e.won ? 500 : 0))),
+        title: e.won ? 'You win!' : `${e.rival} wins this time`,
+        sub: e.won ? `Two laps in ${formatTime(e.seconds)}, and home before ${e.rival}.` : `Two laps in ${formatTime(e.seconds)}. ${e.rival} wants a rematch anyway.`,
+        lines: [
+          { label: 'Your time', value: formatTime(e.seconds) },
+          { label: e.rival, value: e.rivalSeconds !== null ? formatTime(e.rivalSeconds) : 'still racing' },
+        ],
+        finished: true,
+      });
+      break;
+    }
     case 'huntReady':
       sfx.discover();
       setTimeout(() => toast.show("<b>That's everything!</b>Take it all back to Grandpa.", 4), 3700);
@@ -545,13 +585,27 @@ function updateMissionHud(): void {
     key = `r${m.done.size}`;
     $('mission-time').textContent = formatTime(m.t);
   } else if (m?.kind === 'hunt') key = `h${m.step}${m.ready}${m.hints}`;
+  else if (m?.kind === 'race') {
+    key = `c${Math.ceil(m.countdown)}g${m.gate}r${m.rivalGate}${m.rivalDone !== null}`;
+    $('mission-time').textContent = m.countdown > 0 ? String(Math.ceil(m.countdown)) : formatTime(m.t);
+  }
   if (key === lastMission) return;
   lastMission = key;
   if (!m) {
     syncScreens();
     return;
   }
-  if (m.kind === 'rounds') {
+  if (m.kind === 'race') {
+    const per = RACE_GATES.length;
+    const lap = Math.min(RACE_LAPS, Math.floor(m.gate / per) + 1);
+    const gate = (m.gate % per) + 1;
+    const rival = FAMILY[m.rival].name;
+    const status =
+      m.rivalDone !== null ? `${rival} is home already. Finish strong!` : m.countdown > 0 ? `Racing ${rival}. Ready...` : m.rivalGate > m.gate ? `${rival} is ahead.` : m.rivalGate < m.gate ? `You're ahead of ${rival}.` : `Neck and neck with ${rival}.`;
+    $('mission-title').textContent = 'Scooter Race';
+    $('mission-body').innerHTML = `<p class="clue">Lap ${lap} of ${RACE_LAPS} · Gate ${gate} of ${per}. ${status}</p>`;
+    show($('mission-hint'), false);
+  } else if (m.kind === 'rounds') {
     $('mission-title').textContent = "Megan's Morning Rounds";
     $('mission-body').innerHTML = `<ol class="chores">${ROUNDS_TASKS.map((t, i) => `<li class="${m.done.has(t.id) ? 'done' : t.needs && !m.done.has(t.needs) ? 'wait' : ''}"><span>${i + 1}</span>${t.short}</li>`).join('')}</ol>`;
     show($('mission-hint'), false);
@@ -577,11 +631,16 @@ $('mission-quit').addEventListener('click', () => {
   sfx.click();
   const m = hub.mission;
   notice(
-    m?.kind === 'hunt' ? 'Stop the hunt?' : 'Stop the rounds?',
-    m?.kind === 'hunt' ? 'Things you found stay found. Talk to Grandpa to pick it back up.' : "The chores will wait. You can start again from Megan or the board.",
+    m?.kind === 'hunt' ? 'Stop the hunt?' : m?.kind === 'race' ? 'Stop the race?' : 'Stop the rounds?',
+    m?.kind === 'hunt'
+      ? 'Things you found stay found. Talk to Grandpa to pick it back up.'
+      : m?.kind === 'race'
+        ? 'Race again any time from the start line by the treehouse.'
+        : 'The chores will wait. You can start again from Megan or the board.',
     'Stop',
     () => {
       hub.endMission();
+      applyLook();
       lastMission = '';
       syncScreens();
     },
@@ -603,6 +662,12 @@ function hubFrame(dt: number): void {
     }
     if (steps === 6) acc = 0;
     playT += dt;
+    // The motorcycle's engine, while you're aboard and moving.
+    const ride = hub.family.moto;
+    const motoOn = !!ride?.player && ride.phase !== 'gather';
+    if (motoOn) sfx.setEngine(0.5);
+    else if (motoEngine) sfx.setEngine(-1);
+    motoEngine = motoOn;
     updatePrompt();
     updateMissionHud();
     // Back at Grandpa's with everything: open the lockbox.
@@ -616,7 +681,7 @@ function hubFrame(dt: number): void {
       open('lockbox');
     }
     // Coaching for first-timers.
-    if (hub.nearStation || stack.length) hint.set(null);
+    if (hub.nearStation || stack.length || hub.family.moto?.player) hint.set(null);
     else if (!hub.mission && playT < 14 && !controls.moved) hint.set('<em>Drag anywhere</em> to walk around the homestead.');
     else if (!hub.mission && playT > 4 && playT < 18 && !hub.nearStation && totalStars(store.data) === 0) hint.set('Look for the <em>glowing rings</em>. Each family member has a game.');
     else hint.set(null);
@@ -874,7 +939,7 @@ function openMap(): void {
   const panel = cv.parentElement!;
   const maxW = Math.min(Math.max(200, panel.clientWidth - 36), 560);
   const maxH = Math.max(200, window.innerHeight - 230);
-  mapHits = paintMap(cv, shared.map, { x: hub.player.x, y: hub.player.y, who: hub.explorer }, maxW, maxH, (id) => hub.stationPos(activity(id)));
+  mapHits = paintMap(cv, shared.map, { x: hub.player.x, y: hub.player.y, who: hub.explorer }, maxW, maxH, (id) => hub.stationPos(activity(id)), (id) => id === 'race' && !hub.raceOpen);
 }
 $('map-canvas').addEventListener('click', (e) => {
   const r = (e.target as HTMLElement).getBoundingClientRect();
@@ -908,7 +973,7 @@ function openIntro(id: GameId): void {
   requestAnimationFrame(() => paintPortrait($<HTMLCanvasElement>('intro-face'), who.look, { wave: true }));
   // Default to the first unlocked challenge without three stars.
   const unlocked = a.challenges.filter((c) => isUnlocked(store.data, c.id));
-  introChallenge = (unlocked.find((c) => (store.data.stars[c.id] ?? 0) < 3) ?? unlocked[unlocked.length - 1]).id;
+  introChallenge = (unlocked.find((c) => (store.data.stars[c.id] ?? 0) < 3) ?? unlocked[unlocked.length - 1] ?? a.challenges[0]).id;
   buildIntroChallenges();
   $('intro-howto').innerHTML = HOWTO[id].map((l) => `<li>${l}</li>`).join('');
   show($('intro-extra'), id === 'kitten');
@@ -926,7 +991,8 @@ function buildIntroChallenges(): void {
     b.className = `chal-btn ${c.id === introChallenge ? 'on' : ''} ${un ? '' : 'locked'}`;
     b.disabled = !un;
     b.setAttribute('aria-pressed', String(c.id === introChallenge));
-    b.innerHTML = `<b>${c.name}</b><span>${un ? starRow(store.data.stars[c.id] ?? 0, 3, 14) : `Get 1 star on ${a.challenges[i - 1]?.name} to unlock`}</span><small>${c.blurb}</small>`;
+    const lockedWhy = c.game === 'race' ? `Comes with Natalie's e-scooter: ${SCOOTER_STARS} stars in Kitten Cowgirl` : `Get 1 star on ${a.challenges[i - 1]?.name} to unlock`;
+    b.innerHTML = `<b>${c.name}</b><span>${un ? starRow(store.data.stars[c.id] ?? 0, 3, 14) : lockedWhy}</span><small>${c.blurb}</small>`;
     b.addEventListener('click', () => {
       sfx.click();
       introChallenge = c.id;
@@ -934,6 +1000,7 @@ function buildIntroChallenges(): void {
     });
     box.append(b);
   });
+  ($('intro-start') as HTMLButtonElement).disabled = !isUnlocked(store.data, introChallenge);
 }
 
 $('intro-start').addEventListener('click', () => {
@@ -1085,14 +1152,14 @@ function startChallenge(id: string): void {
   if (!isUnlocked(store.data, id)) return;
   currentChallenge = id;
   // Remember where they were standing (only when setting off from the homestead itself).
-  if (mode === 'hub') returnSpot = c.game === 'rounds' || c.game === 'hunt' ? null : { x: hub.player.x, y: hub.player.y };
+  if (mode === 'hub') returnSpot = c.game === 'rounds' || c.game === 'hunt' || c.game === 'race' ? null : { x: hub.player.x, y: hub.player.y };
   stack.length = 0;
   resultsUp = false;
   paused = false;
   cheerFor = null;
   toast.clear();
   reveal();
-  if (c.game === 'rounds' || c.game === 'hunt') {
+  if (c.game === 'rounds' || c.game === 'hunt' || c.game === 'race') {
     game?.exit();
     game = null;
     mode = 'hub';
@@ -1100,6 +1167,11 @@ function startChallenge(id: string): void {
       hub.startRounds();
       hubView.snap();
       toast.show('<b>Go!</b>Six chores, any order. The clock is running.', 3);
+    } else if (c.game === 'race') {
+      hub.startRace();
+      applyLook();
+      hubView.snap();
+      toast.show('<b>On your marks...</b>Two laps. Ride through every glowing gate.', 2.6);
     } else {
       if (store.data.hunt.done && !store.data.hunt.found.length) hub.huntFound.clear();
       hub.startHunt();
@@ -1237,7 +1309,10 @@ function showResults(id: string, r: SceneResult, before = unlockedRewards(store.
   $('next-btn').textContent = next ? `Next: ${next.name}` : 'Next';
   $('again-btn').textContent = r.finished ? 'Play again' : 'Try again';
   resultsUp = true;
-  if (mode === 'hub') hub.endMission();
+  if (mode === 'hub') {
+    hub.endMission();
+    applyLook();
+  }
   sfx.stopMusic();
   sfx.setEngine(-1);
   stack.length = 0;
