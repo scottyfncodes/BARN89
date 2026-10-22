@@ -1,5 +1,5 @@
 import { ACTIVITIES, type Activity } from '../content/activities';
-import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
+import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
 import { dist, fromAngle, Rng, type Vec } from '../core/math';
 import { COATS } from '../games/kitten/levels';
 import { PERSONALITIES, type Coat, type Personality } from '../games/kitten/kittenTypes';
@@ -7,8 +7,8 @@ import { createPlayer, updatePlayer } from '../games/kitten/player';
 import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
 import type { SharedWorld } from '../world/shared';
-import { FamilyLife, type Npc } from './family';
-import { HUNT_ITEMS, ORNAMENTS, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
+import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, type MotoSeat, type Npc } from './family';
+import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_RIVAL_SPEED, RACE_START, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
 
 /* ---------------------------------------------------------------------------------------- */
 /* Actors                                                                                     */
@@ -117,7 +117,8 @@ export type HubAction =
   | { kind: 'carrot'; label: string }
   | { kind: 'task'; label: string; task: string }
   | { kind: 'pickup'; label: string; item: string }
-  | { kind: 'sunday'; label: string };
+  | { kind: 'sunday'; label: string }
+  | { kind: 'moto'; label: string };
 
 export type HubEvent =
   | { type: 'ornament'; id: string; x: number; y: number; count: number }
@@ -134,6 +135,11 @@ export type HubEvent =
   | { type: 'huntItem'; id: string; text: string; x: number; y: number; left: number }
   | { type: 'huntReady' }
   | { type: 'sunday' }
+  | { type: 'moto'; partner: string; ride: boolean }
+  | { type: 'raceGo' }
+  | { type: 'raceGate'; gate: number; x: number; y: number }
+  | { type: 'raceRival'; name: string }
+  | { type: 'raceDone'; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
   | { type: 'yip'; x: number; y: number }
   | { type: 'pupPet'; name: string; text: string; x: number; y: number };
 
@@ -152,7 +158,21 @@ export interface HuntState {
   ready: boolean;
 }
 
-export type Mission = RoundsState | HuntState | null;
+export interface RaceState {
+  kind: 'race';
+  /** Seconds since the start. */
+  t: number;
+  /** Seconds left on the "ready, set" before you can go. */
+  countdown: number;
+  /** Next gate in RACE_COURSE. */
+  gate: number;
+  rival: FamilyId;
+  rivalGate: number;
+  /** When the rival crossed the line, if they have. */
+  rivalDone: number | null;
+}
+
+export type Mission = RoundsState | HuntState | RaceState | null;
 
 /** The long table under the Barn 89 string lights (see ranch.ts). */
 export const LONG_TABLE = { x: 1670, y: 2890 };
@@ -222,6 +242,8 @@ export class Homestead {
   readonly pen: PenDef;
   /** Everyone is at the long table for Sunday breakfast. */
   gathered = false;
+  /** Scooter races are open (Natalie's scooter is unlocked). */
+  raceOpen = false;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
@@ -406,6 +428,38 @@ export class Homestead {
 
   endMission(): void {
     this.mission = null;
+    // A rival heads home after the race.
+    for (const n of this.npcs) {
+      if (n.outing !== 'race') continue;
+      n.outing = null;
+      n.target = { ...n.stop.at };
+      n.path = null;
+    }
+  }
+
+  /** Line up at the start: you on a scooter, your rival (Jay, or Natalie) on another. */
+  startRace(): void {
+    this.family.reset(this.npcs, false);
+    const rival: FamilyId = this.explorer === 'natalie' ? 'jay' : 'natalie';
+    this.mission = { kind: 'race', t: 0, countdown: 3, gate: 0, rival, rivalGate: 0, rivalDone: null };
+    this.teleport(RACE_START.x - 22, RACE_START.y + 10);
+    this.player.faceX = 1;
+    const n = this.npcs.find((x) => x.who === rival);
+    if (n) {
+      n.outing = 'race';
+      n.x = n.px = RACE_START.x + 22;
+      n.y = n.py = RACE_START.y + 10;
+      n.target = null;
+      n.path = null;
+      n.faceX = 1;
+      n.busyT = 0;
+    }
+  }
+
+  /** Who you're racing, as a family member on the homestead. */
+  raceRival(): Npc | null {
+    const m = this.mission;
+    return m?.kind === 'race' ? (this.npcs.find((n) => n.who === m.rival) ?? null) : null;
   }
 
   /** Marker for the hunt hint: the current item while a hint is showing. */
@@ -431,9 +485,26 @@ export class Homestead {
     const p = this.player;
     p.px = p.x;
     p.py = p.y;
-    updatePlayer(p, input, this.shared.world, dt);
-
+    const wasRiding = !!this.family.moto?.player;
+    // Held at the start line until "go".
+    const held = this.mission?.kind === 'race' && this.mission.countdown > 0;
+    if (!wasRiding && !held) updatePlayer(p, input, this.shared.world, dt);
     this.family.update(this.npcs, this.player, dt, this.gathered);
+    const ride = this.family.moto;
+    if (ride?.player) {
+      // Along for the ride: sit tight on the seat.
+      p.vx = (ride.x - p.x) / dt;
+      p.vy = (ride.y - p.y) / dt;
+      p.x = ride.x;
+      p.y = ride.y;
+      if (Math.abs(p.vx) > 1) p.faceX = p.vx > 0 ? 1 : -1;
+      p.idleT = 0;
+    } else if (wasRiding && !ride) {
+      // Back home and parked: hop off beside the bike.
+      const at = this.family.motoDropOff();
+      this.teleport(at.x, at.y);
+      this.emit({ type: 'moto', partner: '', ride: false });
+    }
     this.updateBall(dt);
     for (const d of this.dogs) this.updateDog(d, dt);
     this.donkeysNotice();
@@ -442,15 +513,22 @@ export class Homestead {
     this.pups.forEach((d, i) => this.updatePup(d, i, dt));
     this.updateMission(dt);
     this.checkFinds(dt);
-    this.nearStation = this.mission ? null : this.findStation();
+    this.nearStation = this.mission || this.family.moto?.player ? null : this.findStation();
     this.action = this.findAction();
     if (actionPressed && this.action) this.doAction(this.action);
+  }
+
+  /** Which seat on Jason's motorcycle the explorer takes, if they're one of the two who ride it. */
+  private motoSeat(): MotoSeat | null {
+    if (this.explorer === MOTO_RIDERS.driver) return 'driver';
+    if (this.explorer === MOTO_RIDERS.passenger) return 'passenger';
+    return null;
   }
 
   /** Where an activity is right now: with the person who runs it, wherever they've got to. */
   stationPos(a: Activity): Vec {
     const n = this.npcs.find((x) => x.who === a.who);
-    return n ? { x: n.x, y: n.y } : a.station;
+    return n && !a.fixed ? { x: n.x, y: n.y } : a.station;
   }
 
   private findStation(): Activity | null {
@@ -458,6 +536,7 @@ export class Homestead {
     let best: Activity | null = null;
     let bd = 105;
     for (const a of ACTIVITIES) {
+      if (a.id === 'race' && !this.raceOpen) continue;
       const d = dist(p, this.stationPos(a));
       if (d < bd) {
         bd = d;
@@ -492,6 +571,14 @@ export class Homestead {
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
+    // Jason's motorcycle: Natalie and Jason ride it together.
+    const moto = this.family.moto;
+    if (moto?.player) return { kind: 'moto', label: 'Hop off' };
+    const seat = this.motoSeat();
+    if (!m && seat && !moto && dist(p, MOTO_PARKED) < 60) {
+      const partner = this.npcs.find((n) => n.who === MOTO_RIDERS[seat === 'driver' ? 'passenger' : 'driver']);
+      if (partner && !partner.outing) return { kind: 'moto', label: `Ride with ${FAMILY[partner.who].name}` };
+    }
     let cat: HubCat | null = null;
     let cd = 70;
     for (const c of this.cats) {
@@ -540,6 +627,20 @@ export class Homestead {
       case 'pickup':
         this.pickUpHuntItem();
         break;
+      case 'moto': {
+        if (this.family.moto?.player) {
+          const at = this.family.hopOff(this.npcs);
+          if (at) this.teleport(at.x, at.y);
+          this.emit({ type: 'moto', partner: '', ride: false });
+          break;
+        }
+        const seat = this.motoSeat();
+        if (seat && this.family.startMoto(this.npcs, seat)) {
+          const other = MOTO_RIDERS[seat === 'driver' ? 'passenger' : 'driver'];
+          this.emit({ type: 'moto', partner: FAMILY[other].name, ride: true });
+        }
+        break;
+      }
       case 'sunday':
         this.emit({ type: 'sunday' });
         break;
@@ -965,6 +1066,10 @@ export class Homestead {
   private updateMission(dt: number): void {
     const m = this.mission;
     if (!m) return;
+    if (m.kind === 'race') {
+      this.updateRace(m, dt);
+      return;
+    }
     if (m.kind === 'rounds') {
       m.t += dt;
       if (m.holding) {
@@ -987,6 +1092,42 @@ export class Homestead {
       }
     } else if (m.kind === 'hunt') {
       m.hintT = Math.max(0, m.hintT - dt);
+    }
+  }
+
+  private updateRace(m: RaceState, dt: number): void {
+    if (m.countdown > 0) {
+      m.countdown -= dt;
+      if (m.countdown <= 0) this.emit({ type: 'raceGo' });
+      return;
+    }
+    m.t += dt;
+    const p = this.player;
+    const g = RACE_COURSE[m.gate];
+    if (g && dist(p, g) < RACE_GATE_R) {
+      m.gate++;
+      this.emit({ type: 'raceGate', gate: m.gate, x: g.x, y: g.y });
+      if (m.gate >= RACE_COURSE.length) {
+        const won = m.rivalDone === null;
+        this.emit({ type: 'raceDone', seconds: m.t, won, rival: FAMILY[m.rival].name, rivalSeconds: m.rivalDone });
+        return;
+      }
+    }
+    const r = this.raceRival();
+    if (!r || m.rivalDone !== null) return;
+    const rg = RACE_COURSE[m.rivalGate];
+    // A little give and take, so it stays a race.
+    const lead = m.rivalGate - m.gate;
+    const speed = RACE_RIVAL_SPEED * (lead >= 2 ? 0.9 : lead <= -2 ? 1.1 : 1);
+    const fromX = r.x;
+    this.moveAgent(r, rg, speed, dt, 10);
+    if (Math.abs(r.x - fromX) > 0.2) r.faceX = r.x > fromX ? 1 : -1;
+    if (dist(r, rg) < 30) {
+      m.rivalGate++;
+      if (m.rivalGate >= RACE_COURSE.length) {
+        m.rivalDone = m.t;
+        this.emit({ type: 'raceRival', name: FAMILY[m.rival].name });
+      }
     }
   }
 

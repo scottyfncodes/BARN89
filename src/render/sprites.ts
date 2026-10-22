@@ -2,6 +2,7 @@ import { hash2, Rng } from '../core/math';
 import type { BuildingDef, FenceStyle, PropDef, TreeDef } from '../world/mapTypes';
 import { heartPath, star } from './characters';
 import { C } from './palette';
+import { drawPickup } from './vehicles';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -1274,6 +1275,9 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fill();
       break;
     }
+    case 'pickup':
+      drawPickup(ctx, x, y, p.angle ?? 0, p.color === 'charcoal' ? 'charcoal' : 'white', p.w ?? 100);
+      break;
     case 'treehouse': {
       // The treehouse at the corner of the main house: an old oak, a platform, a little house, a ladder.
       ctx.beginPath();

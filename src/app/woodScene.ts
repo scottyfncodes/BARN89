@@ -72,7 +72,7 @@ export class WoodScene implements GameScene {
         break;
       case 'rotten':
         sfx.oops();
-        toast.show('<b>Rotten log!</b>Soft, mossy logs go on the burn pile. Tap <b>Toss it</b>.', 3);
+        toast.show('<b>Rotten log!</b>Soft, mossy logs go on the burn pile. Tap <b>Toss rotten</b>.', 3);
         break;
       case 'toss':
         if (e.good) sfx.collect();
@@ -115,10 +115,10 @@ export class WoodScene implements GameScene {
       const aiming = g.phase === 'aim' || g.phase === 'ready' || g.phase === 'arrive';
       show(this.tossBtn, aiming);
       let h: string | null = null;
-      if (g.phase === 'ready') h = '<em>Tap anywhere</em> when the red marker is over the <em>gold</em>.';
-      else if (aiming && g.log.punky) h = 'Moss and mushrooms: this one is <em>rotten</em>. Tap <em>Toss it</em>.';
-      else if (aiming && g.logs <= 2) h = '<em>Tap</em> when the marker is in the <em>gold</em>.';
-      else if ((g.phase === 'slide' || g.phase === 'drop') && g.stacked < 4) h = '<em>Tap</em> to drop it right at the <em>dotted line</em>, snug against the last piece.';
+      if (g.phase === 'ready') h = 'Step 1, <em>split</em>: tap anywhere when the red marker is over the <em>gold</em>.';
+      else if (aiming && g.log.punky) h = 'Moss and mushrooms: this one is <em>rotten</em>. Tap <em>Toss rotten</em>.';
+      else if (aiming && g.logs <= 2) h = 'Step 1, <em>split</em>: tap when the gold <em>lights up</em>.';
+      else if ((g.phase === 'slide' || g.phase === 'drop') && g.stacked < 4) h = 'Step 2, <em>stack</em>: tap when the line turns <em>green</em> over the glowing spot.';
       else if (g.wobble > 0.6 && g.phase === 'slide') h = 'This row is <em>wobbly</em>. Make the next one snug!';
       hint.set(h);
     }

@@ -97,3 +97,32 @@ export const ORNAMENTS: OrnamentDef[] = [
   { id: 'orn-trampoline', x: 742, y: 1062, color: '#f08a24' },
   { id: 'orn-creek', x: 760, y: 2300, color: '#e8e8e8' },
 ];
+
+/* --- Scooter races ---------------------------------------------------------------------------- */
+
+/** The start and finish line, out front of the main house by the treehouse. */
+export const RACE_START = { x: 1000, y: 1110 };
+/**
+ * One lap, gate by gate: down the footpath, in through the arena's west gate, round the jumps,
+ * out the north gate, back across the side yard, and over the line.
+ */
+export const RACE_GATES: { x: number; y: number }[] = [
+  { x: 1130, y: 1415 },
+  { x: 1330, y: 1650 },
+  { x: 1480, y: 1690 },
+  { x: 1800, y: 1760 },
+  { x: 1560, y: 1985 },
+  { x: 1688, y: 1470 },
+  { x: 1700, y: 1250 },
+  { x: 1450, y: 1130 },
+  RACE_START,
+];
+export const RACE_LAPS = 2;
+/** Every gate of the race in order (all laps). */
+export const RACE_COURSE = Array.from({ length: RACE_LAPS }, () => RACE_GATES).flat();
+/** How close counts as through a gate. */
+export const RACE_GATE_R = 52;
+/** Seconds for 3 and 2 stars. */
+export const RACE_STAR_TIMES: [number, number] = [22, 30];
+/** The rival's scooter speed (yours tops out at 390). */
+export const RACE_RIVAL_SPEED = 280;

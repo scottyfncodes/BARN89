@@ -87,6 +87,8 @@ export type PropKind =
   | 'bench'
   | 'trampoline'
   | 'treehouse'
+  | 'pickup'
+  | 'motorcycle'
   | 'puttingGreen'
   | 'doggieDoor'
   | 'doghouse'
@@ -107,6 +109,8 @@ export interface PropDef {
   h?: number;
   angle?: number;
   text?: string;
+  /** Paint, for vehicles. */
+  color?: string;
   solid?: boolean;
 }
 

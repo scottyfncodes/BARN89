@@ -24,26 +24,27 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 | --- | --- | --- | --- |
 | Kitten Cowgirl | Natalie | Ranch Roundup, Every Last Cat | Herd barn cats into the corral. Each cat has a personality (shy, curious, hungry, sleepy, distractible). Whistle and treats help. |
 | Yard Boss | Jay | The Front Lawn, The Side Yard, Barn 89 Lawn | Zero-turn riding mower on the real lawns. Mow to the target before the clock runs out; straight passes make stripes. Trees, flower beds, toys and the dogs cost seconds. |
-| Woodpile | Jason | Morning Pile, Knotty Oak, Before the Freeze | Tap when the swing meter hits the gold to split the log, then drop each piece snug on the rack. Gappy rows wobble and fall; rotten logs go on the burn pile. |
+| Woodpile | Jason | Morning Pile, Knotty Oak, Before the Freeze | Two steps, shown on screen as *1 Split* and *2 Stack*. Split: tap when the marker is in the gold (it lights up). Stack: tap when the drop line under the sliding piece turns green over the glowing spot on the rack. Gappy rows wobble and fall; rotten logs go on the burn pile (*Toss rotten*). |
 | Megan's Morning Rounds | Megan | Morning Rounds | Six chores around the homestead in any order (eggs before the kitchen), against the clock. |
 | Grandpa's Treasure Hunt | Grandpa | Lost and Found | Follow five clues to his lost things, then crack his lockbox. Hints cost a star. |
+| Scooter Races | Natalie | Round the Place | Opens with Natalie's e-scooter. Everyone rides a scooter: two laps through nine gates (in through the arena, round the jumps, back across the side yard) against Jay, or against Natalie when she isn't the one exploring. Win and finish fast for three stars. |
 
 **Life on the homestead.** People and animals keep busy while you explore:
 - Megan scatters feed by the chicken run, and now and then takes Jay's mower for a couple of laps of the north lawn.
-- Jason takes practice swings at the woodpile.
+- Jason takes practice swings at the woodpile, and now and then takes Natalie out on his motorcycle: down the access road to the barns and back, round the driveway loop, and home. Exploring as Natalie or Jason, walk up to the motorcycle (parked by Jason's truck) and tap *Ride with Jason* / *Ride with Natalie* to go along; *Hop off* any time.
 - Jay and Jason meet in the side yard to practise Jay's sports, taking turns with football, baseball and soccer.
 - Grandpa moves between his back porch (waving at the trucks on Buffalo Gap Rd), raking his front yard, and practising his putting on the green in his fenced back yard.
 - Grandpa's two little black chihuahuas never leave that back yard. They yap at anyone near the fence and come and go through the doggie door in his back wall.
 
 Everyone stops and turns to you when you walk up, and their prompt goes wherever they are (the map shows where everyone is right now). Barn cats move between their favourite spots, the dogs go off sniffing if you stand still too long, Chewy wanders over when you stop at the pen fence, and the chickens shuffle away from the wire. Family members just off screen get a small portrait marker at the edge (gold if you haven't played their game yet). After a minigame you come back to where you started, and the person whose game it was cheers if you earned a star. The family's routines and outings are in [`src/hub/family.ts`](src/hub/family.ts); the animals are in the `Homestead` class in [`src/hub/homestead.ts`](src/hub/homestead.ts).
 
-**Around the place:** the treehouse at the south-east corner of the main house, the one giant tree in the middle of the north lawn (the Yard Boss front lawn mows around it), and Grandpa's putting green.
+**Around the place:** the treehouse at the south-east corner of the main house, the one giant tree in the middle of the north lawn (the Yard Boss front lawn mows around it), Grandpa's putting green, Jason's big white truck and motorcycle beside the main house, and Grandpa's (Jimmy's) dark charcoal truck on his drive by the shop.
 
 **Animal names:** the barn cats and Grandpa's chihuahuas can be renamed from the menu (*Animal names*). Names are saved on the device and show up everywhere, Kitten Cowgirl included. Annie, Axel, Yoda and Chewy keep their real names.
 
 **Sunday at the Barn:** an optional breakfast at the long table under Barn 89's string lights. Walk up and tap *Sunday breakfast*: the family gathers, there's a squabble over a cinnamon roll and an open gate (patched up), a short grace, a round of "one good thing from this week," and a decision about what the barn becomes now that the wedding seasons are done. The choice hangs on a board under the old venue sign. It's always available, can be left at any point, and never gives stars or rewards. A couple of quiet details sit around the homestead too: a Bible on the kitchen counter (seen through the window) and a small cross by Grandpa's door.
 
-**Rewards:** straw hat, Santa hat and barn cat beanie for the explorer, green and golden mower paint, Deputy the tiger (Natalie rides him in Kitten Cowgirl), Evening at Barn 89 (the string lights come on), Christmas lights with snow, fixed string-light bulbs from Grandpa's hunt, and Natalie's e-scooter (three stars in Kitten Cowgirl). With the scooter on, Natalie rides it around the homestead whenever she's the one exploring, about half again as fast as walking. Eight Christmas ornaments are hidden around the homestead and get hung on Grandpa's porch tree as you find them.
+**Rewards:** straw hat, Santa hat and barn cat beanie for the explorer, green and golden mower paint, Deputy the tiger (Natalie rides him in Kitten Cowgirl), Evening at Barn 89 (the string lights come on), Christmas lights with snow, fixed string-light bulbs from Grandpa's hunt, and Natalie's e-scooter (three stars in Kitten Cowgirl). With the scooter on, Natalie rides it around the homestead whenever she's the one exploring, about half again as fast as walking. Unlocking it also opens Scooter Races. Eight Christmas ornaments are hidden around the homestead and get hung on Grandpa's porch tree as you find them.
 
 ## Customizing the family
 
