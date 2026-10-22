@@ -398,7 +398,7 @@ describe("Jason's motorcycle", () => {
     h.teleport(MOTO_PARKED.x, MOTO_PARKED.y + 30);
     run(h, 0.2);
     expect(h.action?.kind).toBe('moto');
-    expect(h.action?.label).toBe('Ride with Jason');
+    expect(h.action?.label).toBe('Ride with Dad');
     run(h, 0.1, true);
     expect(h.family.moto?.player).toBe('passenger');
     // Jason walks over from the woodpile, then off they go.

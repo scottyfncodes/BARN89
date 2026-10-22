@@ -520,7 +520,7 @@ function onHubEvent(e: HubEvent): void {
         stars: e.stars,
         score: Math.max(0, Math.round(2000 - seconds * 10)),
         title: 'Rounds done!',
-        sub: `All six chores in ${formatTime(seconds)}. Megan says thanks.`,
+        sub: `All six chores in ${formatTime(seconds)}. Mom says thanks.`,
         lines: ROUNDS_TASKS.map((t) => ({ label: t.label, value: 'done' })),
         finished: true,
       });
@@ -662,7 +662,7 @@ function updateMissionHud(): void {
     $('mission-body').innerHTML = `<p class="clue">Lap ${lap} of ${RACE_LAPS} · Gate ${gate} of ${per}. ${status}</p>`;
     show($('mission-hint'), false);
   } else if (m.kind === 'rounds') {
-    $('mission-title').textContent = "Megan's Morning Rounds";
+    $('mission-title').textContent = "Mom's Morning Rounds";
     $('mission-body').innerHTML = `<ol class="chores">${ROUNDS_TASKS.map((t, i) => `<li class="${m.done.has(t.id) ? 'done' : t.needs && !m.done.has(t.needs) ? 'wait' : ''}"><span>${i + 1}</span>${t.short}</li>`).join('')}</ol>`;
     show($('mission-hint'), false);
   } else {
@@ -692,7 +692,7 @@ $('mission-quit').addEventListener('click', () => {
       ? 'Things you found stay found. Talk to Grandpa to pick it back up.'
       : m?.kind === 'race'
         ? 'Race again any time from the start line by the treehouse.'
-        : 'The chores will wait. You can start again from Megan or the board.',
+        : 'The chores will wait. You can start again from Mom or the board.',
     'Stop',
     () => {
       hub.endMission();

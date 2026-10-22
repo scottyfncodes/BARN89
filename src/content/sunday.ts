@@ -50,7 +50,7 @@ const say = (who: Speaker, text: string): Beat => ({ line: { who, text } });
 
 export function sundayScript(): Beat[] {
   return [
-    say('narrator', "Sunday morning. Megan's set breakfast out on the long table under the old string lights. The animals ate first. They always do."),
+    say('narrator', "Sunday morning. Mom's set breakfast out on the long table under the old string lights. The animals ate first. They always do."),
     say('jay', 'Okay, who took the last cinnamon roll?'),
     say('narrator', 'Annie, under the table, will not make eye contact.'),
     say('natalie', 'Also, somebody left the arena gate open and Pickles got out.'),
@@ -71,7 +71,7 @@ export function sundayScript(): Beat[] {
         options: [
           { label: 'Chewy finally let me brush him.', reply: [{ who: 'grandpa', text: 'That donkey has never once let me brush him. I want a recount.' }] },
           { label: 'Nobody mowed over the flower beds.', reply: [{ who: 'megan', text: "It's only Sunday. We'll see how long that lasts." }, { who: 'jay', text: 'Hey.' }] },
-          { label: "We're all here.", reply: [{ who: 'narrator', text: 'Nobody has a joke for that one. Jason passes the eggs.' }] },
+          { label: "We're all here.", reply: [{ who: 'narrator', text: 'Nobody has a joke for that one. Dad passes the eggs.' }] },
         ],
       },
     },

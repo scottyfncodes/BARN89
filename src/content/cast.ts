@@ -57,7 +57,7 @@ export interface FamilyMember {
 export const FAMILY: Record<FamilyId, FamilyMember> = {
   megan: {
     id: 'megan',
-    name: 'Megan',
+    name: 'Mom',
     role: 'Runs the homestead',
     look: {
       skin: '#f3c9a6',
@@ -75,7 +75,7 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
   },
   jason: {
     id: 'jason',
-    name: 'Jason',
+    name: 'Dad',
     role: 'Keeps the woodpile stacked',
     look: {
       skin: '#eebd96',

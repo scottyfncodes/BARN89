@@ -122,7 +122,7 @@ export class PuzzleScene implements GameScene {
         if (this.game.board.kind === 'hay') sfx.collect();
         else sfx.discover();
         hud.bump();
-        if (e.board === 0 && e.moves <= e.par) toast.show('<b>Right on par.</b>Jason is impressed. He will not say so.', 2.4);
+        if (e.board === 0 && e.moves <= e.par) toast.show('<b>Right on par.</b>Dad is impressed. He will not say so.', 2.4);
         break;
       case 'done':
         sfx.victory();
