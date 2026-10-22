@@ -193,9 +193,12 @@ function insetTop(): number {
 }
 
 function resize(): void {
+  // Fill the whole app area. On iPhone the visual viewport can come up shorter than the screen
+  // (Safari's collapsed toolbar, the home indicator), which left a bare strip along the bottom.
+  const box = $('app').getBoundingClientRect();
   const vv = window.visualViewport;
-  const w = Math.round(vv?.width ?? window.innerWidth);
-  const h = Math.round(vv?.height ?? window.innerHeight);
+  const w = Math.round(Math.max(box.width, vv?.width ?? 0) || window.innerWidth);
+  const h = Math.round(Math.max(box.height, vv?.height ?? 0, window.innerHeight));
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   const dpr = window.devicePixelRatio || 1;
