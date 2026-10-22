@@ -99,7 +99,7 @@ async function portrait() {
   // Board and map.
   await page.click('#hub-hud [data-open="board"]');
   check('activity board opens', await visible(page, '#board'));
-  check('board lists seven activities', (await page.locator('#board-list li').count()) === 7);
+  check('board lists eight activities', (await page.locator('#board-list li').count()) === 8);
   await page.screenshot({ path: `${OUT}/p-board.png` });
   await page.click('#board [data-close]');
   await page.click('#hub-hud [data-open="map"]');
@@ -193,6 +193,32 @@ async function portrait() {
   check('pulling back and letting go putts the ball up the hole', (putt1.strokes === 1 || putt1.card === 1) && putt1.y < ball0.y - 20, JSON.stringify(putt1));
   await page.screenshot({ path: `${OUT}/p-putt.png` });
 
+  // Barn Puzzles: drag a bale along its row, tap a pipe to turn it.
+  await b89(page, () => window.__b89.startChallenge('puzzle-1'));
+  await page.waitForTimeout(900);
+  check('Barn Puzzles starts', (await b89(page, () => window.__b89.game?.challenge)) === 'puzzle-1');
+  const loft = await b89(page, () => {
+    const v = window.__b89.game.view;
+    const a = window.__b89.game.game.pieces.find((p) => p.id === 'A');
+    return { x: v.bx + (a.x + 1.5) * v.cell, y: v.by + (a.y + 0.5) * v.cell, cell: v.cell, ax: a.x };
+  });
+  await drag(page, loft.x, loft.y, loft.cell * 1.1, 0, 200);
+  await page.waitForTimeout(200);
+  const slid = await b89(page, () => ({ moves: window.__b89.game.game.moves, ax: window.__b89.game.game.pieces.find((p) => p.id === 'A').x }));
+  check('dragging a bale slides it along its row', slid.moves === 1 && slid.ax === loft.ax + 1, JSON.stringify(slid));
+  await page.screenshot({ path: `${OUT}/p-hayloft.png` });
+  await b89(page, () => { window.__b89.store.data.stars['puzzle-1'] = 1; window.__b89.startChallenge('puzzle-2'); });
+  await page.waitForTimeout(900);
+  const pipe = await b89(page, () => {
+    const v = window.__b89.game.view;
+    return { x: v.bx + 1.5 * v.cell, y: v.by + 1.5 * v.cell, mask: window.__b89.game.game.tiles[5].mask };
+  });
+  await page.touchscreen.tap(pipe.x, pipe.y);
+  await page.waitForTimeout(200);
+  const turned = await b89(page, () => ({ moves: window.__b89.game.game.moves, mask: window.__b89.game.game.tiles[5].mask }));
+  check('tapping a pipe turns it', turned.moves === 1 && turned.mask !== pipe.mask, JSON.stringify(turned));
+  await page.screenshot({ path: `${OUT}/p-pipes.png` });
+
   // Morning Rounds and the hunt.
   await b89(page, () => window.__b89.startChallenge('rounds-1'));
   await page.waitForTimeout(300);
@@ -249,7 +275,7 @@ async function landscape() {
   await page.click('#play-btn');
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/l-hub.png` });
-  for (const id of ['kitten-1', 'mower-1', 'woodpile-1', 'putt-1']) {
+  for (const id of ['kitten-1', 'mower-1', 'woodpile-1', 'putt-1', 'puzzle-1']) {
     await b89(page, (c) => window.__b89.startChallenge(c), id);
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${OUT}/l-${id}.png` });

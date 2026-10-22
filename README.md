@@ -15,6 +15,7 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 - The big front lawn inside the teardrop driveway loop
 - The woodshed and woodpile on the west access road
 - The round pen (the donkeys' paddock), the riding arena, the stable
+- The Loop: the race circuit, mostly on the paths already there, with its start line and sign by the treehouse
 - **Barn 89**, the red barn in the south-east, with the old venue sign by the road, the string lights over the lawn, and a guestbook page tucked behind it
 - The chicken run in the clearing south-east of the treehouse, and the red-dirt creek woods to the south-west
 - Grandpa's workshop, the garage under the blue star: this was Apple's workshop, where she and Grandpa fixed up and painted antique furniture for her business, Blue Star. Walk up to it and the game says so; a stray half-painted cabinet sits outside
@@ -29,13 +30,16 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 | Megan's Morning Rounds | Megan | Morning Rounds | Six chores around the homestead in any order (eggs before the kitchen), against the clock. |
 | Grandpa's Treasure Hunt | Grandpa | Lost and Found | Follow five clues to his lost things, then crack his lockbox. Hints cost a star. |
 | Putt-Putt | Grandpa | Grandpa's Green, Around the Ranch | Mini golf, started from Grandpa's putting green. Pull back anywhere and let go to putt. Three holes a round: walls bounce, hay bales soak up speed, sand and mud slow the ball, and a chihuahua, a donkey and a chicken wander across. Finish at or under par for three stars. |
-| Scooter Races | Natalie | Round the Place | Opens with Natalie's e-scooter. Everyone rides a scooter: two laps through ten gates (in through the arena, round the jumps, back below the chicken run) against Jay, or against Natalie when she isn't the one exploring. Win and finish fast for three stars. |
+| Races on the Loop | Natalie | Scooter Race, Monster Truck Race, Lawn Mower Race, Dirt Bike Race | Two laps of the Loop, one circuit on the paths round the middle of the place: down the footpath past the round pen, along the arena fence to the barns, back up the access road through the trees, and across behind the main house to the line by the treehouse. Each race opens with its ride, and you race the ride's owner (or a stand-in when it's yours). Arrows on the ground and glowing gates show the way; three dirt ramps put you in the air. Win and finish fast for three stars. |
+| Barn Puzzles | Jason | Hay Loft, Water Line, Big Hay Day, Dry Spell | Started out by the hay bales east of Barn 89. Three puzzles a round. Hay Loft: drag the bales along their length to clear a way and roll the red wagon out the loft door. Water Line: tap pipes to turn them until the water runs from the pump to every trough. Finish at par (fewest moves) for three stars. |
 
 **Life on the homestead.** People and animals keep busy while you explore:
 - Megan scatters feed by the chicken run, and now and then takes Jay's mower for a couple of laps of the north lawn.
 - Jason takes practice swings at the woodpile, and now and then takes Natalie out on his motorcycle: down the access road to the barns and back, round the driveway loop, and home. Exploring as Natalie or Jason, walk up to the motorcycle (parked by Jason's truck) and tap *Ride with Jason* / *Ride with Natalie* to go along; *Hop off* any time.
 - Jay and Jason meet in the open north-west corner, where the chicken coop used to be, to practise Jay's sports, taking turns with football, baseball and soccer.
 - Grandpa moves between his back porch (waving at the trucks on Buffalo Gap Rd), raking his front yard, watering the flower beds and potted geraniums around his house with his green watering can, and practising his putting on the green in his fenced back yard. He is deathly afraid of snakes: now and then a little garter snake turns up while he's out in the yard, he throws his arms up and hurries back to the porch, and Axel chases it off.
+- Sparrows peck about on the lawns and take off when you get close; cottontails bolt for the trees; butterflies loop over the flower beds. Smoke curls up from both chimneys, and the tire swing on the big tree swings when you brush past it.
+- Roads and paths are a little quicker to travel than the grass, and the puddles on the access road and the Loop splash when you go through. Signposts at the main junctions point the way to the barns, the arena, the round pen, the corral and Grandpa's.
 - Every so often a skunk wanders by. Annie always goes after it, always loses, and smells of it for a while afterwards.
 - The barn cats mostly live in and around the treehouse: a couple sleep up on its platform, the rest hang about underneath, and one is often up on the roof of the main house. Now and then a dog takes off after a cat; the cat always makes it up the treehouse, the dog barks at the bottom for a bit, then gives up. The cat stays up there a while before coming down.
 - The trampoline by the main house can be jumped on: stand on it to bounce, tap *Jump!* for a big one.
@@ -49,7 +53,7 @@ Everyone stops and turns to you when you walk up, and their prompt goes wherever
 
 **Sunday at the Barn:** an optional breakfast at the long table under Barn 89's string lights. Walk up and tap *Sunday breakfast*: the family gathers, there's a squabble over a cinnamon roll and an open gate (patched up), a short grace, a round of "one good thing from this week," and a decision about what the barn becomes now that the wedding seasons are done. The choice hangs on a board under the old venue sign. It's always available, can be left at any point, and never gives stars or rewards. A couple of quiet details sit around the homestead too: a Bible on the kitchen counter (seen through the window) and a small cross by Grandpa's door.
 
-**Rewards:** straw hat, Santa hat and barn cat beanie for the explorer, green and golden mower paint, Deputy the tiger (Natalie rides him in Kitten Cowgirl), Evening at Barn 89 (the string lights come on), Christmas lights with snow, fixed string-light bulbs from Grandpa's hunt, and Natalie's e-scooter (three stars in Kitten Cowgirl). With the scooter on, Natalie rides it around the homestead whenever she's the one exploring, about half again as fast as walking. Unlocking it also opens Scooter Races. Eight Christmas ornaments are hidden around the homestead and get hung on Grandpa's porch tree as you find them.
+**Rewards:** straw hat, Santa hat and barn cat beanie for the explorer, green and golden mower paint, Deputy the tiger (Natalie rides him in Kitten Cowgirl), Evening at Barn 89 (the string lights come on), Christmas lights with snow, fixed string-light bulbs from Grandpa's hunt, and four rides, each unlocked in its owner's own game: Natalie's e-scooter (three stars in Kitten Cowgirl), Jay's mini monster truck (three stars in Yard Boss), Megan's riding mower (two stars in Megan's Morning Rounds) and Jason's dirt bike (three stars in Woodpile). A ride switches on when it unlocks: its owner rides it around the homestead whenever they're the one exploring (switch it off in Rewards), and its race opens on the Loop. Eight Christmas ornaments are hidden around the homestead and get hung on Grandpa's porch tree as you find them.
 
 ## Customizing the family
 
@@ -99,12 +103,14 @@ To add it to an iPhone Home Screen: open the link in Safari, then Share > Add to
 src/
   main.ts               app shell: title, homestead, menus, results, the main loop
   app/                  scene adapters (kittenScene, mowerScene, woodScene), HUD, hero art, map screen
-  content/              cast.ts (the family and animals), activities.ts (games, challenges, rewards)
+  content/              cast.ts (the family and animals), activities.ts (games, challenges, rewards), rides.ts (the four rides)
   core/                 math, save.ts (local persistence)
   hub/                  homestead.ts (explore sim: NPCs, dogs, donkeys, cats, missions), hubView.ts, missions.ts
   games/kitten/         Kitten Cowgirl simulation, cat AI, renderer
   games/mower/          Yard Boss simulation, levels, renderer
   games/woodpile/       Woodpile simulation and side-view renderer
+  games/putt/           Putt-Putt simulation and renderer
+  games/puzzle/         Barn Puzzles: Hay Loft and Water Line boards, solver, renderer
   render/               worldView.ts (shared map renderer), terrain, sprites, people, animals, vehicles
   world/                the map (ranch.ts), collision, navigation grid, shared world
   ui/input.ts           touch joystick, buttons, tap mode

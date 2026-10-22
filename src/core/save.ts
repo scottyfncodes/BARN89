@@ -16,6 +16,10 @@ export interface Cosmetics {
   holiday: boolean;
   /** Natalie on her e-scooter (when she's exploring). */
   scooter: boolean;
+  /** Jay in his mini monster truck, Megan on her riding mower, Jason on his dirt bike (when they're exploring). */
+  truck: boolean;
+  rider: boolean;
+  dirtbike: boolean;
 }
 
 export interface SaveData {
@@ -60,7 +64,7 @@ export function freshSave(): SaveData {
     hunt: { found: [], done: false },
     barnPlan: null,
     sundays: 0,
-    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false },
+    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false },
     seen: [],
     names: {},
   };

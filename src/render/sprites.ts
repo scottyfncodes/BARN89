@@ -944,6 +944,46 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fillText(text, x, y - 27.5);
       break;
     }
+    case 'fingerpost': {
+      const boards = (p.text ?? '').split('|');
+      const top = y - 26 - boards.length * 13;
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x - 2.5, top - 4, 5, y - top + 4);
+      ctx.strokeRect(x - 2.5, top - 4, 5, y - top + 4);
+      ctx.font = 'bold 7.5px ui-rounded, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      boards.forEach((b, i) => {
+        const left = b.startsWith('<');
+        const label = b.replace(/[<>]/g, '');
+        const tw = ctx.measureText(label).width + 12;
+        const by = top + i * 13;
+        const x0 = left ? x - tw + 4 : x - 4;
+        const x1 = x0 + tw;
+        ctx.beginPath();
+        if (left) {
+          ctx.moveTo(x0 - 6, by + 5.5);
+          ctx.lineTo(x0, by);
+          ctx.lineTo(x1, by);
+          ctx.lineTo(x1, by + 11);
+          ctx.lineTo(x0, by + 11);
+        } else {
+          ctx.moveTo(x0, by);
+          ctx.lineTo(x1, by);
+          ctx.lineTo(x1 + 6, by + 5.5);
+          ctx.lineTo(x1, by + 11);
+          ctx.lineTo(x0, by + 11);
+        }
+        ctx.closePath();
+        ctx.fillStyle = i % 2 ? C.woodLight : '#d6a872';
+        ctx.fill();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.fillStyle = C.ink;
+        ctx.fillText(label, (x0 + x1) / 2, by + 8.4);
+      });
+      break;
+    }
     case 'scarecrow': {
       ctx.fillStyle = C.woodDark;
       ctx.fillRect(x - 2, y - 40, 4, 40);

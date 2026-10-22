@@ -24,6 +24,10 @@ export class Controls {
   onInteract: () => void = () => {};
   onPause: () => void = () => {};
   onTap: () => void = () => {};
+  /** Pointer mode (puzzles): raw touches in CSS pixels instead of a joystick or taps. */
+  pointerMode = false;
+  onPointer: (kind: 'down' | 'move' | 'up', x: number, y: number) => void = () => {};
+  private pointerId: number | null = null;
   /** True once the player has actually steered (for tutorial hints). */
   moved = false;
 
@@ -89,6 +93,13 @@ export class Controls {
 
   private down = (e: PointerEvent): void => {
     this.onInteract();
+    if (this.pointerMode) {
+      e.preventDefault();
+      if (this.pointerId !== null) return;
+      this.pointerId = e.pointerId;
+      this.onPointer('down', e.clientX, e.clientY);
+      return;
+    }
     if (this.tapMode) {
       e.preventDefault();
       this.onTap();
@@ -106,6 +117,11 @@ export class Controls {
   };
 
   private move = (e: PointerEvent): void => {
+    if (this.pointerMode && e.pointerId === this.pointerId) {
+      e.preventDefault();
+      this.onPointer('move', e.clientX, e.clientY);
+      return;
+    }
     if (e.pointerId !== this.stickId) return;
     e.preventDefault();
     let dx = e.clientX - this.origin.x;
@@ -130,6 +146,11 @@ export class Controls {
   };
 
   private up = (e: PointerEvent): void => {
+    if (e.pointerId === this.pointerId) {
+      this.pointerId = null;
+      if (this.pointerMode) this.onPointer('up', e.clientX, e.clientY);
+      return;
+    }
     if (e.pointerId !== this.stickId) return;
     this.stickId = null;
     this.vec = { x: 0, y: 0 };
@@ -139,6 +160,7 @@ export class Controls {
 
   reset(): void {
     this.stickId = null;
+    this.pointerId = null;
     this.vec = { x: 0, y: 0 };
     this.keys.clear();
     this.queued.clear();

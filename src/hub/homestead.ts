@@ -1,4 +1,5 @@
 import { ACTIVITIES, type Activity } from '../content/activities';
+import { raceRivalFor, RIDES, type RideId } from '../content/rides';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
 import { dist, fromAngle, Rng, type Vec } from '../core/math';
 import { COATS } from '../games/kitten/levels';
@@ -8,7 +9,8 @@ import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
 import type { SharedWorld } from '../world/shared';
 import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, NPC_ROUTINES, type MotoSeat, type Npc } from './family';
-import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_RIVAL_SPEED, RACE_START, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
+import { createCritters, updateCritters, type Critter } from './critters';
+import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_START, RAMPS, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
 
 /* ---------------------------------------------------------------------------------------- */
 /* Actors                                                                                     */
@@ -68,6 +70,10 @@ export const TRAMPOLINE = { x: 810, y: 1000, rx: 38, ry: 18, mat: 14 };
 
 /** Seconds a big trampoline jump lasts. */
 const BIG_JUMP = 0.95;
+/** Seconds in the air off a ramp. */
+export const AIR_TIME = 0.62;
+/** How much quicker you go on a road or path. */
+export const PATH_BOOST = 1.15;
 
 /** Up on the treehouse platform: the ground point under it, and how high up. */
 export const TREEHOUSE_PERCHES: CatSpot[] = [
@@ -208,9 +214,12 @@ export type HubEvent =
   | { type: 'skunk'; x: number; y: number }
   | { type: 'catChase'; dog: string; cat: string; x: number; y: number }
   | { type: 'boing'; big: boolean }
+  | { type: 'hop'; x: number; y: number; ride: RideId }
+  | { type: 'splash'; x: number; y: number; big: boolean }
+  | { type: 'flutter'; x: number; y: number }
   | { type: 'raceGate'; gate: number; x: number; y: number }
   | { type: 'raceRival'; name: string }
-  | { type: 'raceDone'; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
+  | { type: 'raceDone'; ride: RideId; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
   | { type: 'yip'; x: number; y: number }
   | { type: 'pupPet'; name: string; text: string; x: number; y: number };
 
@@ -237,8 +246,12 @@ export interface RaceState {
   countdown: number;
   /** Next gate in RACE_COURSE. */
   gate: number;
+  /** What everyone's riding. */
+  ride: RideId;
   rival: FamilyId;
   rivalGate: number;
+  /** Seconds left of the rival's hop off a ramp. */
+  rivalAir: number;
   /** When the rival crossed the line, if they have. */
   rivalDone: number | null;
 }
@@ -314,8 +327,21 @@ export class Homestead {
   readonly pen: PenDef;
   /** Everyone is at the long table for Sunday breakfast. */
   gathered = false;
-  /** Scooter races are open (Natalie's scooter is unlocked). */
+  /** At least one race on the Loop is open (someone's ride is unlocked). */
   raceOpen = false;
+  /** What the explorer is riding right now, if anything (set by the app from the save and the race). */
+  ride: RideId | null = null;
+  /** Seconds left airborne off a ramp. */
+  airT = 0;
+  /** Top speed off the paths (walking, or the ride's); paths are a little quicker. */
+  speedBase = 260;
+  /** On a road or path right now. */
+  onPath = false;
+  /** Birds, rabbits and butterflies. */
+  critters: Critter[] = createCritters();
+  private splashT = 0;
+  /** Road and path segments, for the "paths are quicker" check. */
+  private pathSegs: { ax: number; ay: number; bx: number; by: number; r: number }[] = [];
   snake: Snake | null = null;
   /** Seconds until a snake might next turn up near Grandpa. */
   snakeT = 35;
@@ -348,6 +374,12 @@ export class Homestead {
     this.discovered = new Set(opts.discoveries);
     this.huntFound = new Set(opts.huntFound);
     this.pen = this.map.pens.find((p) => p.id === 'roundPen')!;
+    for (const r of this.map.roads)
+      for (let i = 0; i + 1 < r.points.length; i++) {
+        const [ax, ay] = r.points[i];
+        const [bx, by] = r.points[i + 1];
+        this.pathSegs.push({ ax, ay, bx, by, r: r.width / 2 });
+      }
     const start = this.startPoint();
     this.player = createPlayer(start.x, start.y);
     this.player.maxSpeed = 260;
@@ -527,18 +559,20 @@ export class Homestead {
     }
   }
 
-  /** Line up at the start: you on a scooter, your rival (Jay, or Natalie) on another. */
-  startRace(): void {
+  /** Line up at the start: you and your rival (whoever owns the ride, or a stand-in) on matching rides. */
+  startRace(ride: RideId = 'scooter'): void {
     this.family.reset(this.npcs, false);
-    const rival: FamilyId = this.explorer === 'natalie' ? 'jay' : 'natalie';
-    this.mission = { kind: 'race', t: 0, countdown: 3, gate: 0, rival, rivalGate: 0, rivalDone: null };
-    this.teleport(RACE_START.x - 22, RACE_START.y + 10);
+    const rival = raceRivalFor(RIDES[ride], this.explorer);
+    this.mission = { kind: 'race', t: 0, countdown: 3, gate: 0, ride, rival, rivalGate: 0, rivalAir: 0, rivalDone: null };
+    this.airT = 0;
+    // Side by side on the line, staggered so the rides don't overlap.
+    this.teleport(RACE_START.x - 34, RACE_START.y + 14);
     this.player.faceX = 1;
     const n = this.npcs.find((x) => x.who === rival);
     if (n) {
       n.outing = 'race';
-      n.x = n.px = RACE_START.x + 22;
-      n.y = n.py = RACE_START.y + 10;
+      n.x = n.px = RACE_START.x + 34;
+      n.y = n.py = RACE_START.y - 4;
       n.target = null;
       n.path = null;
       n.faceX = 1;
@@ -578,6 +612,9 @@ export class Homestead {
     const wasRiding = !!this.family.moto?.player;
     // Held at the start line until "go".
     const held = this.mission?.kind === 'race' && this.mission.countdown > 0;
+    // Paths and roads are a little quicker going (races keep everyone on even terms).
+    this.onPath = this.isOnPath(p.x, p.y);
+    if (this.mission?.kind !== 'race') p.maxSpeed = this.speedBase * (this.onPath ? PATH_BOOST : 1);
     if (!wasRiding && !held) updatePlayer(p, input, this.shared.world, dt);
     this.family.update(this.npcs, this.player, dt, this.gathered);
     const ride = this.family.moto;
@@ -602,6 +639,10 @@ export class Homestead {
     for (const c of this.cats) this.updateCat(c, dt);
     this.pups.forEach((d, i) => this.updatePup(d, i, dt));
     this.updateTrampoline(dt);
+    this.updateRamps(dt);
+    this.updatePuddles(dt);
+    const scared = updateCritters(this.critters, [p, ...this.dogs], dt, this.life);
+    if (scared && this.critters.some((c) => c.kind === 'bird' && c.state === 'flee' && dist(c, p) < 200)) this.emit({ type: 'flutter', x: p.x, y: p.y });
     this.updateSnake(dt);
     this.updateSkunk(dt);
     this.maybeChaseCat(dt);
@@ -660,12 +701,14 @@ export class Homestead {
       }
       return null;
     }
+    // Racing: eyes on the track.
+    if (m?.kind === 'race') return null;
     if (m?.kind === 'hunt' && !m.ready) {
       const item = HUNT_ITEMS[m.step];
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
-    if (this.onTrampoline && !(m?.kind === 'race')) return { kind: 'jump', label: 'Jump!' };
+    if (this.onTrampoline) return { kind: 'jump', label: 'Jump!' };
     // Jason's motorcycle: Natalie and Jason ride it together.
     const moto = this.family.moto;
     if (moto?.player) return { kind: 'moto', label: 'Hop off' };
@@ -1096,6 +1139,7 @@ export class Homestead {
   /* --- The trampoline ----------------------------------------------------------------------- */
 
   get onTrampoline(): boolean {
+    if (this.ride) return false;
     const p = this.player;
     return ((p.x - TRAMPOLINE.x) / TRAMPOLINE.rx) ** 2 + ((p.y - TRAMPOLINE.y) / TRAMPOLINE.ry) ** 2 < 1;
   }
@@ -1108,6 +1152,47 @@ export class Homestead {
     }
     this.trampT += dt;
     if (this.bigJumpT > 0) this.bigJumpT = Math.max(0, this.bigJumpT - dt);
+  }
+
+  /** On a ride, hitting a ramp with some speed puts you in the air for a moment. */
+  private updateRamps(dt: number): void {
+    if (this.airT > 0) {
+      this.airT = Math.max(0, this.airT - dt);
+      return;
+    }
+    const p = this.player;
+    if (!this.ride || Math.hypot(p.vx, p.vy) < 170) return;
+    const r = RAMPS.find((q) => dist(q, p) < 30);
+    if (!r) return;
+    this.airT = AIR_TIME;
+    this.emit({ type: 'hop', x: r.x, y: r.y, ride: this.ride });
+  }
+
+  /** Is a point on a road or path? */
+  isOnPath(x: number, y: number): boolean {
+    for (const s of this.pathSegs) {
+      const dx = s.bx - s.ax;
+      const dy = s.by - s.ay;
+      const t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (y - s.ay) * dy) / (dx * dx + dy * dy || 1)));
+      if (Math.hypot(s.ax + dx * t - x, s.ay + dy * t - y) < s.r) return true;
+    }
+    return false;
+  }
+
+  /** Splashing through a puddle. */
+  private updatePuddles(dt: number): void {
+    this.splashT = Math.max(0, this.splashT - dt);
+    const p = this.player;
+    if (this.splashT > 0 || this.airT > 0 || Math.hypot(p.vx, p.vy) < 90) return;
+    const pd = PUDDLES.find((q) => ((p.x - q.x) / q.rx) ** 2 + ((p.y - q.y) / q.ry) ** 2 < 1);
+    if (!pd) return;
+    this.splashT = this.ride ? 0.18 : 0.32;
+    this.emit({ type: 'splash', x: p.x, y: p.y, big: !!this.ride });
+  }
+
+  /** How high off the ground a ramp has thrown the explorer. */
+  airLift(): number {
+    return this.airT > 0 ? Math.sin(Math.PI * (1 - this.airT / AIR_TIME)) * 34 : 0;
   }
 
   /** How high the explorer is right now: the mat, plus a little bounce, or a big jump. */
@@ -1430,12 +1515,15 @@ export class Homestead {
     m.t += dt;
     const p = this.player;
     const g = RACE_COURSE[m.gate];
-    if (g && dist(p, g) < RACE_GATE_R) {
+    // Cut a corner a little too fine and the next gate still counts (but never two in a row).
+    const skip = !!g && dist(p, g) >= RACE_GATE_R && m.gate + 1 < RACE_COURSE.length && dist(p, RACE_COURSE[m.gate + 1]) < RACE_GATE_R;
+    if (skip) m.gate++;
+    if (g && (skip || dist(p, g) < RACE_GATE_R)) {
       m.gate++;
       this.emit({ type: 'raceGate', gate: m.gate, x: g.x, y: g.y });
       if (m.gate >= RACE_COURSE.length) {
         const won = m.rivalDone === null;
-        this.emit({ type: 'raceDone', seconds: m.t, won, rival: FAMILY[m.rival].name, rivalSeconds: m.rivalDone });
+        this.emit({ type: 'raceDone', ride: m.ride, seconds: m.t, won, rival: FAMILY[m.rival].name, rivalSeconds: m.rivalDone });
         return;
       }
     }
@@ -1444,9 +1532,12 @@ export class Homestead {
     const rg = RACE_COURSE[m.rivalGate];
     // A little give and take, so it stays a race.
     const lead = m.rivalGate - m.gate;
-    const speed = RACE_RIVAL_SPEED * (lead >= 2 ? 0.9 : lead <= -2 ? 1.1 : 1);
+    const speed = RIDES[m.ride].rivalSpeed * (lead >= 2 ? 0.9 : lead <= -2 ? 1.1 : 1);
     const fromX = r.x;
     this.moveAgent(r, rg, speed, dt, 10);
+    // Rivals take the ramps too.
+    if (m.rivalAir > 0) m.rivalAir = Math.max(0, m.rivalAir - dt);
+    else if (RAMPS.some((q) => dist(q, r) < 24)) m.rivalAir = AIR_TIME;
     if (Math.abs(r.x - fromX) > 0.2) r.faceX = r.x > fromX ? 1 : -1;
     if (dist(r, rg) < 30) {
       m.rivalGate++;

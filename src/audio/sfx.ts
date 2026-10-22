@@ -187,6 +187,15 @@ export class Sfx {
     this.noise(0.06, 0.25, snug ? 1500 : 700);
   }
 
+  splash(): void {
+    this.noise(0.18, 0.22, 1400);
+    this.noise(0.12, 0.12, 3200, 0.05);
+  }
+
+  flutter(): void {
+    for (let i = 0; i < 4; i++) this.noise(0.04, 0.08, 2400, i * 0.05);
+  }
+
   clunk(): void {
     this.tone(140, 0.18, 'square', 0.08, 0, 90);
     this.noise(0.1, 0.3, 500);

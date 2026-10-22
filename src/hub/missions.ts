@@ -98,32 +98,53 @@ export const ORNAMENTS: OrnamentDef[] = [
   { id: 'orn-creek', x: 760, y: 2300, color: '#e8e8e8' },
 ];
 
-/* --- Scooter races ---------------------------------------------------------------------------- */
+/* --- Races on the Loop ------------------------------------------------------------------------ */
 
 /** The start and finish line, out front of the main house by the treehouse. */
 export const RACE_START = { x: 1000, y: 1110 };
 /**
- * One lap, gate by gate: down the footpath, in through the arena's west gate, round the jumps,
- * out the north gate, back below the chicken run, and over the line.
+ * The Loop: one lap round the middle of the place on the paths that are already there. Down the
+ * footpath past the round pen, along the arena fence to the barns, back up the access road
+ * through the trees, past the woodpile and the trampoline, and over the line. Every corner is a
+ * checkpoint gate.
  */
-export const RACE_GATES: { x: number; y: number }[] = [
-  { x: 1130, y: 1415 },
+export const RACE_TRACK: { x: number; y: number }[] = [
+  { x: 1060, y: 1330 },
+  { x: 1200, y: 1500 },
   { x: 1330, y: 1650 },
-  { x: 1480, y: 1690 },
-  { x: 1800, y: 1760 },
-  { x: 1560, y: 1985 },
-  { x: 1688, y: 1470 },
-  { x: 1700, y: 1250 },
-  { x: 1480, y: 1290 },
-  { x: 1180, y: 1300 },
+  { x: 1360, y: 1900 },
+  { x: 1380, y: 2150 },
+  { x: 1200, y: 2180 },
+  { x: 1020, y: 2030 },
+  { x: 840, y: 1870 },
+  { x: 640, y: 1690 },
+  { x: 460, y: 1530 },
+  { x: 330, y: 1380 },
+  { x: 290, y: 1200 },
+  { x: 330, y: 1050 },
+  { x: 470, y: 1060 },
+  { x: 640, y: 1065 },
+  { x: 820, y: 1075 },
   RACE_START,
 ];
+/** Kept as the name the rest of the game knows the checkpoints by. */
+export const RACE_GATES = RACE_TRACK;
 export const RACE_LAPS = 2;
 /** Every gate of the race in order (all laps). */
-export const RACE_COURSE = Array.from({ length: RACE_LAPS }, () => RACE_GATES).flat();
+export const RACE_COURSE = Array.from({ length: RACE_LAPS }, () => RACE_TRACK).flat();
 /** How close counts as through a gate. */
-export const RACE_GATE_R = 52;
-/** Seconds for 3 and 2 stars. */
-export const RACE_STAR_TIMES: [number, number] = [22, 30];
-/** The rival's scooter speed (yours tops out at 390). */
-export const RACE_RIVAL_SPEED = 280;
+export const RACE_GATE_R = 60;
+/** Dirt kickers on the Loop: ride over one with some speed and you're airborne for a moment. */
+export const RAMPS: { x: number; y: number; dir: number }[] = [
+  { x: 1346, y: 1780, dir: Math.atan2(250, 30) },
+  { x: 740, y: 1780, dir: Math.atan2(-180, -200) },
+  { x: 312, y: 1290, dir: Math.atan2(-180, -40) },
+];
+
+/** Rain puddles on the Loop and the access road: ride (or walk) through for a splash. */
+export const PUDDLES: { x: number; y: number; rx: number; ry: number }[] = [
+  { x: 300, y: 1112, rx: 30, ry: 12 },
+  { x: 930, y: 1950, rx: 34, ry: 13 },
+  { x: 1372, y: 2040, rx: 26, ry: 11 },
+  { x: 1120, y: 1420, rx: 22, ry: 9 },
+];

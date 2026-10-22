@@ -73,6 +73,8 @@ export type PropKind =
   | 'trough'
   | 'mailbox'
   | 'sign'
+  /** A signpost with arrow boards: text is boards split by '|', each '<NAME' (points left) or 'NAME>' (right). */
+  | 'fingerpost'
   | 'scarecrow'
   | 'box'
   | 'jump'

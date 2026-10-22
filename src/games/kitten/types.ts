@@ -21,6 +21,8 @@ export interface Player {
   vy: number;
   radius: number;
   maxSpeed: number;
+  /** How briskly it gets up to speed (default 9; rides on the homestead set their own). */
+  accel?: number;
   /** Direction of travel in radians; whistles and treats use it. */
   heading: number;
   /** Sprite facing: 1 = right, -1 = left. */
