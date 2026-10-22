@@ -1572,6 +1572,48 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fillRect(x0 + w - 16, y + 13, 4, 6);
       break;
     }
+    case 'nameSign': {
+      // A weathered plank with hand-painted letters, wired to the fence.
+      const w = p.w ?? 80;
+      const top = y - 34;
+      ctx.strokeStyle = '#7a7f86';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2 + 6, top - 3);
+      ctx.lineTo(x - w / 2 + 6, top + 2);
+      ctx.moveTo(x + w / 2 - 6, top - 3);
+      ctx.lineTo(x + w / 2 - 6, top + 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2, top);
+      ctx.lineTo(x + w / 2, top - 2);
+      ctx.lineTo(x + w / 2 + 1, top + 13);
+      ctx.lineTo(x - w / 2 + 1, top + 15);
+      ctx.closePath();
+      ctx.fillStyle = '#c99a55';
+      ctx.fill();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(110,70,30,0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2 + 3, top + 4);
+      ctx.lineTo(x + w / 2 - 4, top + 2.5);
+      ctx.moveTo(x - w / 2 + 6, top + 11);
+      ctx.lineTo(x + w / 2 - 8, top + 10);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(x, top + 7);
+      ctx.rotate(-0.02);
+      ctx.font = '900 8px ui-rounded, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff6e2';
+      ctx.fillText(p.text ?? '', 0, 0.5);
+      ctx.restore();
+      break;
+    }
     case 'wallCross': {
       // Small, plain, hung by the door.
       ctx.fillStyle = C.wood;

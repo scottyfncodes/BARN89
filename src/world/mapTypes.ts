@@ -93,7 +93,8 @@ export type PropKind =
   | 'festoon'
   | 'venueSign'
   | 'longTable'
-  | 'wallCross';
+  | 'wallCross'
+  | 'nameSign';
 
 export interface PropDef {
   kind: PropKind;
