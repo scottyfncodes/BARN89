@@ -3,31 +3,38 @@ import type { BuildingDef, FenceDef, PenDef, PropDef, RanchMap, TreeDef } from '
 import { pruneTrees } from './solids';
 
 /**
- * Natalie's ranch, laid out top-to-bottom like the property:
- *  - main residence + driveway turnaround in the upper area
- *  - second residence with its picket yard on the left, middle
- *  - a winding gravel access road connecting everything
- *  - the big sandy riding arena along the right-hand side
- *  - barns and outbuildings across the bottom
- *  - round fenced enclosures (the kitten corral, a lunging paddock, the chicken run)
- *  - open meadow in the middle, mature trees and wooded edges all round.
+ * Natalie's ranch on Buffalo Gap Rd, traced from the aerial photo in docs/reference/aerial.jpg.
+ * Scale: one aerial pixel = two world units, so features keep their real relative positions.
+ *
+ *  - the drive along the north edge and the teardrop driveway loop with its lawn
+ *  - "Barn 89", the main residence, west of the loop, with the trampoline and red-mulch garden
+ *  - the second residence and its fenced yard in the north-east corner
+ *  - the access road winding down the west side, through the trees, to the barns
+ *  - the big sandy riding arena against the east fence line
+ *  - the two metal barns in the south-east, the walled round pen and the round corral
+ *  - fenced paddocks and a chicken run in the north-west, red-dirt creek woods to the south-west
+ *  - Buffalo Gap Rd running along the east boundary
  */
 export const WORLD_W = 2400;
-export const WORLD_H = 3000;
+export const WORLD_H = 3080;
 
-export const ARENA = { x: 1700, y: 760, w: 580, h: 1240 };
-export const YARD = { x: 200, y: 1090, w: 420, h: 350 };
-export const CORRAL = { x: 1520, y: 2230, r: 150 };
+/** The property fence along Buffalo Gap Rd; everything east of it is off-limits. */
+export const EAST_FENCE = 2020;
+export const ARENA = { x: 1420, y: 1440, w: EAST_FENCE - 1420, h: 600 };
+export const YARD = { x: 1360, y: 560, w: EAST_FENCE - 1360, h: 230 };
+export const CORRAL = { x: 1320, y: 2510, r: 130 };
+export const ROUND_PEN = { x: 1180, y: 1790, r: 110 };
 
 function buildings(): BuildingDef[] {
   return [
-    { id: 'house', style: 'farmhouse', x: 740, y: 300, w: 320, h: 170, wall: 96, roof: '#5b6b7d', walls: '#f3e6cc', label: 'Main House' },
-    { id: 'garage', style: 'garage', x: 1110, y: 345, w: 130, h: 120, wall: 70, roof: '#6d5446', walls: '#d9c7a4' },
-    { id: 'cottage', style: 'cottage', x: 290, y: 1170, w: 210, h: 120, wall: 72, roof: '#8a4b3b', walls: '#e9dcc0', label: 'Guest House' },
-    { id: 'barn', style: 'barn', x: 820, y: 2525, w: 400, h: 235, wall: 120, roof: '#7a3a2e', walls: '#b8382c', label: 'Big Red Barn' },
-    { id: 'feedShed', style: 'shed', x: 1360, y: 2625, w: 160, h: 115, wall: 70, roof: '#5f4a3a', walls: '#a94336' },
-    { id: 'tackShed', style: 'shed', x: 470, y: 2600, w: 150, h: 115, wall: 66, roof: '#5f4a3a', walls: '#9a7b56' },
-    { id: 'coop', style: 'coop', x: 1950, y: 2400, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
+    { id: 'barn89', style: 'farmhouse', x: 600, y: 700, w: 500, h: 200, wall: 100, roof: '#6b7480', walls: '#efe2c8', label: 'BARN 89' },
+    { id: 'house2', style: 'farmhouse', x: 1470, y: 440, w: 480, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: 'No. 2' },
+    { id: 'whiteShed', style: 'shed', x: 410, y: 1150, w: 190, h: 130, wall: 70, roof: '#e9ecef', walls: '#f6f3ea' },
+    { id: 'eastShed', style: 'shed', x: 1550, y: 1290, w: 110, h: 80, wall: 56, roof: '#c9ced4', walls: '#a94336' },
+    { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
+    { id: 'stable', style: 'shed', x: 1480, y: 2075, w: 400, h: 155, wall: 84, roof: '#9fb0bf', walls: '#b8382c', label: 'STABLE' },
+    { id: 'bigBarn', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8d9cab', walls: '#b8382c' },
+    { id: 'coop', style: 'coop', x: 370, y: 280, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
   ];
 }
 
@@ -35,133 +42,158 @@ function fences(): FenceDef[] {
   const a = ARENA;
   const y = YARD;
   return [
-    // Arena: west gate (from the road) and south gate (toward the chicken run).
-    { style: 'rail', points: [[a.x, 1440], [a.x, a.y], [a.x + a.w, a.y], [a.x + a.w, a.y + a.h], [2050, a.y + a.h]] },
-    { style: 'rail', points: [[1950, a.y + a.h], [a.x, a.y + a.h], [a.x, 1560]] },
-    // Guest house picket yard: east gate to the road, south gate to the pond.
-    { style: 'picket', points: [[y.x + y.w, 1235], [y.x + y.w, y.y], [y.x, y.y], [y.x, y.y + y.h], [370, y.y + y.h]] },
-    { style: 'picket', points: [[455, y.y + y.h], [y.x + y.w, y.y + y.h], [y.x + y.w, 1325]] },
-    // Vegetable garden by the main house (low fence, open on the east).
-    { style: 'picket', points: [[680, 380], [500, 380], [500, 540], [680, 540]] },
+    // Property fence along Buffalo Gap Rd (no gaps: the kittens stay off the highway).
+    { style: 'rail', points: [[EAST_FENCE, 0], [EAST_FENCE, WORLD_H]] },
+    // Arena: north gate toward the east shed, west gate at the end of the footpath. The east side is the property fence.
+    { style: 'rail', points: [[a.x, 1640], [a.x, a.y], [1640, a.y]] },
+    { style: 'rail', points: [[1735, a.y], [EAST_FENCE, a.y]] },
+    { style: 'rail', points: [[EAST_FENCE, a.y + a.h], [a.x, a.y + a.h], [a.x, 1735]] },
+    // Second residence yard: open toward the north drive, gate on the south side.
+    { style: 'picket', points: [[y.x, y.y], [y.x, y.y + y.h], [1585, y.y + y.h]] },
+    { style: 'picket', points: [[1665, y.y + y.h], [EAST_FENCE, y.y + y.h]] },
+    // North-west paddock fence lines, with a gate in the corner.
+    { style: 'rail', points: [[280, 110], [280, 980]] },
+    { style: 'rail', points: [[60, 980], [180, 980]] },
   ];
 }
 
 function pens(): PenDef[] {
   return [
-    { id: 'corral', x: CORRAL.x, y: CORRAL.y, r: CORRAL.r, gateAngle: Math.PI + 0.42, gateWidth: 104, role: 'target', label: 'Kitten Corral' },
-    { id: 'paddock', x: 560, y: 2050, r: 130, gateAngle: 0, gateWidth: 92, role: 'paddock', label: 'Lunging Paddock' },
-    { id: 'chickens', x: 1980, y: 2440, r: 100, role: 'chickens', label: 'Chicken Run' },
+    { id: 'corral', x: CORRAL.x, y: CORRAL.y, r: CORRAL.r, gateAngle: -Math.PI / 2 - 0.35, gateWidth: 104, role: 'target', label: 'Kitten Corral' },
+    { id: 'roundPen', x: ROUND_PEN.x, y: ROUND_PEN.y, r: ROUND_PEN.r, gateAngle: -0.5, gateWidth: 88, role: 'paddock', label: 'Round Pen' },
+    { id: 'chickens', x: 400, y: 300, r: 85, role: 'chickens', label: 'Chicken Run' },
   ];
 }
 
 function props(): PropDef[] {
   return [
-    // Driveway & house
-    { kind: 'mailbox', x: 1395, y: 115, solid: true },
-    { kind: 'flowers', x: 930, y: 642, w: 44, solid: true },
-    { kind: 'bench', x: 1010, y: 505, w: 40 },
-    { kind: 'scarecrow', x: 590, y: 450, solid: true },
-    { kind: 'well', x: 640, y: 760, solid: true },
-    // Guest house yard
-    { kind: 'clothesline', x: 410, y: 1125, w: 150 },
-    { kind: 'yarn', x: 430, y: 1340 },
-    { kind: 'flowers', x: 250, y: 1400, w: 30 },
-    { kind: 'flowers', x: 560, y: 1140, w: 26 },
-    // Meadow
-    { kind: 'roundBale', x: 1460, y: 1080, w: 26, solid: true },
-    { kind: 'rock', x: 1240, y: 1340, w: 22, solid: true },
-    { kind: 'rock', x: 900, y: 2000, w: 18, solid: true },
-    { kind: 'cart', x: 1610, y: 1640, solid: true },
-    // Arena jumps and barrels
-    { kind: 'jump', x: 1850, y: 990, w: 110, solid: true },
-    { kind: 'jump', x: 2120, y: 1200, w: 110, solid: true },
-    { kind: 'jump', x: 1880, y: 1450, w: 110, solid: true },
-    { kind: 'jump', x: 2110, y: 1700, w: 110, solid: true },
-    { kind: 'barrel', x: 1990, y: 1000, w: 15, solid: true },
-    { kind: 'barrel', x: 1990, y: 1350, w: 15, solid: true },
-    { kind: 'barrel', x: 1840, y: 1820, w: 15, solid: true },
-    { kind: 'sign', x: 1655, y: 1410, text: 'ARENA', solid: true },
-    // Barnyard
-    { kind: 'roundBale', x: 770, y: 2470, w: 24, solid: true },
-    { kind: 'roundBale', x: 1268, y: 2492, w: 24, solid: true },
-    { kind: 'roundBale', x: 1300, y: 2545, w: 22, solid: true },
-    { kind: 'squareBale', x: 1250, y: 2700, w: 56, h: 30, solid: true },
-    { kind: 'trough', x: 1110, y: 2430, w: 76, h: 26, solid: true },
-    { kind: 'box', x: 1235, y: 2335 },
-    { kind: 'barrel', x: 660, y: 2620, w: 14, solid: true },
-    { kind: 'napHay', x: 700, y: 2830, w: 70 },
-    { kind: 'mouseHole', x: 852, y: 2760 },
-    { kind: 'sign', x: 1395, y: 2120, text: 'KITTENS', solid: true },
-    { kind: 'cart', x: 1700, y: 2760, solid: true },
+    // North drive & mailbox at the highway.
+    { kind: 'mailbox', x: 1975, y: 175, solid: true },
+    { kind: 'sign', x: 2085, y: 330, text: 'BUFFALO GAP RD' },
+    { kind: 'sign', x: 2085, y: 2420, text: 'BUFFALO GAP RD' },
+    // Barn 89 surroundings.
+    { kind: 'trampoline', x: 810, y: 1012, w: 40, solid: true },
+    { kind: 'bench', x: 1060, y: 935, w: 40 },
+    { kind: 'scarecrow', x: 860, y: 1205, solid: true },
+    { kind: 'flowers', x: 760, y: 1190, w: 30 },
+    { kind: 'flowers', x: 1030, y: 380, w: 46, solid: true },
+    // Second residence yard.
+    { kind: 'clothesline', x: 1800, y: 750, w: 130 },
+    { kind: 'yarn', x: 1450, y: 735 },
+    { kind: 'flowers', x: 1400, y: 610, w: 24 },
+    // Through the trees.
+    { kind: 'rock', x: 1330, y: 1240, w: 22, solid: true },
+    { kind: 'roundBale', x: 1030, y: 1460, w: 24, solid: true },
+    { kind: 'rock', x: 760, y: 1880, w: 18, solid: true },
+    // Arena jumps and barrels.
+    { kind: 'jump', x: 1560, y: 1560, w: 100, solid: true },
+    { kind: 'jump', x: 1850, y: 1640, w: 100, solid: true },
+    { kind: 'jump', x: 1600, y: 1900, w: 100, solid: true },
+    { kind: 'barrel', x: 1760, y: 1540, w: 15, solid: true },
+    { kind: 'barrel', x: 1730, y: 1800, w: 15, solid: true },
+    { kind: 'barrel', x: 1900, y: 1940, w: 15, solid: true },
+    { kind: 'sign', x: 1385, y: 1620, text: 'ARENA', solid: true },
+    // Barns.
+    { kind: 'roundBale', x: 1950, y: 2390, w: 24, solid: true },
+    { kind: 'roundBale', x: 1920, y: 2450, w: 22, solid: true },
+    { kind: 'squareBale', x: 1940, y: 2600, w: 56, h: 30, solid: true },
+    { kind: 'trough', x: 1430, y: 2345, w: 60, h: 24, solid: true },
+    { kind: 'box', x: 980, y: 2300 },
+    { kind: 'napHay', x: 1670, y: 2815, w: 70 },
+    { kind: 'mouseHole', x: 1525, y: 2230 },
+    { kind: 'sign', x: 1150, y: 2350, text: 'KITTENS', solid: true },
+    { kind: 'cart', x: 640, y: 2190, solid: true },
+    { kind: 'barrel', x: 570, y: 2110, w: 13, solid: true },
   ];
 }
 
-/** Hand-placed specimen trees plus procedurally scattered wooded edges. */
+/** Trees placed where the aerial shows them, plus a ragged procedural tree line on the outer edges. */
 function trees(): TreeDef[] {
   const out: TreeDef[] = [];
   const rng = new Rng(20241022);
   const add = (x: number, y: number, r: number, variant: TreeDef['variant'] = 'oak') =>
     out.push({ x, y, r, variant, seed: Math.floor(rng.next() * 1e6) });
 
-  // Mature trees around the main house and turnaround.
-  add(1290, 640, 62);
-  add(620, 250, 54);
-  add(1450, 360, 50, 'pine');
-  add(1510, 520, 44, 'pine');
-  add(420, 700, 58);
-  add(820, 880, 48);
-  // Guest house surroundings.
-  add(160, 1000, 50, 'pine');
-  add(700, 1300, 56, 'willow');
-  add(860, 1640, 46);
-  add(560, 1600, 40, 'bush');
-  // Meadow specimens (shade spots).
-  add(1350, 920, 66);
-  add(1460, 1650, 58);
-  add(1180, 1180, 36, 'bush');
-  add(940, 1260, 40, 'bush');
-  // Near barns and paddock.
-  add(360, 2250, 56);
-  add(820, 2240, 44, 'bush');
-  add(1750, 2280, 52);
-  add(2200, 2640, 58, 'pine');
-  add(1600, 2600, 40, 'bush');
-  add(300, 2780, 52, 'pine');
+  // Inside the driveway loop.
+  add(1100, 250, 50);
+  add(1200, 210, 56);
+  add(1270, 290, 44, 'bush');
+  // North-west paddocks.
+  add(180, 200, 44);
+  add(170, 380, 40, 'bush');
+  add(150, 640, 48);
+  // West woods along the access road.
+  add(90, 800, 54, 'pine');
+  add(110, 1060, 56);
+  add(200, 1220, 50, 'pine');
+  add(90, 1420, 58);
+  add(220, 1560, 46, 'pine');
+  add(80, 1700, 54);
+  // Big trees between Barn 89 and the arena.
+  add(470, 900, 58);
+  add(520, 1420, 50);
+  add(620, 1500, 56);
+  add(740, 1430, 46, 'bush');
+  add(830, 1560, 54);
+  add(700, 1640, 48);
+  add(960, 1580, 50);
+  add(1000, 1720, 46, 'bush');
+  add(1110, 1580, 44);
+  add(1250, 1520, 48, 'bush');
+  add(1080, 1300, 40, 'bush');
+  // Tree line along the east fence by the second residence.
+  add(1720, 900, 52);
+  add(1860, 960, 56);
+  add(1960, 880, 44, 'bush');
+  add(1760, 1120, 50);
+  add(1920, 1180, 54);
+  add(1640, 1200, 40, 'bush');
+  add(1960, 1360, 46);
+  // Red-dirt creek woods to the south-west.
+  add(120, 1920, 56);
+  add(260, 1830, 48, 'pine');
+  add(80, 2200, 58);
+  add(300, 2330, 52);
+  add(510, 2470, 56);
+  add(200, 2580, 54, 'pine');
+  add(680, 2620, 52);
+  add(820, 2720, 56);
+  add(980, 2820, 50);
+  add(1140, 2860, 54);
+  add(420, 2760, 50, 'pine');
+  add(640, 2900, 56);
+  add(880, 2960, 48);
+  add(760, 2000, 44, 'bush');
+  // Odd trees south of the barns.
+  add(1880, 2900, 46, 'pine');
+  add(1420, 2950, 50);
 
-  const keepClear = (x: number, y: number): boolean => {
-    // Driveway entry, top-left road corridor and the treasure clearings stay open.
-    if (x > 1240 && x < 1420 && y < 260) return true;
-    if (Math.hypot(x - 2230, y - 300) < 110) return true;
-    if (Math.hypot(x - 170, y - 2900) < 90) return true;
-    return false;
+  // Woods fill, following the aerial: the creek band running south-west and the west woods.
+  const near = (x: number, y: number, d: number) => out.some((t) => Math.hypot(t.x - x, t.y - y) < d);
+  const scatter = (count: number, accept: (x: number, y: number) => boolean, x0: number, x1: number, y0: number, y1: number) => {
+    for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
+      const x = rng.range(x0, x1);
+      const y = rng.range(y0, y1);
+      if (!accept(x, y) || near(x, y, 78)) continue;
+      add(x, y, rng.range(36, 56), rng.next() < 0.3 ? 'pine' : rng.next() < 0.25 ? 'bush' : 'oak');
+      placed++;
+    }
   };
+  // Creek woods: everything south-west of a line from (0, 1700) to (1400, 3000).
+  scatter(70, (x, y) => y > 1700 + x * 0.93 - 120, 60, 1400, 1750, 3030);
+  // West woods strip beside the access road.
+  scatter(14, () => true, 60, 250, 1040, 1800);
+  // Scattered big trees through the middle grounds.
+  scatter(12, () => true, 420, 1050, 1300, 1720);
 
-  // Wooded edges: a dense outer band beyond the playable margin and a ragged inner band.
-  const edge = (x: number, y: number, inner: boolean) => {
-    if (keepClear(x, y)) return;
-    const r = inner ? rng.range(34, 52) : rng.range(44, 66);
+  // Ragged tree line beyond the north, west and south edges (east is the highway).
+  const edge = (x: number, y: number) => {
     const v: TreeDef['variant'] = rng.next() < 0.45 ? 'pine' : 'oak';
-    add(x + rng.range(-14, 14), y + rng.range(-14, 14), r, v);
+    add(x + rng.range(-14, 14), y + rng.range(-14, 14), rng.range(40, 62), v);
   };
-  for (let x = 30; x < WORLD_W; x += 78) {
-    edge(x, 28, false);
-    edge(x, WORLD_H - 20, false);
-    if (rng.next() < 0.5) edge(x + 30, 110, true);
-    if (rng.next() < 0.35 && (x < 760 || x > 1500)) edge(x + 20, WORLD_H - 110, true);
-  }
-  for (let y = 100; y < WORLD_H - 60; y += 80) {
-    edge(26, y, false);
-    edge(WORLD_W - 22, y, false);
-    if (rng.next() < 0.45) edge(115, y + 30, true);
-    if (rng.next() < 0.45 && (y < ARENA.y - 60 || y > ARENA.y + ARENA.h + 60)) edge(WORLD_W - 110, y + 30, true);
-  }
-  // Thicker woods in the top corners, with a clearing (and a secret) in the top-right.
-  for (let i = 0; i < 26; i++) {
-    edge(rng.range(1760, 2350), rng.range(120, 560), true);
-  }
-  for (let i = 0; i < 14; i++) {
-    edge(rng.range(120, 460), rng.range(130, 330), true);
-  }
+  for (let y = 60; y < WORLD_H - 40; y += 80) edge(18, y);
+  for (let x = 40; x < 1980; x += 82) edge(x, WORLD_H - 16);
+  for (let x = 900; x < 1980; x += 150) edge(x, 10);
   return out;
 }
 
@@ -169,38 +201,49 @@ export function createRanchMap(): RanchMap {
   const map: RanchMap = {
     width: WORLD_W,
     height: WORLD_H,
-    margin: 72,
+    margin: 60,
     roads: [
-      // Driveway from the county road to the house.
-      { kind: 'gravel', width: 64, points: [[1325, 0], [1330, 170], [1270, 380], [1150, 560], [1010, 615]] },
-      // Turnaround loop in front of the main house.
-      { kind: 'gravel', width: 58, loop: true, points: [[930, 555], [1015, 600], [1015, 690], [930, 730], [845, 690], [845, 600]] },
-      // The winding access road down through the property.
-      { kind: 'gravel', width: 60, points: [[905, 730], [840, 900], [720, 1060], [760, 1300], [960, 1520], [1080, 1800], [1060, 2100], [1020, 2380]] },
-      // Branch to the guest house yard gate.
-      { kind: 'gravel', width: 50, points: [[725, 1060], [640, 1160], [600, 1280], [560, 1282]] },
-      // Branch to the arena's west gate.
-      { kind: 'dirt', width: 52, points: [[960, 1520], [1250, 1490], [1500, 1480], [1730, 1500]] },
-      // Footpaths.
-      { kind: 'footpath', width: 34, points: [[1080, 1900], [1250, 2050], [1390, 2170]] },
-      { kind: 'footpath', width: 30, points: [[1060, 2080], [880, 2070], [700, 2050]] },
-      { kind: 'footpath', width: 30, points: [[2000, 2000], [2010, 2180], [1990, 2330]] },
-      { kind: 'footpath', width: 28, points: [[415, 1440], [470, 1540], [600, 1600]] },
-      { kind: 'footpath', width: 28, points: [[1220, 2780], [1100, 2860], [900, 2860], [720, 2820]] },
+      // The drive along the north edge, from the corner gate to Buffalo Gap Rd.
+      { kind: 'gravel', width: 60, points: [[360, 0], [430, 60], [800, 82], [1400, 92], [1800, 104], [2000, 118], [2200, 132]] },
+      // Teardrop driveway loop.
+      { kind: 'gravel', width: 56, points: [[820, 92], [845, 330], [900, 480], [1020, 590], [1160, 625], [1300, 570], [1440, 400], [1540, 220], [1590, 100]] },
+      // Second residence drive and footpath.
+      { kind: 'gravel', width: 50, points: [[1810, 104], [1825, 300], [1840, 430]] },
+      { kind: 'footpath', width: 30, points: [[1590, 390], [1660, 300], [1790, 262]] },
+      // Access road: from the loop, past Barn 89, down the west side through the trees, east to the barns and out to the highway.
+      {
+        kind: 'gravel',
+        width: 56,
+        points: [
+          [900, 500], [760, 560], [600, 600], [450, 700], [350, 840], [300, 1000], [290, 1200], [330, 1380],
+          [460, 1530], [640, 1690], [840, 1870], [1020, 2030], [1200, 2180], [1380, 2265], [1600, 2272], [1900, 2280], [2200, 2290],
+        ],
+      },
+      // Footpath from Barn 89's garden down to the round pen and the arena gate.
+      { kind: 'footpath', width: 32, points: [[1000, 1100], [1060, 1330], [1200, 1500], [1330, 1650], [1420, 1690]] },
+      // Track along the north edge of the arena to the east shed.
+      { kind: 'footpath', width: 28, points: [[1330, 1650], [1450, 1400], [1600, 1380], [1690, 1420]] },
+      // Path round the corral and behind the barns.
+      { kind: 'footpath', width: 28, points: [[1190, 2300], [1150, 2520], [1250, 2700], [1500, 2800], [1700, 2860]] },
     ],
     areas: [
-      { kind: 'woods', shape: { type: 'rect', x: 1740, y: 90, w: 640, h: 520, r: 120 } },
-      { kind: 'woods', shape: { type: 'rect', x: 80, y: 90, w: 420, h: 280, r: 100 } },
-      { kind: 'meadow', shape: { type: 'ellipse', x: 1330, y: 1350, rx: 330, ry: 520 } },
-      { kind: 'lawn', shape: { type: 'rect', x: 690, y: 230, w: 620, h: 560, r: 120 } },
-      { kind: 'garden', shape: { type: 'rect', x: 510, y: 392, w: 160, h: 136, r: 10 } },
-      { kind: 'lawn', shape: { type: 'rect', x: YARD.x + 8, y: YARD.y + 8, w: YARD.w - 16, h: YARD.h - 16, r: 20 } },
+      { kind: 'asphalt', shape: { type: 'rect', x: 2190, y: -20, w: 170, h: WORLD_H + 40 } },
+      { kind: 'woods', shape: { type: 'rect', x: -20, y: 700, w: 300, h: 1250, r: 120 } },
+      { kind: 'woods', shape: { type: 'rect', x: -20, y: 1850, w: 700, h: 1260, r: 160 } },
+      { kind: 'woods', shape: { type: 'ellipse', x: 820, y: 2800, rx: 460, ry: 300 } },
+      { kind: 'lawn', shape: { type: 'poly', points: [[870, 120], [1560, 120], [1450, 380], [1300, 540], [1160, 590], [1020, 555], [920, 460]] } },
+      { kind: 'meadow', shape: { type: 'ellipse', x: 1330, y: 2700, rx: 380, ry: 320 } },
+      { kind: 'lawn', shape: { type: 'rect', x: YARD.x + 8, y: 680, w: YARD.w - 16, h: 102, r: 12 } },
       { kind: 'sand', shape: { type: 'rect', x: ARENA.x + 4, y: ARENA.y + 4, w: ARENA.w - 8, h: ARENA.h - 8, r: 6 } },
-      { kind: 'dirt', shape: { type: 'ellipse', x: 1040, y: 2440, rx: 380, ry: 150 } },
-      { kind: 'dirt', shape: { type: 'ellipse', x: 560, y: 2050, rx: 124, ry: 124 } },
-      { kind: 'dirt', shape: { type: 'ellipse', x: 1980, y: 2440, rx: 96, ry: 96 } },
+      { kind: 'sand', shape: { type: 'rect', x: 740, y: 950, w: 140, h: 115, r: 12 } },
+      { kind: 'clay', shape: { type: 'poly', points: [[670, 1160], [800, 1080], [940, 1150], [900, 1270], [710, 1260]] } },
+      { kind: 'clay', shape: { type: 'ellipse', x: 620, y: 1990, rx: 300, ry: 190 } },
+      { kind: 'clay', shape: { type: 'ellipse', x: 330, y: 2250, rx: 170, ry: 90 } },
+      { kind: 'clay', shape: { type: 'ellipse', x: 880, y: 2420, rx: 120, ry: 70 } },
+      { kind: 'dirt', shape: { type: 'rect', x: 1430, y: 2240, w: 520, h: 80, r: 30 } },
+      { kind: 'dirt', shape: { type: 'ellipse', x: ROUND_PEN.x, y: ROUND_PEN.y, rx: ROUND_PEN.r - 4, ry: ROUND_PEN.r - 4 } },
+      { kind: 'dirt', shape: { type: 'ellipse', x: 400, y: 300, rx: 82, ry: 82 } },
       { kind: 'lawn', shape: { type: 'ellipse', x: CORRAL.x, y: CORRAL.y, rx: CORRAL.r - 6, ry: CORRAL.r - 6 } },
-      { kind: 'water', shape: { type: 'ellipse', x: 720, y: 1610, rx: 118, ry: 72 } },
     ],
     buildings: buildings(),
     trees: [],
@@ -208,37 +251,36 @@ export function createRanchMap(): RanchMap {
     pens: pens(),
     props: props(),
     distractions: [
-      { id: 'yarn', kind: 'yarn', x: 430, y: 1340, radius: 260 },
-      { id: 'box', kind: 'box', x: 1235, y: 2335, radius: 230 },
-      { id: 'ducks', kind: 'ducks', x: 720, y: 1610, radius: 270 },
-      { id: 'chickens', kind: 'chickens', x: 1980, y: 2440, radius: 260 },
-      { id: 'flowers', kind: 'flowers', x: 600, y: 460, radius: 230 },
+      { id: 'yarn', kind: 'yarn', x: 1450, y: 735, radius: 260 },
+      { id: 'box', kind: 'box', x: 980, y: 2300, radius: 230 },
+      { id: 'chickens', kind: 'chickens', x: 400, y: 300, radius: 260 },
+      { id: 'flowers', kind: 'flowers', x: 800, y: 1175, radius: 230 },
     ],
     discoveries: [
-      { id: 'mailbox', x: 1395, y: 140, r: 90, title: 'The Mailbox', text: 'NATALIE & DEPUTY. No solicitors. No dogs. Absolutely no baths.' },
-      { id: 'scarecrow', x: 590, y: 470, r: 90, title: 'Scarecrow', text: 'Fired. Too scary for kittens, not scary enough for crows.' },
-      { id: 'arena', x: 1650, y: 1440, r: 90, title: 'Riding Arena', text: 'Tigers welcome. Horses concerned.' },
-      { id: 'pond', x: 720, y: 1700, r: 120, title: 'Duck Pond', text: 'Ducks have the right of way. The ducks wrote this sign.' },
-      { id: 'nap', x: 700, y: 2830, r: 80, title: "Deputy's Nap Spot", text: 'Tiger-shaped dent in the hay: certified authentic.' },
-      { id: 'mouse', x: 852, y: 2795, r: 70, title: 'Mouse Hole', text: 'WANTED: The Mouse. Reward: one (1) nap.' },
-      { id: 'chickens', x: 1985, y: 2310, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by your tiger.' },
-      { id: 'laundry', x: 410, y: 1150, r: 80, title: 'Clothesline', text: 'Three socks are missing. The kittens know something.' },
+      { id: 'mailbox', x: 1975, y: 200, r: 90, title: 'The Mailbox', text: 'NATALIE & DEPUTY, Buffalo Gap Rd. No solicitors. No dogs. Absolutely no baths.' },
+      { id: 'trampoline', x: 810, y: 1060, r: 90, title: 'Trampoline', text: 'Kittens have been banned since The Incident. Nobody talks about The Incident.' },
+      { id: 'scarecrow', x: 860, y: 1240, r: 80, title: 'Scarecrow', text: 'Fired. Too scary for kittens, not scary enough for crows.' },
+      { id: 'arena', x: 1380, y: 1660, r: 90, title: 'Riding Arena', text: 'Tigers welcome. Horses concerned.' },
+      { id: 'highway', x: 1975, y: 1260, r: 90, title: 'Buffalo Gap Rd', text: 'The kittens are NOT allowed past this fence. Deputy is NOT allowed to chase trucks.' },
+      { id: 'nap', x: 1670, y: 2815, r: 80, title: "Deputy's Nap Spot", text: 'Tiger-shaped dent in the hay: certified authentic.' },
+      { id: 'mouse', x: 1525, y: 2265, r: 70, title: 'Mouse Hole', text: 'WANTED: The Mouse. Reward: one (1) nap.' },
+      { id: 'chickens', x: 400, y: 420, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by your tiger.' },
+      { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white kittens.' },
+      { id: 'laundry', x: 1800, y: 770, r: 80, title: 'Clothesline', text: 'Three socks are missing. The kittens know something.' },
     ],
     collectibles: [
-      { id: 'shoe-woods', kind: 'horseshoe', x: 2230, y: 300 },
-      { id: 'shoe-barn', kind: 'horseshoe', x: 1020, y: 2865 },
-      { id: 'shoe-paddock', kind: 'horseshoe', x: 505, y: 2010 },
-      { id: 'shoe-corner', kind: 'horseshoe', x: 170, y: 2900 },
-      { id: 'treats-porch', kind: 'treatBag', x: 900, y: 525 },
-      { id: 'treats-tack', kind: 'treatBag', x: 545, y: 2765 },
-      { id: 'treats-arena', kind: 'treatBag', x: 2230, y: 1960 },
+      { id: 'shoe-paddock', kind: 'horseshoe', x: 140, y: 170 },
+      { id: 'shoe-creek', kind: 'horseshoe', x: 300, y: 2960 },
+      { id: 'shoe-roundpen', kind: 'horseshoe', x: 1130, y: 1760 },
+      { id: 'shoe-barn', kind: 'horseshoe', x: 1930, y: 2720 },
+      { id: 'treats-barn89', kind: 'treatBag', x: 690, y: 960 },
+      { id: 'treats-shed', kind: 'treatBag', x: 505, y: 1320 },
+      { id: 'treats-arena', kind: 'treatBag', x: 1975, y: 1490 },
     ],
     zoomieZones: [{ x: ARENA.x, y: ARENA.y, w: ARENA.w, h: ARENA.h }],
     extraSolids: [
-      // Pond edge approximated by overlapping circles.
-      { kind: 'circle', x: 650, y: 1610, r: 62 },
-      { kind: 'circle', x: 720, y: 1605, r: 68 },
-      { kind: 'circle', x: 792, y: 1612, r: 60 },
+      // Buffalo Gap Rd and everything beyond the property fence.
+      { kind: 'rect', x: EAST_FENCE + 4, y: -50, w: WORLD_W, h: WORLD_H + 100 },
     ],
   };
   map.trees = pruneTrees(map, trees());

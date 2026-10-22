@@ -537,11 +537,14 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
   }
   if (b.label) {
     // Tiny house number / name plaque.
+    ctx.font = 'bold 7px ui-rounded, system-ui, sans-serif';
+    const pw = Math.max(30, ctx.measureText(b.label).width + 8);
     ctx.fillStyle = C.wood;
-    ctx.fillRect(8, h - 18, 30, 11);
+    ctx.fillRect(23 - pw / 2, h - 18, pw, 11);
     ctx.fillStyle = C.white;
     ctx.font = 'bold 7px ui-rounded, system-ui, sans-serif';
-    ctx.fillText(b.style === 'farmhouse' ? 'No. 1' : 'No. 2', 11, h - 10);
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label, 23, h - 10);
   }
 }
 
@@ -1120,6 +1123,33 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      break;
+    }
+    case 'trampoline': {
+      const r = p.w ?? 40;
+      ctx.beginPath();
+      ctx.ellipse(x + 6, y + 4, r, r * 0.45, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.fillStyle = '#555';
+      for (const lx of [-0.75, 0, 0.75]) ctx.fillRect(x + lx * r - 1.5, y - 14, 3, 14);
+      ctx.beginPath();
+      ctx.ellipse(x, y - 14, r, r * 0.42, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#3d7fd6';
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x, y - 14, r * 0.8, r * 0.33, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#222428';
+      ctx.fill();
+      // A single kitten paw print. Evidence of The Incident.
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.arc(x + 6, y - 12, 2.4, 0, Math.PI * 2);
+      ctx.arc(x + 3, y - 16, 1, 0, Math.PI * 2);
+      ctx.arc(x + 6, y - 17, 1, 0, Math.PI * 2);
+      ctx.arc(x + 9, y - 16, 1, 0, Math.PI * 2);
+      ctx.fill();
       break;
     }
     case 'bench': {

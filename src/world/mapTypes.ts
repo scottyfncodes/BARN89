@@ -10,11 +10,14 @@ export interface RoadDef {
   loop?: boolean;
 }
 
-export type AreaKind = 'sand' | 'dirt' | 'garden' | 'lawn' | 'meadow' | 'water' | 'woods';
+export type AreaKind = 'sand' | 'dirt' | 'garden' | 'lawn' | 'meadow' | 'water' | 'woods' | 'clay' | 'asphalt';
 
 export interface AreaDef {
   kind: AreaKind;
-  shape: { type: 'rect'; x: number; y: number; w: number; h: number; r?: number } | { type: 'ellipse'; x: number; y: number; rx: number; ry: number };
+  shape:
+    | { type: 'rect'; x: number; y: number; w: number; h: number; r?: number }
+    | { type: 'ellipse'; x: number; y: number; rx: number; ry: number }
+    | { type: 'poly'; points: Pt[] };
 }
 
 export type BuildingStyle = 'farmhouse' | 'cottage' | 'barn' | 'shed' | 'garage' | 'coop';
@@ -79,7 +82,8 @@ export type PropKind =
   | 'napHay'
   | 'mouseHole'
   | 'well'
-  | 'bench';
+  | 'bench'
+  | 'trampoline';
 
 export interface PropDef {
   kind: PropKind;

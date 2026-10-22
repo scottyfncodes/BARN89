@@ -11,6 +11,7 @@ export function propSolid(p: PropDef): Shape | null {
   if (!p.solid) return null;
   switch (p.kind) {
     case 'roundBale':
+    case 'trampoline':
     case 'barrel':
     case 'rock':
     case 'flowers':

@@ -37,6 +37,7 @@ const store = {
 const canvas = $<HTMLCanvasElement>('game');
 const game = new Game(LEVEL_ONE);
 const renderer = new Renderer(canvas, game);
+renderer.overview = new URLSearchParams(location.search).has('overview');
 const sfx = new Sfx();
 const hints = new Hints();
 const controls = new Controls($('touch'), $('stick-base'), $('stick-knob'), $('whistle-btn'), $('treat-btn'));
@@ -509,6 +510,7 @@ function frame(now: number): void {
 
 refreshBest();
 setMode('title');
+if (renderer.overview) show(screens.title, false);
 requestAnimationFrame(frame);
 
 // Test/debug hook: lets automated browser checks inspect state. Harmless for players.

@@ -60,7 +60,7 @@ export interface View {
 /** Draws the ranch and everything on it. Owns the camera and purely visual effects. */
 export class Renderer {
   private ctx: Ctx;
-  private tiles: TerrainTiles;
+  readonly tiles: TerrainTiles;
   private trees: TreeSprites;
   private buildings: BuildingSprites;
   private statics: Static[] = [];
@@ -74,6 +74,8 @@ export class Renderer {
   private titleT = 0;
   /** Extra space (CSS px) covered by HUD at the top/bottom, so the camera can keep Natalie clear of it. */
   insets = { top: 0, bottom: 0 };
+  /** Debug/marketing view: fit the whole ranch on screen (enabled with ?overview). */
+  overview = false;
   /** Screen rect (CSS px) kept clear for off-screen guides: excludes HUD and action buttons. */
   guideRect = { left: 0, top: 0, right: 0, bottom: 0 };
 
@@ -270,12 +272,20 @@ export class Renderer {
     const p = g.player;
     const vw = this.vw / this.cam.zoom;
     const vh = this.vh / this.cam.zoom;
+    if (this.overview) {
+      const m = g.map;
+      this.tiles.maxTiles = 400;
+      this.cam.zoom = Math.min(this.vw / m.width, this.vh / m.height);
+      this.cam.x = m.width / 2;
+      this.cam.y = m.height / 2;
+      return;
+    }
     if (view.mode === 'title') {
       // Lazy drift over the ranch behind the title card.
       this.titleT += dt;
       const t = this.titleT * 0.05;
-      this.cam.x = 1250 + Math.sin(t) * 320;
-      this.cam.y = 1900 + Math.cos(t * 0.8) * 380;
+      this.cam.x = 1300 + Math.sin(t) * 380;
+      this.cam.y = 1800 + Math.cos(t * 0.8) * 700;
       this.cam.zoom = damp(this.cam.zoom, this.baseZoom() * 0.9, 2, dt);
     } else {
       const celebrating = g.phase !== 'playing';
@@ -525,6 +535,24 @@ export class Renderer {
       }
       ctx.restore();
     }
+    // Traffic on Buffalo Gap Rd, safely beyond the fence.
+    const road = g.map.areas.find((a) => a.kind === 'asphalt');
+    if (road && road.shape.type === 'rect' && road.shape.x < v.x1 && road.shape.x + road.shape.w > v.x0) {
+      const s = road.shape;
+      const span = g.map.height + 600;
+      const cars: [number, number, number, string][] = [
+        [s.x + s.w * 0.27, 1, 0, '#d9434f'],
+        [s.x + s.w * 0.27, 1, 0.55, '#f2f2ee'],
+        [s.x + s.w * 0.73, -1, 0.2, '#3d7fd6'],
+        [s.x + s.w * 0.73, -1, 0.7, '#7a8a5a'],
+      ];
+      for (const [x, dir, off, col] of cars) {
+        const f = (clock * 0.045 + off) % 1;
+        const y = dir > 0 ? f * span - 300 : g.map.height + 300 - f * span;
+        if (y < v.y0 - 80 || y > v.y1 + 80) continue;
+        this.drawCar(ctx, x, y, dir, col);
+      }
+    }
     // Flat props (flower beds, hay pile).
     for (const p of g.map.props) {
       if (!propIsFlat(p)) continue;
@@ -560,6 +588,36 @@ export class Renderer {
       ctx.fill();
       drawFishTreat(ctx, t.x, t.y - 3, 1, 0);
     }
+  }
+
+  private drawCar(ctx: Ctx, x: number, y: number, dir: number, color: string): void {
+    ctx.save();
+    ctx.translate(x, y);
+    if (dir < 0) ctx.rotate(Math.PI);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.roundRect(-17, -32, 38, 70, 10);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-20, -36, 40, 72, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#9fd3ea';
+    ctx.beginPath();
+    ctx.roundRect(-15, 10, 30, 13, 4);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(-15, -22, 30, 10, 4);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(-15, -10, 30, 18);
+    ctx.fillStyle = '#ffe9a0';
+    ctx.fillRect(-16, 32, 8, 4);
+    ctx.fillRect(8, 32, 8, 4);
+    ctx.restore();
   }
 
   private drawDuck(ctx: Ctx, x: number, y: number, dir: number, t: number, duckling: boolean): void {

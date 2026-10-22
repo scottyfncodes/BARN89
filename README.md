@@ -10,7 +10,7 @@ A mobile-first browser game built for iPhone Safari and the Home Screen. It has 
 - **Herd:** kittens move away from Deputy, so get *behind* a kitten and push it toward the glowing corral. The arrows at the corral gate point the way in.
 - **Whistle:** nearby kittens scoot in the direction you're riding. It also wakes nappers.
 - **Treat:** tosses a fish cookie ahead of you. Hungry kittens come running, eat it, then follow Deputy for a while.
-- Pen **6 of the 8 kittens** to win. Faster times earn more stars. Golden horseshoes, treat bags and little discoveries are hidden around the ranch.
+- Pen **6 of the 8 kittens** to win. Faster times earn more stars (3 stars under 6:00, 2 under 10:00). Golden horseshoes, treat bags and little discoveries are hidden around the ranch.
 
 Keyboard works on desktop (WASD/arrows, Space = whistle, E = treat, Esc = pause), but nothing requires it.
 
@@ -110,4 +110,15 @@ scripts/make-icons.mjs  regenerates PNG icons from public/icon.svg
 
 ## About the map
 
-The level is laid out from a written description of Natalie's real ranch: the main residence and driveway at the top, the second residence and its grounds, winding access roads, the large sandy arena along the right, barns and outbuildings across the bottom, round fenced enclosures, open grass, mature trees and wooded edges. **The aerial screenshot and illustrated concept image mentioned in the brief were not available to the build environment**, so the relative layout follows the written description and is not traced from the photo. If you add those images to the repo, the coordinates in `src/world/ranch.ts` can be adjusted to match them more closely.
+The ranch is traced from an aerial photo of the real property on Buffalo Gap Rd, kept at [`docs/reference/aerial.jpg`](docs/reference/aerial.jpg). One aerial pixel equals two world units, so every landmark keeps its real relative position:
+
+- the drive along the north edge and the teardrop driveway loop with its lawn
+- **Barn 89** (the main residence) west of the loop, with the trampoline and the red-mulch garden
+- the second residence and its fenced yard in the north-east corner
+- the white shed, and the access road winding down the west side through the trees to the barns
+- the big sandy riding arena against the east fence line
+- the stable and the big barn in the south-east, the walled round pen in the middle, and the round corral (the Kitten Corral) south of it
+- north-west paddock fences and a chicken run, plus red-dirt creek woods running south-west
+- Buffalo Gap Rd beyond the east fence, with traffic but no kittens allowed
+
+`tests/map.test.ts` pins the main landmarks to their aerial positions. Open the game with `?overview` (for example `http://localhost:5173/?overview`) to see the whole ranch on one screen and compare it with the photo.

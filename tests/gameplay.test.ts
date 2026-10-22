@@ -13,7 +13,7 @@ const kitten = (g: Game, id: string): Kitten => g.kittens.find((k) => k.id === i
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** A level with a single kitten in open meadow, for isolated behaviour checks. */
-function solo(id: string, x = 1300, y = 1300): LevelDef {
+function solo(id: string, x = 1180, y = 470): LevelDef {
   const spawn = LEVEL_ONE.kittens.find((k) => k.id === id)!;
   return { ...LEVEL_ONE, required: 1, player: { x: x - 300, y }, kittens: [{ ...spawn, x, y }] };
 }
@@ -245,12 +245,12 @@ describe('robustness', () => {
 });
 
 describe('full playthrough', () => {
-  it('an autopilot can herd six kittens into the corral within ten minutes', async () => {
+  it('an autopilot can herd six kittens into the corral within fifteen minutes', async () => {
     const { HerdBot } = await import('./bot');
     const g = new Game(LEVEL_ONE);
     const bot = new HerdBot(g);
     let t = 0;
-    while (g.phase === 'playing' && t < 600) {
+    while (g.phase === 'playing' && t < 900) {
       g.step(bot.next(DT), DT);
       t += DT;
     }
