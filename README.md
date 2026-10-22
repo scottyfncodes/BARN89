@@ -16,7 +16,8 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 - The woodshed and woodpile on the west access road
 - The round pen (the donkeys' paddock), the riding arena, the stable
 - **Barn 89**, the red barn in the south-east, with the old venue sign by the road, the string lights over the lawn, and a guestbook page tucked behind it
-- The chicken run in the north-west and the red-dirt creek woods to the south-west
+- The chicken run in the clearing south-east of the treehouse, and the red-dirt creek woods to the south-west
+- Grandpa's workshop, the garage under the blue star: this was Apple's workshop, where she and Grandpa fixed up and painted antique furniture for her business, Blue Star. Walk up to it and the game says so; a stray half-painted cabinet sits outside
 
 **Games and activities** (each challenge earns up to three stars; one star opens the next challenge):
 
@@ -32,8 +33,8 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 **Life on the homestead.** People and animals keep busy while you explore:
 - Megan scatters feed by the chicken run, and now and then takes Jay's mower for a couple of laps of the north lawn.
 - Jason takes practice swings at the woodpile, and now and then takes Natalie out on his motorcycle: down the access road to the barns and back, round the driveway loop, and home. Exploring as Natalie or Jason, walk up to the motorcycle (parked by Jason's truck) and tap *Ride with Jason* / *Ride with Natalie* to go along; *Hop off* any time.
-- Jay and Jason meet in the side yard to practise Jay's sports, taking turns with football, baseball and soccer.
-- Grandpa moves between his back porch (waving at the trucks on Buffalo Gap Rd), raking his front yard, and practising his putting on the green in his fenced back yard.
+- Jay and Jason meet in the open north-west corner, where the chicken coop used to be, to practise Jay's sports, taking turns with football, baseball and soccer.
+- Grandpa moves between his back porch (waving at the trucks on Buffalo Gap Rd), raking his front yard, and practising his putting on the green in his fenced back yard. He is deathly afraid of snakes: now and then a little garter snake turns up while he's out in the yard, he throws his arms up and hurries back to the porch, and Axel chases it off.
 - Grandpa's two little black chihuahuas never leave that back yard. They yap at anyone near the fence and come and go through the doggie door in his back wall.
 
 Everyone stops and turns to you when you walk up, and their prompt goes wherever they are (the map shows where everyone is right now). Barn cats move between their favourite spots, the dogs go off sniffing if you stand still too long, Chewy wanders over when you stop at the pen fence, and the chickens shuffle away from the wire. Family members just off screen get a small portrait marker at the edge (gold if you haven't played their game yet). After a minigame you come back to where you started, and the person whose game it was cheers if you earned a star. The family's routines and outings are in [`src/hub/family.ts`](src/hub/family.ts); the animals are in the `Homestead` class in [`src/hub/homestead.ts`](src/hub/homestead.ts).

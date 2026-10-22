@@ -1278,6 +1278,60 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
     case 'pickup':
       drawPickup(ctx, x, y, p.angle ?? 0, p.color === 'charcoal' ? 'charcoal' : 'white', p.w ?? 100);
       break;
+    case 'cabinet': {
+      // A stray antique cabinet outside the workshop, one side painted, one side still bare wood.
+      ctx.beginPath();
+      ctx.ellipse(x + 3, y + 1, 18, 4.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.5;
+      const L = x - 13;
+      const T = y - 38;
+      ctx.fillStyle = C.woodLight;
+      ctx.fillRect(L, T, 26, 34);
+      ctx.fillStyle = '#8fb1d6';
+      ctx.fillRect(L, T, 14, 34);
+      // A ragged wet edge where the paint stops.
+      ctx.beginPath();
+      ctx.moveTo(L + 14, T);
+      for (let i = 1; i <= 6; i++) ctx.lineTo(L + 14 + (i % 2 ? 2 : -1), T + (i * 34) / 6);
+      ctx.lineTo(L, T + 34);
+      ctx.lineTo(L, T);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeRect(L, T, 26, 34);
+      ctx.beginPath();
+      ctx.moveTo(x, T + 3);
+      ctx.lineTo(x, T + 31);
+      ctx.stroke();
+      ctx.fillStyle = '#c9a548';
+      for (const kx of [x - 3, x + 3]) {
+        ctx.beginPath();
+        ctx.arc(kx, T + 17, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Little turned feet, and the top.
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(L + 1, y - 4, 3, 4);
+      ctx.fillRect(L + 22, y - 4, 3, 4);
+      ctx.fillStyle = '#8fb1d6';
+      ctx.fillRect(L - 2, T - 3, 30, 4);
+      ctx.strokeRect(L - 2, T - 3, 30, 4);
+      // Paint can and brush.
+      ctx.fillStyle = '#c9ced4';
+      ctx.fillRect(x + 17, y - 9, 9, 9);
+      ctx.strokeRect(x + 17, y - 9, 9, 9);
+      ctx.fillStyle = '#8fb1d6';
+      ctx.fillRect(x + 17.5, y - 9, 8, 2.5);
+      ctx.strokeStyle = C.woodDark;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x + 20, y - 8);
+      ctx.lineTo(x + 25, y - 17);
+      ctx.stroke();
+      break;
+    }
     case 'treehouse': {
       // The treehouse at the corner of the main house: an old oak, a platform, a little house, a ladder.
       ctx.beginPath();

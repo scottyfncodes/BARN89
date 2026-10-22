@@ -46,6 +46,8 @@ export function propSolid(p: PropDef): Shape | null {
       const a = p.angle ?? 0;
       return { kind: 'segment', ax: p.x - Math.cos(a) * half, ay: p.y - Math.sin(a) * half, bx: p.x + Math.cos(a) * half, by: p.y + Math.sin(a) * half, r: len * 0.22 };
     }
+    case 'cabinet':
+      return { kind: 'circle', x: p.x, y: p.y, r: 13 };
     case 'treehouse':
       // The trunk and the foot of the ladder.
       return { kind: 'rect', x: p.x - 12, y: p.y - 8, w: 60, h: 12 };

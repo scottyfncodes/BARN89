@@ -52,6 +52,8 @@ export interface Npc {
   busyT: number;
   gesture: Gesture | null;
   gestureT: number;
+  /** Seconds left in a fright (Grandpa and snakes): arms up, and hurrying away. */
+  spookT: number;
   /** Seconds left celebrating after you played their game. */
   cheerT: number;
   walkPhase: number;
@@ -122,8 +124,8 @@ export interface MowRide {
 
 export type Sport = 'football' | 'baseball' | 'soccer';
 export const SPORTS: Sport[] = ['football', 'baseball', 'soccer'];
-/** Where they line up in the side yard, east of the main house. */
-export const SPORT_SPOTS: Record<'jay' | 'jason', Vec> = { jay: { x: 1250, y: 1085 }, jason: { x: 1450, y: 1130 } };
+/** Where they line up: the open ground in the north-west corner where the chicken coop used to be. */
+export const SPORT_SPOTS: Record<'jay' | 'jason', Vec> = { jay: { x: 355, y: 300 }, jason: { x: 490, y: 340 } };
 
 export interface SportSession {
   sport: Sport;
@@ -258,6 +260,7 @@ export class FamilyLife {
       gesture: null,
       gestureT: 1,
       cheerT: 0,
+      spookT: 0,
       walkPhase: 0,
       stop,
       stayT: this.rng.range(...stop.stay),
@@ -303,7 +306,9 @@ export class FamilyLife {
       n.cheerT = Math.max(0, n.cheerT - dt);
       n.busyT = Math.max(0, n.busyT - dt);
       if (gathered) continue;
-      n.attending = d < NPC_ATTEND && !riding;
+      n.spookT = Math.max(0, n.spookT - dt);
+      // Nobody stops to chat mid-panic.
+      n.attending = d < NPC_ATTEND && !riding && n.spookT <= 0;
       if (n.attending) {
         // Drop everything to talk (a putt already rolling finishes on its own).
         if (n.gesture !== 'throw' && n.gesture !== 'catch') n.busyT = 0;
@@ -363,7 +368,7 @@ export class FamilyLife {
     }
     const fromX = n.x;
     const fromY = n.y;
-    this.move(n, target, speed ?? (far > 140 ? 64 : 34), dt);
+    this.move(n, target, speed ?? (n.spookT > 0 ? 150 : far > 140 ? 64 : 34), dt);
     const moved = Math.hypot(n.x - fromX, n.y - fromY);
     if (Math.abs(n.x - fromX) > 0.3) n.faceX = n.x > fromX ? 1 : -1;
     n.walkPhase += dt * (2 + (moved / Math.max(dt, 1e-6) / 260) * 9);

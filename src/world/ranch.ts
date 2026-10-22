@@ -14,7 +14,8 @@ import { pruneTrees } from './solids';
  *  - the big sandy riding arena against the east fence line
  *  - the stable and Barn 89 (the red barn and old wedding venue) in the south-east, with the
  *    string-lit lawn south of it; the walled round pen (the donkeys' paddock) and the round corral
- *  - fenced paddocks and a chicken run in the north-west, red-dirt creek woods to the south-west
+ *  - fenced paddocks in the north-west, red-dirt creek woods to the south-west
+ *  - the chicken run in the clearing south-east of the treehouse
  *  - Buffalo Gap Rd running along the east boundary
  */
 export const WORLD_W = 2400;
@@ -26,6 +27,8 @@ export const ARENA = { x: 1420, y: 1440, w: EAST_FENCE - 1420, h: 600 };
 export const YARD = { x: 1360, y: 560, w: EAST_FENCE - 1360, h: 230 };
 export const CORRAL = { x: 1320, y: 2510, r: 130 };
 export const ROUND_PEN = { x: 1180, y: 1790, r: 110 };
+/** The chicken run, in the middle of the clearing south-east of the treehouse. */
+export const CHICKEN_RUN = { x: 1320, y: 1090, r: 82 };
 
 function buildings(): BuildingDef[] {
   return [
@@ -38,7 +41,7 @@ function buildings(): BuildingDef[] {
     { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
     { id: 'stable', style: 'barn', x: 1480, y: 2075, w: 400, h: 155, wall: 84, roof: '#8f9bb0', walls: '#b8382c' },
     { id: 'barn89', style: 'barn', x: 1510, y: 2320, w: 320, h: 420, wall: 130, roof: '#8f9bb0', walls: '#b8382c', label: 'BARN 89' },
-    { id: 'coop', style: 'coop', x: 370, y: 280, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
+    { id: 'coop', style: 'coop', x: CHICKEN_RUN.x - 31, y: CHICKEN_RUN.y - 20, w: 62, h: 44, wall: 38, roof: '#7a3a2e', walls: '#e8d6ad' },
   ];
 }
 
@@ -65,7 +68,7 @@ function pens(): PenDef[] {
   return [
     { id: 'corral', x: CORRAL.x, y: CORRAL.y, r: CORRAL.r, gateAngle: -Math.PI / 2 - 0.35, gateWidth: 104, role: 'target', label: 'Kitten Corral' },
     { id: 'roundPen', x: ROUND_PEN.x, y: ROUND_PEN.y, r: ROUND_PEN.r, gateAngle: -0.5, gateWidth: 88, role: 'paddock', label: 'Round Pen' },
-    { id: 'chickens', x: 400, y: 300, r: 85, role: 'chickens', label: 'Chicken Run' },
+    { id: 'chickens', x: CHICKEN_RUN.x, y: CHICKEN_RUN.y, r: CHICKEN_RUN.r, role: 'chickens', label: 'Chicken Run' },
   ];
 }
 
@@ -120,6 +123,8 @@ function props(): PropDef[] {
     { kind: 'venueSign', x: 1985, y: 2215, solid: true },
     // The long table under the lights, where the family gathers now the weddings are done.
     { kind: 'longTable', x: 1670, y: 2890, w: 150, solid: true },
+    // A stray half-painted cabinet outside the workshop (the garage under the blue star).
+    { kind: 'cabinet', x: 1792, y: 696, solid: true },
     // Grandpa's back yard: the putting green, and the chihuahuas' doggie door in the back wall.
     { kind: 'puttingGreen', x: 1952, y: 738, w: 64 },
     { kind: 'doggieDoor', x: 1540, y: 673 },
@@ -267,7 +272,7 @@ export function createRanchMap(): RanchMap {
       { kind: 'clay', shape: { type: 'ellipse', x: 880, y: 2420, rx: 120, ry: 70 } },
       { kind: 'dirt', shape: { type: 'rect', x: 1430, y: 2240, w: 520, h: 80, r: 30 } },
       { kind: 'dirt', shape: { type: 'ellipse', x: ROUND_PEN.x, y: ROUND_PEN.y, rx: ROUND_PEN.r - 4, ry: ROUND_PEN.r - 4 } },
-      { kind: 'dirt', shape: { type: 'ellipse', x: 400, y: 300, rx: 82, ry: 82 } },
+      { kind: 'dirt', shape: { type: 'ellipse', x: CHICKEN_RUN.x, y: CHICKEN_RUN.y, rx: CHICKEN_RUN.r - 3, ry: CHICKEN_RUN.r - 3 } },
       { kind: 'lawn', shape: { type: 'ellipse', x: CORRAL.x, y: CORRAL.y, rx: CORRAL.r - 6, ry: CORRAL.r - 6 } },
     ],
     buildings: buildings(),
@@ -278,7 +283,7 @@ export function createRanchMap(): RanchMap {
     distractions: [
       { id: 'yarn', kind: 'yarn', x: 1450, y: 735, radius: 260 },
       { id: 'box', kind: 'box', x: 980, y: 2300, radius: 230 },
-      { id: 'chickens', kind: 'chickens', x: 400, y: 300, radius: 260 },
+      { id: 'chickens', kind: 'chickens', x: CHICKEN_RUN.x, y: CHICKEN_RUN.y, radius: 260 },
       { id: 'flowers', kind: 'flowers', x: 800, y: 1175, radius: 230 },
     ],
     discoveries: [
@@ -290,12 +295,13 @@ export function createRanchMap(): RanchMap {
       { id: 'venue', x: 1580, y: 2870, r: 100, title: 'Barn 89', text: 'A few old bulbs still glow on the string lights. People danced here every weekend for years.' },
       { id: 'guestbook', x: 1880, y: 2620, r: 70, title: 'Tucked Behind the Barn', text: 'A weathered guestbook page: "Best day ever. The donkeys were very welcoming."' },
       { id: 'mouse', x: 1525, y: 2265, r: 70, title: 'Mouse Hole', text: 'WANTED: The Mouse. Reward: one (1) nap.' },
-      { id: 'chickens', x: 400, y: 420, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by everyone.' },
+      { id: 'chickens', x: CHICKEN_RUN.x, y: CHICKEN_RUN.y + 110, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by everyone.' },
       { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white cats.' },
       { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
       { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
       { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
       { id: 'treehouse', x: 1150, y: 1010, r: 80, title: 'The Treehouse', text: 'Up the ladder: a lookout window with the best view of the front lawn on the whole place.' },
+      { id: 'blueStar', x: 1805, y: 700, r: 70, title: 'Blue Star', text: "This was Apple's workshop. She and Grandpa fixed up and painted antique furniture here for her business, Blue Star." },
       { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
     ],
     collectibles: [

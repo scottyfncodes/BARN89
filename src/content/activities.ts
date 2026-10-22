@@ -64,7 +64,8 @@ export const ACTIVITIES: Activity[] = [
     title: "Megan's Morning Rounds",
     who: 'megan',
     line: 'Morning rounds! Eggs, donkeys, dogs, cats, flowers. Want to help?',
-    station: { x: 505, y: 420 },
+    // Beside the chicken run, south-east of the treehouse.
+    station: { x: 1420, y: 1195 },
     challenges: [{ id: 'rounds-1', game: 'rounds', name: 'Morning Rounds', blurb: 'Six chores, any order. Eggs go to the kitchen last.' }],
   },
   {
