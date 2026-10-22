@@ -1,7 +1,7 @@
 import type { SaveData } from '../core/save';
 import type { FamilyId, HatKind } from './cast';
 
-export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt' | 'race';
+export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt' | 'race' | 'putt';
 
 export interface Challenge {
   id: string;
@@ -77,6 +77,19 @@ export const ACTIVITIES: Activity[] = [
     challenges: [{ id: 'hunt-1', game: 'hunt', name: 'Lost and Found', blurb: 'Follow his clues, then crack the lockbox.' }],
   },
   {
+    id: 'putt',
+    title: 'Putt-Putt',
+    who: 'grandpa',
+    line: "Care for a round of putt-putt? I've been practising.",
+    // By his putting green in the back yard.
+    station: { x: 1965, y: 765 },
+    fixed: true,
+    challenges: [
+      { id: 'putt-1', game: 'putt', name: "Grandpa's Green", blurb: 'Three easy holes: a straight shot, a dogleg, and the doggie door.' },
+      { id: 'putt-2', game: 'putt', name: 'Around the Ranch', blurb: 'Hay bales, a donkey crossing, and a barnyard zigzag.' },
+    ],
+  },
+  {
     id: 'race',
     title: 'Scooter Races',
     who: 'natalie',
@@ -113,6 +126,12 @@ export const HOWTO: Record<GameId, string[]> = {
     'Walk into a glowing ring and tap the button to do the chore.',
     'The eggs go to the kitchen, so collect them first.',
     'Numbered arrows at the screen edge point to chores you can do next.',
+  ],
+  putt: [
+    '<b>Pull back</b> anywhere on the screen, then <b>let go</b> to putt the other way. Pull further for more power.',
+    'Walls bounce, hay bales soak up speed, and sand and mud slow the ball right down.',
+    'Animals wander across some holes. Wait for them, or use them.',
+    'Too fast over the cup and it rolls right past. Finish at or under par for three stars.',
   ],
   race: [
     'Everyone rides a scooter. <b>Drag</b> to steer, same as walking.',

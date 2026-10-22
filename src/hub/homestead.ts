@@ -26,7 +26,9 @@ export interface HubDog {
   vy: number;
   faceX: number;
   phase: number;
-  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase';
+  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase' | 'skunk';
+  /** Seconds left smelling of skunk. */
+  stinkT: number;
   ball: boolean;
   /** While sniffing: the interesting spot, and how long left with nose to the ground. */
   sniffAt: Vec | null;
@@ -102,6 +104,23 @@ export interface Snake {
   scared: boolean;
 }
 
+/** A skunk out for a stroll. Annie never learns. */
+export interface Skunk {
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  faceX: number;
+  phase: number;
+  state: 'waddle' | 'spray' | 'leave';
+  /** Seconds in the current state. */
+  t: number;
+  dx: number;
+  dy: number;
+  /** Seconds since it sprayed (for the cloud), or -1. */
+  cloudT: number;
+}
+
 /** One of Grandpa's chihuahuas. */
 export interface HubPup {
   def: DogDef;
@@ -155,6 +174,7 @@ export type HubEvent =
   | { type: 'moto'; partner: string; ride: boolean }
   | { type: 'raceGo' }
   | { type: 'snake'; x: number; y: number; chased: boolean }
+  | { type: 'skunk'; x: number; y: number }
   | { type: 'raceGate'; gate: number; x: number; y: number }
   | { type: 'raceRival'; name: string }
   | { type: 'raceDone'; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
@@ -265,6 +285,9 @@ export class Homestead {
   snake: Snake | null = null;
   /** Seconds until a snake might next turn up near Grandpa. */
   snakeT = 35;
+  skunk: Skunk | null = null;
+  /** Seconds until a skunk might next wander by. */
+  skunkT = 70;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
@@ -306,6 +329,7 @@ export class Homestead {
       side: i ? 1 : -1,
       sniffAt: null,
       sniffT: 0,
+      stinkT: 0,
       path: null,
       pathT: 0,
     }));
@@ -403,6 +427,7 @@ export class Homestead {
   gather(on: boolean): void {
     this.gathered = on;
     this.snake = null;
+    this.skunk = null;
     this.family.reset(this.npcs, !on);
     if (!on) {
       for (const d of this.dogs) d.state = 'follow';
@@ -534,6 +559,7 @@ export class Homestead {
     for (const c of this.cats) this.updateCat(c, dt);
     this.pups.forEach((d, i) => this.updatePup(d, i, dt));
     this.updateSnake(dt);
+    this.updateSkunk(dt);
     this.updateMission(dt);
     this.checkFinds(dt);
     this.nearStation = this.mission || this.family.moto?.player ? null : this.findStation();
@@ -739,7 +765,27 @@ export class Homestead {
     const b = this.ball;
     let sp = 0;
     const fromX = d.x;
-    if (d.state === 'chase') {
+    d.stinkT = Math.max(0, d.stinkT - dt);
+    if (d.state === 'skunk') {
+      // Annie has spotted a skunk. This will go the way it always goes.
+      const k = this.skunk;
+      if (!k || k.state !== 'waddle') d.state = 'follow';
+      else {
+        sp = this.moveAgent(d, k, 250, dt, 11);
+        d.wag = 1;
+        if (dist(d, k) < 30) {
+          k.state = 'spray';
+          k.t = 0;
+          k.cloudT = 0;
+          // Tail up, aimed squarely at Annie.
+          k.faceX = d.x >= k.x ? -1 : 1;
+          d.state = 'follow';
+          d.stinkT = 30;
+          d.wag = 0.3;
+          this.emit({ type: 'skunk', x: k.x, y: k.y });
+        }
+      }
+    } else if (d.state === 'chase') {
       // Axel has found another snake.
       const s = this.snake;
       if (!s) d.state = 'follow';
@@ -967,6 +1013,52 @@ export class Homestead {
     if (s.t > (s.fleeing ? 2.2 : 14) || !this.shared.world.isFree(s.x, s.y, 2)) {
       this.snake = null;
       for (const d of this.dogs) if (d.state === 'chase') d.state = 'follow';
+    }
+  }
+
+  /* --- Annie and the skunk ------------------------------------------------------------------- */
+
+  private updateSkunk(dt: number): void {
+    const annie = this.dogs.find((d) => d.def.id === 'annie');
+    let k = this.skunk;
+    if (!k) {
+      this.skunkT -= dt;
+      const p = this.player;
+      const free = annie && (annie.state === 'follow' || annie.state === 'rest' || annie.state === 'sniff') && annie.stinkT <= 0 && dist(annie, p) < 220;
+      if (this.skunkT > 0 || !free || this.gathered || this.mission || this.family.moto?.player) return;
+      this.skunkT = this.life.range(120, 200);
+      // Somewhere in view, just off to one side, ambling across.
+      const a = this.life.range(0, Math.PI * 2);
+      const spot = this.shared.nav.nearestWalkable(p.x + Math.cos(a) * 190, p.y + Math.sin(a) * 140, 3);
+      if (!spot || !this.shared.nav.reachable(annie!, spot)) return;
+      const side = this.life.next() < 0.5 ? -1 : 1;
+      k = this.skunk = { x: spot.x, y: spot.y, px: spot.x, py: spot.y, faceX: side, phase: 0, state: 'waddle', t: 0, dx: side, dy: 0, cloudT: -1 };
+      annie!.state = 'skunk';
+      annie!.path = null;
+    }
+    k.px = k.x;
+    k.py = k.y;
+    k.t += dt;
+    if (k.cloudT >= 0) k.cloudT += dt;
+    const speed = k.state === 'waddle' ? 22 : k.state === 'leave' ? 40 : 0;
+    if (speed) {
+      const pos = { x: k.x + k.dx * speed * dt, y: k.y + k.dy * speed * dt };
+      this.shared.world.resolve(pos, 8);
+      k.x = pos.x;
+      k.y = pos.y;
+      k.phase += dt * 10;
+    }
+    if (k.state === 'spray' && k.t > 1.3) {
+      // Job done. Off it goes, unhurried.
+      k.state = 'leave';
+      k.t = 0;
+      k.dx = annie && annie.x < k.x ? 1 : -1;
+      k.dy = 0;
+      k.faceX = k.dx;
+    }
+    if ((k.state === 'leave' && k.t > 4) || (k.state === 'waddle' && k.t > 14)) {
+      this.skunk = null;
+      if (annie?.state === 'skunk') annie.state = 'follow';
     }
   }
 

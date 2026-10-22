@@ -20,6 +20,7 @@ export function starRow(n: number, max = 3, size = 18): string {
 export const ICONS = {
   cat: `<svg viewBox="0 0 24 24"><path d="M4 9 5 3l4.5 4h5L19 3l1 6c1.3 1.4 2 3.2 2 5 0 4.4-4.5 7-10 7S2 18.4 2 14c0-1.8.7-3.6 2-5Z" fill="#f4a25a" stroke="#3b2a20" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8.5" cy="13" r="1.3" fill="#3b2a20"/><circle cx="15.5" cy="13" r="1.3" fill="#3b2a20"/><path d="M11 16h2l-1 1z" fill="#e5737f"/></svg>`,
   grass: `<svg viewBox="0 0 24 24"><path d="M3 21c1-6 2-9 4-12M8 21c0-6 1-11 4-16M13 21c0-5 1-8 3-11M18 21c0-4 1-6 3-8" fill="none" stroke="#4f8a33" stroke-width="2.6" stroke-linecap="round"/><path d="M2 21h20" stroke="#3b2a20" stroke-width="2" stroke-linecap="round"/></svg>`,
+  flag: `<svg viewBox="0 0 24 24"><path d="M7 21V3" stroke="#3b2a20" stroke-width="2" stroke-linecap="round"/><path d="M7 3.5l11 4-11 4z" fill="#b8382c" stroke="#3b2a20" stroke-width="1.6" stroke-linejoin="round"/><ellipse cx="9" cy="21" rx="6" ry="1.8" fill="#6cc152" stroke="#3b2a20" stroke-width="1.4"/></svg>`,
   log: `<svg viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="11" rx="3" fill="#9a6b42" stroke="#3b2a20" stroke-width="1.7"/><ellipse cx="18" cy="12.5" rx="3.5" ry="5.5" fill="#e2b77a" stroke="#3b2a20" stroke-width="1.7"/><ellipse cx="18" cy="12.5" rx="1.4" ry="2.4" fill="none" stroke="#b07a44" stroke-width="1.2"/></svg>`,
 };
 
