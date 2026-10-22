@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_CHALLENGES, isUnlocked, MAX_STARS, REWARDS, rewardUnlocked, totalStars, unlockedRewards } from '../src/content/activities';
+import { cleanName, NAMEABLE, NAMED_BY_FAMILY, nameFor } from '../src/content/names';
 import { freshSave, normalize, SaveStore, type Storage } from '../src/core/save';
 
 class MemStorage implements Storage {
@@ -56,6 +57,35 @@ describe('saving progress', () => {
   });
 });
 
+describe('animal names', () => {
+  it('keeps clean names for animals that can be renamed, and nothing else', () => {
+    const s = normalize({ names: { biscuit: '  Sir   Biscuit  ', pip: 'Tiny<script>', annie: 'Bob', yoda: 'Baby', nobody: 'X', pepper: 42, mochi: 'Mochi' } });
+    expect(s.names).toEqual({ biscuit: 'Sir Biscuit', pip: 'Tinyscript' });
+  });
+
+  it('caps names at fourteen characters and falls back to the default', () => {
+    expect(cleanName('Supercalifragilistic')).toBe('Supercalifragi');
+    expect(cleanName('<>')).toBe('');
+    expect(nameFor({}, 'peanut')).toBe('Peanut');
+    expect(nameFor({ peanut: 'Bean' }, 'peanut')).toBe('Bean');
+  });
+
+  it('lists the barn cats and the chihuahuas, but never the dogs or donkeys', () => {
+    const ids = NAMEABLE.map((a) => a.id);
+    expect(ids).toHaveLength(10);
+    for (const locked of ['annie', 'axel', 'yoda', 'chewy']) expect(ids).not.toContain(locked);
+    expect(NAMED_BY_FAMILY.map((a) => a.name).sort()).toEqual(['Annie', 'Axel', 'Chewy', 'Yoda']);
+  });
+
+  it('round-trips through storage', () => {
+    const mem = new MemStorage();
+    const a = new SaveStore(mem);
+    a.data.names.tater = 'Tot';
+    a.save();
+    expect(new SaveStore(mem).data.names).toEqual({ tater: 'Tot' });
+  });
+});
+
 describe('progression', () => {
   it('unlocks the next challenge after one star', () => {
     const s = freshSave();
@@ -70,7 +100,8 @@ describe('progression', () => {
     const s = freshSave();
     for (const c of ALL_CHALLENGES) s.stars[c.id] = 3;
     expect(totalStars(s)).toBe(MAX_STARS);
-    expect(unlockedRewards(s).size).toBe(REWARDS.filter((r) => r.stars !== undefined).length);
+    // Every star reward, plus Natalie's scooter (it comes with Kitten Cowgirl stars).
+    expect(unlockedRewards(s).size).toBe(REWARDS.filter((r) => r.stars !== undefined || r.how === 'kitten').length);
   });
 
   it('gives secret rewards for petting every cat and finishing the hunt', () => {
@@ -82,6 +113,18 @@ describe('progression', () => {
     expect(rewardUnlocked(s, beanie)).toBe(true);
     s.hunt.done = true;
     expect(rewardUnlocked(s, bulbs)).toBe(true);
+  });
+
+  it("unlocks Natalie's e-scooter with stars in Kitten Cowgirl", () => {
+    const s = freshSave();
+    const scooter = REWARDS.find((r) => r.id === 'scooter')!;
+    s.stars['mower-1'] = 3;
+    s.stars['woodpile-1'] = 3;
+    expect(rewardUnlocked(s, scooter)).toBe(false);
+    s.stars['kitten-1'] = 2;
+    expect(rewardUnlocked(s, scooter)).toBe(false);
+    s.stars['kitten-2'] = 1;
+    expect(rewardUnlocked(s, scooter)).toBe(true);
   });
 
   it('every star-gated reward is reachable', () => {

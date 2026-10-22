@@ -345,6 +345,38 @@ button {
   color: var(--gold);
 }
 
+/* ---------- Animal names ---------- */
+.names-list li {
+  align-items: center;
+}
+.names-list .name-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.names-list small {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.names-list input {
+  width: 100%;
+  font: 800 16px var(--ui);
+  color: var(--ink);
+  background: #fffdf6;
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 7px 10px;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+.names-list input:focus {
+  outline: 3px solid var(--gold);
+  outline-offset: 1px;
+}
+
 /* ---------- Scene change ---------- */
 #curtain {
   position: absolute;

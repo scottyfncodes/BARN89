@@ -41,7 +41,9 @@ export class Controls {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'BUTTON' || t.tagName === 'INPUT') && (e.key === ' ' || e.key === 'Enter')) return;
+      // Typing in a text box (naming the animals) is typing, not playing.
+      if (t && t.tagName === 'INPUT') return;
+      if (t && t.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
       this.onInteract();

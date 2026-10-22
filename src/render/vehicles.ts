@@ -156,3 +156,66 @@ export function drawMower(
   }
   ctx.restore();
 }
+
+/**
+ * Natalie's e-scooter, side on, facing `faceX`. `front` draws only the stem and handlebars
+ * (they go in front of the rider); otherwise the deck and wheels (behind her feet).
+ */
+export function drawScooter(ctx: Ctx, x: number, y: number, faceX: number, front: boolean, spin: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(faceX < 0 ? -1 : 1, 1);
+  ctx.strokeStyle = C.ink;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (front) {
+    // Stem up from the front wheel, T-bar handlebars with grips.
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(15, -4);
+    ctx.lineTo(19, -40);
+    ctx.stroke();
+    ctx.strokeStyle = '#3fb6c9';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(15, -41);
+    ctx.lineTo(23, -39);
+    ctx.stroke();
+    ctx.strokeStyle = '#2b2a30';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.beginPath();
+  ctx.ellipse(1, 2, 21, 3.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  // Wheels.
+  for (const wx of [-14, 15]) {
+    ctx.beginPath();
+    ctx.arc(wx, -3.6, 3.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#26262b';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.strokeStyle = '#9aa5ad';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(wx + Math.cos(spin) * 2.4, -3.6 + Math.sin(spin) * 2.4);
+    ctx.lineTo(wx - Math.cos(spin) * 2.4, -3.6 - Math.sin(spin) * 2.4);
+    ctx.stroke();
+    ctx.strokeStyle = C.ink;
+  }
+  // Deck.
+  ctx.beginPath();
+  ctx.roundRect(-16, -8.4, 30, 3.6, 1.8);
+  ctx.fillStyle = '#3fb6c9';
+  ctx.fill();
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  ctx.restore();
+}

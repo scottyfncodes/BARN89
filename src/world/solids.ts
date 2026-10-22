@@ -39,8 +39,9 @@ export function propSolid(p: PropDef): Shape | null {
     case 'scarecrow':
     case 'chopBlock':
       return { kind: 'circle', x: p.x, y: p.y, r: p.kind === 'chopBlock' ? 15 : 10 };
-    case 'board':
-      return { kind: 'rect', x: p.x - 32, y: p.y - 7, w: 64, h: 12 };
+    case 'treehouse':
+      // The trunk and the foot of the ladder.
+      return { kind: 'rect', x: p.x - 12, y: p.y - 8, w: 60, h: 12 };
     case 'doghouse':
       return { kind: 'rect', x: p.x - 30, y: p.y - 30, w: 60, h: 32 };
     case 'woodpile': {

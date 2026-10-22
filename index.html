@@ -249,10 +249,25 @@
             <button class="mid-btn" data-open="who">Who's exploring</button>
           </div>
           <div class="btn-row">
+            <button class="mid-btn" data-open="names">Animal names</button>
             <button id="menu-sound" class="mid-btn" aria-pressed="true">Sound: on</button>
+          </div>
+          <div class="btn-row">
             <button id="menu-title" class="mid-btn">Title screen</button>
           </div>
           <button id="erase-btn" class="link-btn small">Erase progress on this device</button>
+        </div>
+      </section>
+
+      <!-- Animal names -->
+      <section id="names" class="screen" hidden>
+        <div class="panel scrollable">
+          <h2>Animal names</h2>
+          <p class="sub">Rename the barn cats and Grandpa's chihuahuas. Clear a box to go back to the old name.</p>
+          <ul id="names-list" class="roster names-list"></ul>
+          <h3 class="section-h">Named by the family</h3>
+          <ul id="names-locked" class="roster names-list"></ul>
+          <button class="big-btn" data-close>Done</button>
         </div>
       </section>
 
