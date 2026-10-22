@@ -5,7 +5,7 @@ import { C } from './palette';
 type Ctx = CanvasRenderingContext2D;
 
 export type PersonAction = 'none' | 'wave' | 'cheer' | 'throw' | 'point';
-export type HeldItem = 'basket' | 'carrot' | 'ball' | 'pail' | 'axe' | 'rake' | 'putter' | null;
+export type HeldItem = 'basket' | 'carrot' | 'ball' | 'pail' | 'axe' | 'rake' | 'putter' | 'can' | null;
 
 export interface PersonPose {
   x: number;
@@ -343,6 +343,7 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     back = { x: front.x - Math.cos(axeA) * 3, y: front.y - Math.sin(axeA) * 3 };
   }
   if (p.hold === 'carrot') front = { x: sh.x + 13, y: sh.y + 4 };
+  if (p.hold === 'can') front = { x: sh.x + 10, y: sh.y + 11 - (p.tool ?? 0) * 4 };
   // Long-handled tools: both hands on the shaft, the head on the ground out front.
   let toolHead: { x: number; y: number } | null = null;
   if (p.hold === 'rake') {
@@ -569,7 +570,45 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   if (p.hold === 'axe') drawAxe(ctx, front.x, front.y, axeA);
   if (toolHead && (p.hold === 'rake' || p.hold === 'putter')) drawLongTool(ctx, p.hold, back, toolHead);
   arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin, L.sleeveStripe);
-  drawHeld(ctx, p.hold ?? null, front.x, front.y);
+  if (p.hold === 'can') drawWateringCan(ctx, front.x, front.y, p.tool ?? 0, p.clock);
+  else drawHeld(ctx, p.hold ?? null, front.x, front.y);
+}
+
+/** A green watering can held by the handle, tipped forward by `tilt` (0..1), dribbling when tipped. */
+function drawWateringCan(ctx: Ctx, x: number, y: number, tilt: number, clock: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt * 0.6);
+  ctx.beginPath();
+  ctx.roundRect(-2, 0, 13, 10, 2);
+  fillStroke(ctx, '#4f9a5a', 1.2);
+  // Spout and rose.
+  ctx.beginPath();
+  ctx.moveTo(10, 6);
+  ctx.lineTo(19, 0);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.strokeStyle = '#4f9a5a';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, Math.PI, 0);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.restore();
+  if (tilt > 0.5) {
+    // Water falling from the rose.
+    const sx = x + Math.cos(tilt * 0.6) * 19;
+    const sy = y + Math.sin(tilt * 0.6) * 19;
+    ctx.fillStyle = 'rgba(95,182,214,0.85)';
+    for (let i = 0; i < 4; i++) {
+      const f = (clock * 2.4 + i / 4) % 1;
+      ellipse(ctx, sx + 2 + i * 1.2, sy + f * 22, 1, 1.8);
+      ctx.fill();
+    }
+  }
 }
 
 /** Axe held at the grip, handle continuing along the arm. */

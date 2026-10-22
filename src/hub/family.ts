@@ -10,8 +10,8 @@ import type { CollisionWorld } from '../world/collision';
  * and turns to talk, and their prompt goes wherever they are.
  */
 
-export type NpcHold = 'basket' | 'axe' | 'rake' | 'putter' | null;
-export type Gesture = 'toss' | 'swing' | 'point' | 'look' | 'wave' | 'rake' | 'putt' | 'throw' | 'catch';
+export type NpcHold = 'basket' | 'axe' | 'rake' | 'putter' | 'can' | null;
+export type Gesture = 'toss' | 'swing' | 'point' | 'look' | 'wave' | 'rake' | 'putt' | 'throw' | 'catch' | 'water';
 
 export interface NpcStop {
   id: string;
@@ -87,6 +87,10 @@ export const NPC_ROUTINES: Record<FamilyId, NpcStop[]> = {
     { id: 'porch', at: station('grandpa'), hold: null, gesture: 'wave', gestureT: 1.6, gap: [6, 11], face: 1, roam: 0, stay: [14, 26] },
     // Raking the front yard, along the walk to his front door.
     { id: 'frontYard', at: { x: 1565, y: 372 }, hold: 'rake', gesture: 'rake', gestureT: 2.4, gap: [1.5, 3.5], face: 0, roam: 50, stay: [18, 30] },
+    // Watering the flower beds along the front of the house, bed by bed.
+    { id: 'frontBeds', at: { x: 1605, y: 400 }, hold: 'can', gesture: 'water', gestureT: 2.2, gap: [1, 2.5], face: 0, roam: 90, stay: [18, 30] },
+    // And the bed and pots along his back porch.
+    { id: 'backBeds', at: { x: 1535, y: 712 }, hold: 'can', gesture: 'water', gestureT: 2.2, gap: [1, 2.5], face: -1, roam: 40, stay: [14, 24] },
     // Practising his putting on the green out back.
     { id: 'putting', at: PUTT_FROM, hold: 'putter', gesture: 'putt', gestureT: 1.2, gap: [2.5, 4.5], face: 1, roam: 0, stay: [20, 34] },
   ],

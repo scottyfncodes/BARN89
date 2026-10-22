@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVITIES } from '../src/content/activities';
 import { PLAYER_RADIUS } from '../src/games/kitten/player';
-import { Homestead, NPC_ROUTINES, type HubEvent } from '../src/hub/homestead';
+import { Homestead, NPC_ROUTINES, ROOF_PERCH, TRAMPOLINE, TREEHOUSE_PERCHES, type HubEvent } from '../src/hub/homestead';
 import { MOTO_PARKED, MOTO_ROUTE, MOW_LAP, MOWER_PARKED, PUTTING_GREEN, SPORT_SPOTS } from '../src/hub/family';
 import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATES, RACE_START, RACE_STAR_TIMES, ROUNDS_TASKS } from '../src/hub/missions';
 import { PORCH_TREE } from '../src/hub/hubView';
@@ -73,7 +73,7 @@ describe('homestead life', () => {
 
   it('dogs follow along and fetch a thrown ball', () => {
     const h = fresh();
-    h.teleport(1250, 1150);
+    h.teleport(1300, 1450);
     run(h, 2);
     for (const d of h.dogs) expect(Math.hypot(d.x - h.player.x, d.y - h.player.y)).toBeLessThan(140);
     expect(h.action?.kind).toBe('ball');
@@ -280,14 +280,14 @@ describe('family outings', () => {
     h.teleport(far.x, far.y);
     const seen = new Set<string>();
     let putts = 0;
-    for (let i = 0; i < 400 * 60; i++) {
+    for (let i = 0; i < 900 * 60; i++) {
       h.step(still, DT, false);
       const g = h.npcs.find((n) => n.who === 'grandpa')!;
       if (!g.target) seen.add(g.stop.id);
       if (h.family.putt && h.family.putt.t < 0 && h.family.putt.t > -DT * 1.5) putts++;
-      if (seen.size === 3 && putts > 0) break;
+      if (seen.size === 5 && putts > 0) break;
     }
-    expect([...seen].sort()).toEqual(['frontYard', 'porch', 'putting']);
+    expect([...seen].sort()).toEqual(['backBeds', 'frontBeds', 'frontYard', 'porch', 'putting']);
     expect(putts).toBeGreaterThan(0);
     expect(PUTTING_GREEN.x).toBeLessThan(2020);
   });
@@ -596,5 +596,102 @@ describe('Putt-Putt on the homestead', () => {
     h.teleport(a.station.x, a.station.y + 30);
     run(h, 0.1);
     expect(h.nearStation?.id).toBe('putt');
+  });
+});
+
+describe('trampoline', () => {
+  it('you can walk onto it and bounce, and tap Jump! for a big one', () => {
+    const h = fresh();
+    expect(shared.world.isFree(TRAMPOLINE.x, TRAMPOLINE.y, PLAYER_RADIUS)).toBe(true);
+    h.teleport(TRAMPOLINE.x, TRAMPOLINE.y);
+    run(h, 0.3);
+    expect(h.onTrampoline).toBe(true);
+    expect(h.action?.kind).toBe('jump');
+    expect(h.trampolineLift()).toBeGreaterThanOrEqual(TRAMPOLINE.mat);
+    const ev = run(h, 0.45, true);
+    expect(ev.some((e) => e.type === 'boing')).toBe(true);
+    expect(h.trampolineLift()).toBeGreaterThan(TRAMPOLINE.mat + 40);
+    h.teleport(TRAMPOLINE.x, TRAMPOLINE.y + 120);
+    run(h, 0.1);
+    expect(h.trampolineLift()).toBe(0);
+  });
+});
+
+describe('cats and dogs', () => {
+  it('most of the barn cats live in and around the treehouse, and one likes the roof', () => {
+    const h = fresh();
+    const tree = shared.map.props.find((p) => p.kind === 'treehouse')!;
+    const around = h.cats.filter((c) => c.spots.some((s) => Math.hypot(s.x - tree.x, s.y - tree.y) < 150));
+    expect(around.length).toBeGreaterThanOrEqual(4);
+    expect(h.cats.some((c) => c.spots.includes(ROOF_PERCH))).toBe(true);
+    for (const c of h.cats) for (const s of c.spots) expect(walkerNav.isWalkable(s.x, s.y) || walkerNav.nearestWalkable(s.x, s.y, 3) !== null, `${c.name}`).toBe(true);
+  });
+
+  it('a cat climbs up onto the roof and back down', () => {
+    const h = fresh();
+    const z = h.cats.find((c) => c.name === 'Ziggy')!;
+    h.teleport(1250, 1700);
+    z.state = 'walk';
+    z.target = ROOF_PERCH;
+    run(h, 8);
+    expect(z.lift).toBe(ROOF_PERCH.lift);
+    z.state = 'walk';
+    z.target = z.spots[0];
+    run(h, 6);
+    expect(z.lift).toBe(0);
+  });
+
+  it('a dog chases a cat, the cat escapes up the treehouse, the dog barks up at it and gives up', () => {
+    const h = fresh();
+    const w = h.cats.find((c) => c.name === 'Waffles')!;
+    h.teleport(w.x + 120, w.y + 60);
+    run(h, 1.5);
+    h.catChaseT = 0;
+    let chase: HubEvent | undefined;
+    for (let i = 0; i < 120 && !chase; i++) {
+      h.step(still, DT, false);
+      chase = h.drainEvents().find((e) => e.type === 'catChase') ?? chase;
+    }
+    expect(chase).toBeDefined();
+    const dog = h.dogs.find((d) => d.state === 'cat')!;
+    const cat = h.cats.find((c) => c.id === dog.chaseCat)!;
+    expect(cat.state).toBe('flee');
+    let treed = false;
+    for (let i = 0; i < 15 * 60; i++) {
+      h.step(still, DT, false);
+      if (dog.state === 'treed') treed = true;
+      if (treed && dog.state === 'follow') break;
+    }
+    expect(treed).toBe(true);
+    expect(cat.lift).toBeGreaterThan(60);
+    expect(TREEHOUSE_PERCHES.some((s) => Math.hypot(s.x - cat.x, s.y - cat.y) < 8)).toBe(true);
+    expect(dog.state).toBe('follow');
+    // It stays up there a while, then comes home.
+    expect(cat.refuge).toBe(true);
+  });
+
+  it('cats up high cannot be petted', () => {
+    const h = fresh();
+    const tater = h.cats.find((c) => c.name === 'Tater')!;
+    expect(tater.lift).toBeGreaterThan(0);
+    h.teleport(tater.x + 20, tater.y + 30);
+    run(h, 0.1);
+    expect(h.action?.kind === 'pet' && h.action.cat === tater).toBe(false);
+  });
+});
+
+describe("Grandpa's flower beds", () => {
+  it('Grandpa waters the beds round his house, can in hand', () => {
+    const h = fresh();
+    h.teleport(1250, 1700);
+    const g = h.npcs.find((n) => n.who === 'grandpa')!;
+    let watered = false;
+    for (let i = 0; i < 400 * 60 && !watered; i++) {
+      h.step(still, DT, false);
+      watered = g.gesture === 'water' && g.busyT > 0 && g.hold === 'can';
+    }
+    expect(watered).toBe(true);
+    const beds = shared.map.props.filter((p) => p.kind === 'flowers' && Math.hypot(p.x - 1700, p.y - 560) < 340);
+    expect(beds.length).toBeGreaterThanOrEqual(5);
   });
 });

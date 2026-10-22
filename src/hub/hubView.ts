@@ -10,7 +10,7 @@ import type { TerrainTiles } from '../render/terrain';
 import { drawMotorcycle, drawMower, drawScooter, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
 import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
-import type { HubEvent, Homestead } from './homestead';
+import { TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
 import { HUNT_ITEMS, ORNAMENTS, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
 type Ctx = CanvasRenderingContext2D;
@@ -96,21 +96,29 @@ export class HubView extends WorldView {
     const me = FAMILY[h.explorer].look;
     const sp = Math.hypot(p.vx, p.vy);
     const riding = this.scooter && !h.gathered;
+    // Bouncing on the trampoline: lifted off the mat, with a shadow left on it.
+    const lift = h.trampolineLift();
     const drawMe = (ctx: Ctx, ghost: boolean) => {
       // On the scooter: feet on the deck, hands on the bars, wheels turning.
       if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, false, p.walkPhase * 2);
+      if (lift > 0 && !ghost) {
+        ctx.beginPath();
+        ctx.ellipse(px, py - TRAMPOLINE.mat, 11 - (lift - TRAMPOLINE.mat) * 0.08, 3.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fill();
+      }
       drawPerson(ctx, me, {
         x: px,
-        y: riding ? py - 6 : py,
+        y: riding ? py - 6 : py - lift,
         faceX: p.faceX,
         speed01: riding ? 0 : clamp(sp / p.maxSpeed, 0, 1),
         walkPhase: p.walkPhase * 0.85,
         clock,
-        action: p.throwT > 0 ? 'throw' : riding ? 'point' : 'none',
+        action: p.throwT > 0 ? 'throw' : riding ? 'point' : h.bigJumpT > 0 ? 'cheer' : 'none',
         actionT: p.throwT / 0.5,
         hat: this.hat,
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
-        ghost: ghost || riding,
+        ghost: ghost || riding || lift > 0,
       });
       if (riding && !ghost) drawScooter(ctx, px, py, p.faceX, true, 0);
     };
@@ -215,7 +223,8 @@ export class HubView extends WorldView {
             },
           });
         }
-        if (!moto?.player) items.push({ y: py, draw: () => drawMe(ctx, false) });
+        // On the trampoline, draw over it rather than behind its far edge.
+        if (!moto?.player) items.push({ y: lift > 0 ? Math.max(py, TRAMPOLINE.y + 13) : py, draw: () => drawMe(ctx, false) });
         const ride = h.family.mow && h.family.mow.phase !== 'walk' ? h.family.mow : null;
         for (const n of h.npcs) {
           const x = lerp(n.px, n.x, alpha);
@@ -319,7 +328,7 @@ export class HubView extends WorldView {
                 x,
                 y,
                 faceX: d.faceX,
-                pose: d.state === 'rest' ? 'lie' : moving ? (fast ? 'run' : 'walk') : d.state === 'sniff' ? 'stand' : 'sit',
+                pose: d.state === 'rest' ? 'lie' : moving ? (fast ? 'run' : 'walk') : d.state === 'sniff' || d.state === 'treed' ? 'stand' : 'sit',
                 phase: d.phase,
                 clock: clock + d.side,
                 wag: d.wag,
@@ -374,15 +383,17 @@ export class HubView extends WorldView {
           const y = lerp(c.py, c.y, alpha);
           if (!inBox({ x, y }, v, 30)) continue;
           const moving = Math.hypot(c.x - c.px, c.y - c.py) > 0.2;
+          // Cats up high (treehouse platform, the roof) draw at their perch, in front of it.
+          const up = c.lift;
           items.push({
-            y,
+            y: up > 0 ? y + 2 : y,
             draw: () =>
               drawKittenFigure(ctx, {
                 x,
-                y,
+                y: y - up,
                 faceX: c.faceX,
                 coat: c.coat,
-                pose: moving ? 'walk' : c.personality === 'sleepy' ? 'lie' : 'sit',
+                pose: moving || (up > 0 && c.state !== 'rest') ? 'walk' : c.personality === 'sleepy' ? 'lie' : 'sit',
                 phase: c.phase,
                 speed: moving ? 60 : 0,
                 alarm: c.emote === 'alarm' ? 1 : 0,
@@ -433,10 +444,12 @@ export class HubView extends WorldView {
       overlay: (ctx, v) => {
         for (const c of h.cats) {
           if (c.emote === 'none' || !inBox(c, v, 20)) continue;
-          const lift = c.personality === 'sleepy' && c.state === 'rest' ? 14 : 26;
+          const lift = (c.personality === 'sleepy' && c.state === 'rest' ? 14 : 26) + c.lift;
           drawEmote(ctx, c.emote, c.x, c.y - lift, Math.min(1, c.emoteT * 4 + 0.3), clock);
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
+        // A dog barking up the treehouse at the cat that got away.
+        for (const d of h.dogs) if (d.state === 'treed' && d.treedT % 0.9 > 0.45) this.bubbleText(ctx, d.x + d.faceX * 12, d.y - 42 * (d.def.size ?? 1), 'WOOF!');
         for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
         // The spray, and the smell that follows Annie around after.
         const sk2 = h.skunk;
@@ -594,6 +607,9 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
     }
     case 'rake':
       return { action: 'none', tool: Math.sin(clock * 5) };
+    case 'water':
+      // Tip the can, give it a good long pour, tip it back.
+      return { action: 'none', tool: k < 0.2 ? k / 0.2 : k > 0.85 ? (1 - k) / 0.15 : 1 };
     case 'putt':
       // Slow back, smooth through, hold the finish.
       return { action: 'none', tool: k < 0.35 ? -k / 0.35 : Math.min(1, -1 + ((k - 0.35) / 0.2) * 2) };
