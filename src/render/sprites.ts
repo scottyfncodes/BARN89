@@ -345,6 +345,8 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
       ctx.strokeStyle = C.ink;
       ctx.strokeRect(gx, h - 50, w / 2 - 14, 50);
     }
+  } else if (b.style === 'shop') {
+    paintShopFront(ctx, b, wallTop);
   } else if (b.style === 'shed') {
     ctx.fillStyle = '#3b2418';
     ctx.fillRect(w / 2 - 20, h - 50, 40, 50);
@@ -435,6 +437,105 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
     ctx.textAlign = 'center';
     ctx.fillText(b.label, 23, h - 10);
   }
+}
+
+/** A plain five-pointed star with a little folded-metal shading, like a star hung on a shop wall. */
+function wallStar(ctx: Ctx, cx: number, cy: number, r: number, color: string): void {
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.42 : r;
+    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+  }
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  // Each point folds along its spine: one half catches the light, the other doesn't.
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  for (let i = 0; i < 10; i += 2) {
+    const [px, py] = pts[i];
+    const [qx, qy] = pts[(i + 1) % 10];
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(px, py);
+    ctx.lineTo(qx, qy);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+}
+
+/** Grandpa's shop: a roll-up door, a side door and a window. */
+function paintShopFront(ctx: Ctx, b: BuildingDef, wallTop: number): void {
+  const w = b.w;
+  const h = b.h;
+  const dw = Math.min(110, w * 0.55);
+  const dx = 14;
+  const dTop = h - 52;
+  ctx.fillStyle = '#e4e7ea';
+  ctx.fillRect(dx, dTop, dw, 52);
+  ctx.strokeStyle = 'rgba(70,80,90,0.35)';
+  ctx.lineWidth = 1;
+  for (let y = dTop + 6; y < h; y += 6) {
+    ctx.beginPath();
+    ctx.moveTo(dx, y);
+    ctx.lineTo(dx + dw, y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.8;
+  ctx.strokeRect(dx, dTop, dw, 52);
+  // Side door.
+  const sx = w - 40;
+  ctx.fillStyle = '#7a8a9a';
+  ctx.fillRect(sx, h - 44, 22, 44);
+  ctx.strokeRect(sx, h - 44, 22, 44);
+  blob(ctx, sx + 17, h - 22, 1.8);
+  ctx.fillStyle = C.gold;
+  ctx.fill();
+  // Window, with something green on the sill.
+  const wx = dx + dw + 12;
+  const wy = wallTop + 34;
+  windowAt(ctx, wx, wy, 26, 20, '');
+  ctx.fillStyle = C.woodLight;
+  ctx.fillRect(wx - 5, wy + 23, 36, 4);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(wx - 5, wy + 23, 36, 4);
+  grannySmith(ctx, wx + 22, wy + 19);
+  if (b.star) wallStar(ctx, dx + dw / 2, wallTop + 30, 16, b.star);
+}
+
+/** One green apple. */
+function grannySmith(ctx: Ctx, x: number, y: number): void {
+  ctx.beginPath();
+  ctx.ellipse(x, y, 4.6, 4.2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#8cc63f';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.1;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(x - 1.6, y - 1.4, 1.3, 0.9, -0.5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fill();
+  ctx.strokeStyle = '#5a3b22';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 4);
+  ctx.lineTo(x + 0.6, y - 6.4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(x + 2.4, y - 5.6, 2, 1, -0.4, 0, Math.PI * 2);
+  ctx.fillStyle = '#4f9a3a';
+  ctx.fill();
 }
 
 /** Corrugated metal wall: red panels with ribs and white corner trim, like the real Barn 89. */

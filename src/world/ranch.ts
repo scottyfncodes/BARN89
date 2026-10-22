@@ -30,7 +30,9 @@ export const ROUND_PEN = { x: 1180, y: 1790, r: 110 };
 function buildings(): BuildingDef[] {
   return [
     { id: 'mainHouse', style: 'farmhouse', x: 600, y: 700, w: 500, h: 200, wall: 100, roof: '#6b7480', walls: '#efe2c8', label: 'HOME' },
-    { id: 'grandpaHouse', style: 'farmhouse', x: 1470, y: 440, w: 480, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: "GRANDPA'S" },
+    { id: 'grandpaHouse', style: 'farmhouse', x: 1470, y: 440, w: 272, h: 230, wall: 96, roof: '#5f6670', walls: '#f3e9d6', label: "GRANDPA'S" },
+    // The shop/garage wing on the east end of Grandpa's house, where his driveway comes in (its own roofline in the aerial).
+    { id: 'grandpaShop', style: 'shop', x: 1746, y: 476, w: 204, h: 194, wall: 100, roof: '#666d77', walls: '#ece6da', star: '#2f63c0' },
     { id: 'whiteShed', style: 'shed', x: 410, y: 1150, w: 190, h: 130, wall: 70, roof: '#e9ecef', walls: '#f6f3ea' },
     { id: 'eastShed', style: 'shed', x: 1550, y: 1290, w: 110, h: 80, wall: 56, roof: '#c9ced4', walls: '#a94336' },
     { id: 'creekShed', style: 'shed', x: 430, y: 2050, w: 110, h: 90, wall: 56, roof: '#c9ced4', walls: '#9a7b56' },
@@ -114,7 +116,7 @@ function props(): PropDef[] {
     // The long table under the lights, where the family gathers now the weddings are done.
     { kind: 'longTable', x: 1670, y: 2890, w: 150, solid: true },
     // A small wooden cross by Grandpa's front door.
-    { kind: 'wallCross', x: 1792, y: 672 },
+    { kind: 'wallCross', x: 1684, y: 672 },
     { kind: 'mouseHole', x: 1525, y: 2230 },
     { kind: 'sign', x: 1150, y: 2350, text: 'CATS', solid: true },
     { kind: 'cart', x: 640, y: 2190, solid: true },
@@ -285,7 +287,7 @@ export function createRanchMap(): RanchMap {
       { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
       { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
       { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
-      { id: 'porch', x: 1790, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
+      { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
     ],
     collectibles: [
       { id: 'shoe-paddock', kind: 'horseshoe', x: 140, y: 170 },

@@ -16,7 +16,7 @@ type Ctx = CanvasRenderingContext2D;
 
 const NPC_HOLD: Partial<Record<string, HeldItem>> = { megan: 'basket' };
 /** Where Grandpa keeps his little porch tree; found ornaments get hung on it. */
-export const PORCH_TREE = { x: 1915, y: 712 };
+export const PORCH_TREE = { x: 1562, y: 716 };
 
 export class HubView extends WorldView {
   hat: HatKind | undefined;

@@ -20,7 +20,7 @@ export interface AreaDef {
     | { type: 'poly'; points: Pt[] };
 }
 
-export type BuildingStyle = 'farmhouse' | 'cottage' | 'barn' | 'shed' | 'garage' | 'coop';
+export type BuildingStyle = 'farmhouse' | 'cottage' | 'barn' | 'shed' | 'garage' | 'shop' | 'coop';
 
 export interface BuildingDef {
   id: string;
@@ -35,6 +35,8 @@ export interface BuildingDef {
   roof: string;
   walls: string;
   label?: string;
+  /** Colour of a star emblem hung on the front wall (Grandpa's shop). */
+  star?: string;
 }
 
 export interface TreeDef {

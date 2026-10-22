@@ -22,6 +22,16 @@ describe('ranch layout matches the aerial photo', () => {
     expect(near(centre(building('barn89')), [835, 1255], 80)).toBe(true);
   });
 
+  it("puts Grandpa's shop on the east end of his house, with the blue star", () => {
+    const house = building('grandpaHouse');
+    const shop = building('grandpaShop');
+    // The separately roofed east wing in the aerial, where his driveway comes in.
+    expect(near(centre(shop), [915, 287], 80)).toBe(true);
+    expect(shop.x - (house.x + house.w)).toBeLessThan(10);
+    expect(shop.y + shop.h).toBe(house.y + house.h);
+    expect(shop.star).toBeTruthy();
+  });
+
   it('puts the arena on the east side against Buffalo Gap Rd', () => {
     const z = map.zoomieZones[0];
     expect(near({ x: z.x + z.w / 2, y: z.y + z.h / 2 }, [855, 870], 140)).toBe(true);
