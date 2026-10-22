@@ -300,7 +300,25 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
     ctx.stroke();
   }
 
-  if (b.style === 'farmhouse') {
+  if (b.style === 'farmhouse' && b.trim) {
+    const t = b.trim;
+    for (const wx of t.windows ?? []) windowAt(ctx, wx, wallTop + 26, 26, 30, '#5b7fa8', true);
+    if (t.door !== undefined) {
+      const dx = t.door;
+      ctx.fillStyle = '#c0443c';
+      ctx.fillRect(dx, h - 48, 26, 48);
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(dx, h - 48, 26, 48);
+      blob(ctx, dx + 20, h - 24, 2);
+      ctx.fillStyle = C.gold;
+      ctx.fill();
+      ctx.strokeStyle = '#3f7a35';
+      ctx.lineWidth = 3;
+      blob(ctx, dx + 13, h - 36, 6);
+      ctx.stroke();
+    }
+  } else if (b.style === 'farmhouse') {
     windowAt(ctx, 30, wallTop + 26, 26, 30, '#5b7fa8', true);
     windowAt(ctx, w - 56, wallTop + 26, 26, 30, '#5b7fa8', true);
     windowAt(ctx, 92, wallTop + 26, 26, 30, '#5b7fa8');
@@ -379,6 +397,11 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
   // Gable roof seen from above: a back slope (lit) and a front slope.
   const over = b.style === 'coop' ? 5 : 12;
   const ridge = roofTop + (wallTop - roofTop) * 0.42;
+  if (b.gable === 'front') {
+    paintFrontGable(ctx, b, wallTop, roofTop);
+    paintTrimExtras(ctx, b, roofTop);
+    return;
+  }
   ctx.fillStyle = b.roof;
   ctx.beginPath();
   ctx.moveTo(-over, wallTop + 6);
@@ -401,6 +424,10 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
   ctx.fillStyle = 'rgba(40,20,10,0.22)';
   ctx.fillRect(0, wallTop + 6, w, 7);
 
+  if (b.style === 'farmhouse' && b.trim) {
+    paintTrimExtras(ctx, b, roofTop);
+    return;
+  }
   if (b.style === 'farmhouse') {
     // Chimney.
     ctx.fillStyle = '#b5543f';
@@ -438,6 +465,142 @@ function paintBuilding(ctx: Ctx, b: BuildingDef): void {
     ctx.textAlign = 'center';
     ctx.fillText(b.label, 23, h - 10);
   }
+}
+
+/**
+ * A wing or bay whose ridge runs front to back: the roof's two slopes either side of the ridge,
+ * and the gable end (a triangle of wall with a little vent) facing you over the front wall.
+ */
+function paintFrontGable(ctx: Ctx, b: BuildingDef, wallTop: number, roofTop: number): void {
+  const w = b.w;
+  const over = 10;
+  const gH = Math.min(w * 0.3, (wallTop - roofTop) * 0.75 + 10);
+  const eave = wallTop + 6;
+  // West slope catches the light; east slope is in shade.
+  ctx.fillStyle = b.roof;
+  ctx.fillRect(-over, roofTop, w / 2 + over, eave - roofTop);
+  ctx.fillRect(w / 2, roofTop, w / 2 + over, eave - roofTop);
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.fillRect(-over, roofTop, w / 2 + over, eave - roofTop);
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.fillRect(w / 2, roofTop, w / 2 + over, eave - roofTop);
+  // Shingle courses run down each slope, away from the ridge.
+  ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let x = w / 2 - 8; x > -over; x -= 8) {
+    ctx.moveTo(x, roofTop);
+    ctx.lineTo(x, eave);
+  }
+  for (let x = w / 2 + 8; x < w + over; x += 8) {
+    ctx.moveTo(x, roofTop);
+    ctx.lineTo(x, eave);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-over, roofTop, w + over * 2, eave - roofTop);
+  // The ridge, back to the gable peak.
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(w / 2, roofTop);
+  ctx.lineTo(w / 2, wallTop - gH);
+  ctx.stroke();
+  // Gable end: wall-coloured triangle with siding, trimmed by the roof edge.
+  ctx.beginPath();
+  ctx.moveTo(0, wallTop + 1);
+  ctx.lineTo(w / 2, wallTop - gH);
+  ctx.lineTo(w, wallTop + 1);
+  ctx.closePath();
+  ctx.fillStyle = b.walls;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(80,60,40,0.18)';
+  ctx.lineWidth = 1;
+  for (let y = wallTop - gH + 7; y < wallTop; y += 7) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // Attic vent.
+  if (gH > 26) {
+    ctx.beginPath();
+    ctx.arc(w / 2, wallTop - gH * 0.42, Math.min(7, gH * 0.16), 0, Math.PI * 2);
+    ctx.fillStyle = '#e9e2d0';
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+  // Fascia along the gable, a strip of roof showing past the wall.
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-over * 0.7, wallTop + 6);
+  ctx.lineTo(w / 2, wallTop - gH - 5);
+  ctx.lineTo(w + over * 0.7, wallTop + 6);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 7.5;
+  ctx.stroke();
+  ctx.strokeStyle = b.roof;
+  ctx.lineWidth = 4.5;
+  ctx.stroke();
+  // Eave shadow on the wall.
+  ctx.fillStyle = 'rgba(40,20,10,0.16)';
+  ctx.fillRect(0, wallTop + 6, w, 5);
+}
+
+/** Chimney, porch and name plaque for a house drawn with explicit trim. */
+function paintTrimExtras(ctx: Ctx, b: BuildingDef, roofTop: number): void {
+  const t = b.trim;
+  if (!t) return;
+  const h = b.h;
+  ctx.strokeStyle = C.ink;
+  if (t.chimney !== undefined) {
+    ctx.fillStyle = '#b5543f';
+    ctx.fillRect(t.chimney, roofTop - 22, 22, 40);
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(t.chimney, roofTop - 22, 22, 40);
+    ctx.fillStyle = '#7d3527';
+    ctx.fillRect(t.chimney - 3, roofTop - 26, 28, 6);
+  }
+  if (t.porch) {
+    const [p0, p1] = t.porch;
+    ctx.fillStyle = '#6b7b8d';
+    ctx.beginPath();
+    ctx.moveTo(p0 + 10, h - 58);
+    ctx.lineTo(p1 - 10, h - 58);
+    ctx.lineTo(p1, h - 44);
+    ctx.lineTo(p0, h - 44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = C.white;
+    for (const x of [p0 + 4, (p0 + p1) / 2, p1 - 4]) {
+      ctx.fillRect(x - 2.5, h - 44, 5, 44);
+      ctx.strokeRect(x - 2.5, h - 44, 5, 44);
+    }
+  }
+  if (b.label && t.label !== undefined) {
+    ctx.font = 'bold 7px ui-rounded, system-ui, sans-serif';
+    const pw = Math.max(30, ctx.measureText(b.label).width + 8);
+    ctx.fillStyle = C.wood;
+    ctx.fillRect(t.label - pw / 2, h - 18, pw, 11);
+    ctx.fillStyle = C.white;
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label, t.label, h - 10);
+  }
+}
+
+/** Where smoke comes out of a house's chimney, if it has one (world units). */
+export function chimneyTop(b: BuildingDef): { x: number; y: number } | null {
+  if (b.style !== 'farmhouse') return null;
+  const cx = b.trim ? b.trim.chimney : b.w - 70;
+  if (cx === undefined) return null;
+  return { x: b.x + cx + 11, y: b.y - b.wall * 0.15 - 26 };
 }
 
 /** A plain five-pointed star with a little folded-metal shading, like a star hung on a shop wall. */
@@ -493,14 +656,16 @@ function paintShopFront(ctx: Ctx, b: BuildingDef, wallTop: number): void {
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 1.8;
   ctx.strokeRect(dx, dTop, dw, 52);
-  // Side door.
-  const sx = w - 40;
-  ctx.fillStyle = '#7a8a9a';
-  ctx.fillRect(sx, h - 44, 22, 44);
-  ctx.strokeRect(sx, h - 44, 22, 44);
-  blob(ctx, sx + 17, h - 22, 1.8);
-  ctx.fillStyle = C.gold;
-  ctx.fill();
+  // Side door, if there's room for one.
+  if (w >= 170) {
+    const sx = w - 40;
+    ctx.fillStyle = '#7a8a9a';
+    ctx.fillRect(sx, h - 44, 22, 44);
+    ctx.strokeRect(sx, h - 44, 22, 44);
+    blob(ctx, sx + 17, h - 22, 1.8);
+    ctx.fillStyle = C.gold;
+    ctx.fill();
+  }
   // Window, with something green on the sill.
   const wx = dx + dw + 12;
   const wy = wallTop + 34;
