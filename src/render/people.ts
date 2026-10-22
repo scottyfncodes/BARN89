@@ -478,18 +478,6 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     ctx.fillStyle = shade(L.pants, 0.6);
     ctx.fillRect(-7.5, hipY, 16, 2.6);
   }
-  if (L.necklace) {
-    ctx.strokeStyle = '#c9ced4';
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-2.5, shY);
-    ctx.lineTo(1.5, shY + 5);
-    ctx.lineTo(5, shY);
-    ctx.stroke();
-    ctx.fillStyle = '#e6e9ec';
-    ctx.fillRect(1, shY + 5, 1.2, 4);
-    ctx.fillRect(0, shY + 6, 3.2, 1.1);
-  }
   if (L.bandana) {
     ctx.beginPath();
     ctx.moveTo(-4.5, shY);

@@ -40,8 +40,6 @@ export interface PersonLook {
   stubble?: boolean;
   /** Sparkly boots. */
   glitter?: boolean;
-  /** A little cross on a chain. */
-  necklace?: boolean;
   /** Overall size: adults 1. */
   scale: number;
 }
@@ -101,7 +99,6 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
       pants: '#41598a',
       shoes: '#8a5a35',
       cowboyBoots: '#8a5a35',
-      necklace: true,
       hat: 'none',
       scale: 0.92,
     },
