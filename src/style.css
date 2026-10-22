@@ -243,25 +243,25 @@ button {
   text-shadow: 0 1px 0 var(--ink), 0 -1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink);
   letter-spacing: 0.02em;
 }
-.whistle {
+.action.whistle {
   width: 86px;
   height: 86px;
   background: radial-gradient(circle at 35% 30%, #7fb6ff, #3d7fd6);
   margin-bottom: 22px;
 }
-.whistle svg {
+.action.whistle svg {
   width: 48px;
 }
-.treat {
+.action.treat {
   width: 68px;
   height: 68px;
   background: radial-gradient(circle at 35% 30%, #ffd08a, #f08a24);
   margin-bottom: 18px;
 }
-.treat svg {
+.action.treat svg {
   width: 40px;
 }
-.treat.empty {
+.action.treat.empty {
   filter: grayscale(0.8) brightness(0.9);
 }
 .badge {
@@ -657,8 +657,8 @@ button {
     gap: 22px;
     bottom: calc(var(--sab) + 26px);
   }
-  .whistle,
-  .treat {
+  .action.whistle,
+  .action.treat {
     margin-bottom: 0;
   }
   #hint {
@@ -670,7 +670,7 @@ button {
 }
 
 @media (min-width: 700px) and (min-height: 700px) {
-  .whistle {
+  .action.whistle {
     width: 96px;
     height: 96px;
   }
