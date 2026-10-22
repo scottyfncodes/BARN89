@@ -111,6 +111,10 @@ function props(): PropDef[] {
     { kind: 'festoon', x: 1545, y: 2830, w: 250, solid: true },
     { kind: 'festoon', x: 1545, y: 2935, w: 250, solid: true },
     { kind: 'venueSign', x: 1985, y: 2215, solid: true },
+    // The long table under the lights, where the family gathers now the weddings are done.
+    { kind: 'longTable', x: 1670, y: 2890, w: 150, solid: true },
+    // A small wooden cross by Grandpa's front door.
+    { kind: 'wallCross', x: 1792, y: 672 },
     { kind: 'mouseHole', x: 1525, y: 2230 },
     { kind: 'sign', x: 1150, y: 2350, text: 'CATS', solid: true },
     { kind: 'cart', x: 640, y: 2190, solid: true },
@@ -273,13 +277,15 @@ export function createRanchMap(): RanchMap {
       { id: 'scarecrow', x: 860, y: 1240, r: 80, title: 'Scarecrow', text: 'Fired. Too scary for kittens, not scary enough for crows.' },
       { id: 'arena', x: 1380, y: 1660, r: 90, title: 'Riding Arena', text: 'Wide open sand. The donkeys consider it beneath them.' },
       { id: 'highway', x: 1975, y: 1260, r: 90, title: 'Buffalo Gap Rd', text: 'Wave at the trucks. Do not chase the trucks.' },
-      { id: 'venue', x: 1670, y: 2880, r: 100, title: 'Barn 89', text: 'A few old bulbs still glow on the string lights. People danced here every weekend for years.' },
+      { id: 'venue', x: 1580, y: 2870, r: 100, title: 'Barn 89', text: 'A few old bulbs still glow on the string lights. People danced here every weekend for years.' },
       { id: 'guestbook', x: 1880, y: 2620, r: 70, title: 'Tucked Behind the Barn', text: 'A weathered guestbook page: "Best day ever. The donkeys were very welcoming."' },
       { id: 'mouse', x: 1525, y: 2265, r: 70, title: 'Mouse Hole', text: 'WANTED: The Mouse. Reward: one (1) nap.' },
       { id: 'chickens', x: 400, y: 420, r: 90, title: 'Chicken Run', text: 'The chickens are deeply unimpressed by everyone.' },
       { id: 'redDirt', x: 620, y: 1990, r: 110, title: 'Red Dirt', text: 'It gets on everything. Especially white cats.' },
       { id: 'laundry', x: 1800, y: 770, r: 80, title: "Grandpa's Clothesline", text: 'Three socks are missing. The cats know something.' },
       { id: 'woodpile', x: 470, y: 1390, r: 80, title: 'The Woodpile', text: 'Stacked tight, bark side up. Dad has opinions about this.' },
+      { id: 'kitchen', x: 720, y: 935, r: 70, title: 'Kitchen Window', text: 'Through the glass: a well-worn Bible on the counter, a grocery list tucked in for a bookmark, and a coffee ring on the cover.' },
+      { id: 'porch', x: 1790, y: 705, r: 70, title: "Grandpa's Porch", text: 'A small wooden cross by the door, a lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
     ],
     collectibles: [
       { id: 'shoe-paddock', kind: 'horseshoe', x: 140, y: 170 },

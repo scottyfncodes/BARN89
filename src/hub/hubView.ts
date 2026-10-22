@@ -282,13 +282,13 @@ export class HubView extends WorldView {
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
         // Name tags over family members when you're close.
-        for (const n of h.npcs) {
+        for (const n of h.gathered ? [] : h.npcs) {
           if (dist(n, p) > 240) continue;
           const L = FAMILY[n.who];
           this.bubbleText(ctx, n.x, n.y - 64 * L.look.scale - 12, L.name, C.barnRed);
         }
         // Gold star over activities you haven't tried yet.
-        if (!m) {
+        if (!m && !h.gathered) {
           for (const a of ACTIVITIES) {
             if (!this.untried.has(a.id) || !inBox(a.station, v, 60)) continue;
             const who = FAMILY[a.who].look.scale;

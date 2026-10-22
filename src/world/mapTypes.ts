@@ -89,7 +89,9 @@ export type PropKind =
   | 'woodpile'
   | 'chopBlock'
   | 'festoon'
-  | 'venueSign';
+  | 'venueSign'
+  | 'longTable'
+  | 'wallCross';
 
 export interface PropDef {
   kind: PropKind;

@@ -100,10 +100,10 @@ export const MOW_LEVELS: MowLevel[] = [
     axis: 0,
     target: 0.88,
     timeLimit: 200,
-    starTimes: [75, 115],
+    starTimes: [85, 125],
     beds: [
       { x: 1330, y: 2760, r: 24, colors: ['#f26b8a', '#fffaf0'] },
-      { x: 1680, y: 2885, r: 22, colors: ['#ffd34d', '#f26b8a'] },
+      { x: 1330, y: 2920, r: 22, colors: ['#ffd34d', '#f26b8a'] },
     ],
     toys: [
       { x: 1200, y: 2800, kind: 'frisbee' },

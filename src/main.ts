@@ -28,11 +28,12 @@ import {
 } from './content/activities';
 import { FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
+import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
 import { PERSONALITIES } from './games/kitten/kittenTypes';
 import { LEVELS } from './games/kitten/levels';
 import { MOW_LEVELS } from './games/mower/levels';
 import { WOOD_ROUNDS } from './games/woodpile/woodpile';
-import { Homestead, type HubEvent } from './hub/homestead';
+import { Homestead, LONG_TABLE, type HubEvent } from './hub/homestead';
 import { HubView } from './hub/hubView';
 import { HUNT_ITEMS, LOCKBOX_CODE, ROUNDS_TASKS } from './hub/missions';
 import { drawKittenFigure } from './render/characters';
@@ -94,7 +95,12 @@ const top = (): string | undefined => stack[stack.length - 1];
 function decor(): Decor {
   const u = unlockedRewards(store.data);
   const c = store.data.cosmetics;
-  return { evening: c.evening && u.has('evening'), fixedBulbs: store.data.hunt.done, holiday: c.holiday && u.has('holiday') };
+  return {
+    evening: c.evening && u.has('evening'),
+    fixedBulbs: store.data.hunt.done,
+    holiday: c.holiday && u.has('holiday'),
+    sign: store.data.barnPlan ? BARN_PLAN_SIGN[store.data.barnPlan] : null,
+  };
 }
 
 function explorerHat(): HatKind | undefined {
@@ -142,7 +148,8 @@ function resize(): void {
   else {
     hubView.resize(w, h, dpr);
     const missionBottom = $('mission').hidden ? inset : $('mission').getBoundingClientRect().bottom;
-    hubView.insets = { top: mode === 'hub' ? missionBottom : 0, bottom: $('prompt').hidden ? 0 : $('prompt').getBoundingClientRect().height };
+    const dialog = top() === 'sunday' ? document.querySelector('#sunday .dialog')!.getBoundingClientRect().height + 16 : 0;
+    hubView.insets = { top: mode === 'hub' ? missionBottom : 0, bottom: dialog || ($('prompt').hidden ? 0 : $('prompt').getBoundingClientRect().height) };
     hubView.guideRect = { left: 0, top: missionBottom + 6, right: w, bottom: h };
   }
   if (top() === 'map') openMap();
@@ -166,7 +173,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- Screens ---------------------------------------------------------------------------------
-const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice'];
+const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday'];
 
 function syncScreens(): void {
   document.body.dataset.scene = mode === 'game' && game instanceof WoodScene ? 'woodpile' : mode;
@@ -442,6 +449,9 @@ function onHubEvent(e: HubEvent): void {
       store.save();
       toast.show(`<b>${HUNT_ITEMS.find((h) => h.id === e.id)?.name}</b>${e.text}`, 3.6);
       break;
+    case 'sunday':
+      openSunday();
+      break;
     case 'huntReady':
       sfx.discover();
       setTimeout(() => toast.show("<b>That's everything!</b>Take it all back to Grandpa.", 4), 3700);
@@ -556,7 +566,7 @@ function hubFrame(dt: number): void {
       open('lockbox');
     }
     // Coaching for first-timers.
-    if (hub.nearStation) hint.set(null);
+    if (hub.nearStation || stack.length) hint.set(null);
     else if (!hub.mission && playT < 14 && !controls.moved) hint.set('<em>Drag anywhere</em> to walk around the homestead.');
     else if (!hub.mission && playT > 4 && playT < 18 && !hub.nearStation && totalStars(store.data) === 0) hint.set('Look for the <em>glowing rings</em>. Each family member has a game.');
     else hint.set(null);
@@ -566,6 +576,89 @@ function hubFrame(dt: number): void {
   $('hub-stars-n').textContent = String(totalStars(store.data));
   $('hub-orn-n').textContent = `${store.data.ornaments.length}/${ORNAMENT_COUNT}`;
 }
+
+// --- Sunday at the Barn ----------------------------------------------------------------------
+// Optional, unrewarded, and always available: sit down whenever you like.
+let sundayBeats: Beat[] = [];
+let sundayAt = 0;
+
+function openSunday(): void {
+  sundayBeats = sundayScript();
+  sundayAt = 0;
+  hub.gather(true);
+  sfx.discover();
+  showSundayBeat();
+  open('sunday');
+  frameTable();
+}
+
+/** Keep the table in view above the dialogue card. */
+function frameTable(): void {
+  hubView.snapTo(LONG_TABLE.x, LONG_TABLE.y);
+  hubView.cam.y += hubView.insets.bottom / 2 / hubView.cam.zoom;
+  hubView.clampCam();
+}
+
+function closeSunday(): void {
+  store.data.sundays++;
+  store.save();
+  hub.gather(false);
+  close();
+  hubView.snap();
+  if (store.data.barnPlan) toast.show(`<b>Barn 89, next chapter</b>${BARN_PLAN_LABEL[store.data.barnPlan]}. Check the old sign out by the road.`, 4);
+}
+
+function showSundayBeat(): void {
+  const beat = sundayBeats[sundayAt];
+  const face = $<HTMLCanvasElement>('sunday-face');
+  const who = 'line' in beat ? beat.line.who : beat.choice.who;
+  const text = 'line' in beat ? beat.line.text : beat.choice.prompt;
+  show(face, who !== 'narrator');
+  $('sunday-who').textContent = who === 'narrator' ? '' : FAMILY[who].name;
+  const p = $('sunday-text');
+  p.textContent = text;
+  p.classList.toggle('narration', who === 'narrator');
+  if (who !== 'narrator') requestAnimationFrame(() => paintPortrait(face, FAMILY[who].look));
+  const choices = $('sunday-choices');
+  choices.innerHTML = '';
+  show($('sunday-next'), 'line' in beat);
+  $('sunday-next').textContent = sundayAt === sundayBeats.length - 1 ? 'Back to it' : 'Next';
+  if ('choice' in beat) {
+    for (const opt of beat.choice.options) {
+      const b = document.createElement('button');
+      b.textContent = opt.label;
+      b.addEventListener('click', () => {
+        sfx.click();
+        if (opt.plan) {
+          store.data.barnPlan = opt.plan;
+          store.save();
+          applyLook();
+        }
+        sundayBeats.splice(sundayAt + 1, 0, ...opt.reply.map((line) => ({ line })));
+        sundayAt++;
+        showSundayBeat();
+      });
+      choices.append(b);
+    }
+  }
+  if (top() === 'sunday') {
+    resize();
+    frameTable();
+  }
+}
+
+$('sunday-next').addEventListener('click', () => {
+  sfx.click();
+  if (sundayAt >= sundayBeats.length - 1) closeSunday();
+  else {
+    sundayAt++;
+    showSundayBeat();
+  }
+});
+$('sunday-leave').addEventListener('click', () => {
+  sfx.click();
+  closeSunday();
+});
 
 // --- Lockbox ---------------------------------------------------------------------------------
 function syncDials(): void {
@@ -656,6 +749,7 @@ function buildBoard(): void {
     `<li><b>${s.pets.length}/${CAT_COUNT}</b> barn cats petted</li>`,
     `<li><b>${s.discoveries.length}/${shared.map.discoveries.length}</b> places discovered</li>`,
     `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys</li>`,
+    `<li><b>Sunday at the Barn</b> ${s.barnPlan ? `Next chapter: ${BARN_PLAN_LABEL[s.barnPlan].toLowerCase()}.` : 'Pull up a chair at the long table under the string lights, whenever you like.'}</li>`,
   ].join('');
 }
 

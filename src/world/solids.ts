@@ -47,6 +47,10 @@ export function propSolid(p: PropDef): Shape | null {
       const w = p.w ?? 120;
       return { kind: 'rect', x: p.x - w / 2, y: p.y - 20, w, h: 24 };
     }
+    case 'longTable': {
+      const w = p.w ?? 150;
+      return { kind: 'rect', x: p.x - w / 2 - 6, y: p.y - 30, w: w + 12, h: 52 };
+    }
     case 'venueSign':
       return { kind: 'segment', ax: p.x - 44, ay: p.y, bx: p.x + 44, by: p.y, r: 6 };
     default:

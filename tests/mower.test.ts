@@ -29,6 +29,9 @@ export function mowBot(level: (typeof MOW_LEVELS)[number], spacing = 40, maxSeco
   let target = 0;
   let stuckT = 0;
   let lastD = Infinity;
+  /** Mop-up spots the bot couldn't reach (it drives around nothing; people steer around the table). */
+  const skip = new Set<number>();
+  let mopCell = -1;
   for (let i = 0; i < maxSeconds * 60 && g.phase !== 'complete'; i++) {
     const m = g.mower;
     let goal = plan[target];
@@ -37,13 +40,14 @@ export function mowBot(level: (typeof MOW_LEVELS)[number], spacing = 40, maxSeco
       let bd = Infinity;
       for (let r = 0; r < g.rows; r++)
         for (let c = 0; c < g.cols; c++) {
-          if (g.cells[r * g.cols + c] !== 1) continue;
+          if (g.cells[r * g.cols + c] !== 1 || skip.has(r * g.cols + c)) continue;
           const x = g.x0 + (c + 0.5) * CELL;
           const y = g.y0 + (r + 0.5) * CELL;
           const d = Math.hypot(x - m.x, y - m.y);
           if (d < bd) {
             bd = d;
             goal = { x, y };
+            mopCell = r * g.cols + c;
           }
         }
       if (!goal) break;
@@ -60,6 +64,10 @@ export function mowBot(level: (typeof MOW_LEVELS)[number], spacing = 40, maxSeco
       else stuckT = Math.max(0, stuckT - DT);
       lastD = d;
       if (stuckT > 1.2) {
+        if (target >= plan.length) {
+          // Skip the stuck spot and its neighbours.
+          for (let dr = -3; dr <= 3; dr++) for (let dc = -3; dc <= 3; dc++) skip.add(mopCell + dr * g.cols + dc);
+        }
         target++;
         stuckT = 0;
         lastD = Infinity;
