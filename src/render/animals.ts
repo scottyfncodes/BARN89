@@ -141,11 +141,14 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ctx.quadraticCurveTo(hx - 8, hy - 2, hx - 5, hy + 6 + Math.sin(s.clock * 3) * 0.6);
     ctx.quadraticCurveTo(hx - 1, hy + 3, hx + 1, hy - 4);
     ctx.closePath();
-    fillStroke(ctx, '#b98544', 1.2);
+    fillStroke(ctx, d.patch, 1.2);
   }
   // Eye.
   ellipse(ctx, hx + 3.5, hy - 1.5, 1.3, 1.6);
   ctx.fillStyle = C.ink;
+  ctx.fill();
+  ellipse(ctx, hx + 3.9, hy - 2.1, 0.5, 0.5);
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
   if (s.ball) {
     ellipse(ctx, hx + 10, hy + 5, 3.6, 3.6);
@@ -157,7 +160,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   }
   // Collar.
   if (!lie) {
-    ctx.strokeStyle = d.kind === 'collie' ? '#d9434f' : '#3d7fd6';
+    ctx.strokeStyle = d.kind === 'collie' ? '#d9434f' : '#8a8f96';
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(hx - 5, hy + 4);
@@ -170,11 +173,12 @@ export function drawDog(ctx: Ctx, d: DogDef, s: DogLook): void {
   ctx.save();
   ctx.translate(s.x, s.y);
   if (!s.ghost) {
-    ellipse(ctx, 0, 0, 16, 4.5);
+    ellipse(ctx, 0, 0, 16 * (d.size ?? 1), 4.5 * (d.size ?? 1));
     ctx.fillStyle = C.shadow;
     ctx.fill();
   }
   if (s.faceX < 0) ctx.scale(-1, 1);
+  if (d.size) ctx.scale(d.size, d.size);
   ctx.lineJoin = 'round';
   drawDogRight(ctx, d, s);
   ctx.restore();

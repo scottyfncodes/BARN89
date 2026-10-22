@@ -5,7 +5,7 @@
 
 export type FamilyId = 'megan' | 'jason' | 'jay' | 'natalie' | 'grandpa';
 
-export type HairStyle = 'braids' | 'ponytail' | 'wavy' | 'short' | 'shaggy' | 'grey';
+export type HairStyle = 'braids' | 'ponytail' | 'wavy' | 'long' | 'short' | 'shaggy' | 'grey';
 export type HatKind = 'cowgirl' | 'cap' | 'capBack' | 'flatcap' | 'straw' | 'santa' | 'beanie' | 'none';
 
 export interface PersonLook {
@@ -30,6 +30,14 @@ export interface PersonLook {
   sleeveless?: boolean;
   /** Tall western boots in this colour (shaft up the shin). */
   cowboyBoots?: string;
+  /** Shorts instead of long pants (lower legs show skin). */
+  shorts?: boolean;
+  /** Open jacket worn over a tee of this colour. */
+  tee?: string;
+  /** Stripe down the jacket sleeves. */
+  sleeveStripe?: string;
+  /** Draw the beard as light stubble. */
+  stubble?: boolean;
   /** Sparkly boots. */
   glitter?: boolean;
   /** A little cross on a chain. */
@@ -104,8 +112,8 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     role: 'Kitten Cowgirl',
     look: {
       skin: '#f5caa6',
-      hair: '#e8cc8a',
-      hairStyle: 'braids',
+      hair: '#b9935e',
+      hairStyle: 'long',
       shirt: '#fbf3e6',
       dress: { pattern: 'floral', colors: ['#e2486a', '#f2b33a', '#f28aa0', '#5f9e6e'] },
       sleeveless: true,
@@ -122,18 +130,19 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
     name: 'Grandpa',
     role: 'Lives in the northeast house',
     look: {
-      skin: '#efc19f',
-      hair: '#e6e2da',
-      hairStyle: 'grey',
-      shirt: '#9cb8d6',
-      vest: '#8a6a4a',
-      pants: '#b9a582',
-      shoes: '#5a3a24',
-      hat: 'flatcap',
-      hatColor: '#6f6a5e',
-      mustache: '#efece6',
+      skin: '#c6936b',
+      hair: '#d4d1cb',
+      hairStyle: 'short',
+      shirt: '#24242a',
+      tee: '#d9302f',
+      sleeveStripe: '#a9adb3',
+      pants: '#2b2b30',
+      shorts: true,
+      shoes: '#e9e9ea',
+      hat: 'none',
+      beard: '#d8d4cc',
+      stubble: true,
       glasses: true,
-      suspenders: '#7a2f2a',
       scale: 0.98,
     },
   },
@@ -148,11 +157,13 @@ export interface DogDef {
   base: string;
   patch: string;
   blurb: string;
+  /** Drawing scale (1 = medium dog). */
+  size?: number;
 }
 
 export const DOGS: DogDef[] = [
   { id: 'scout', name: 'Scout', kind: 'collie', base: '#2b2a30', patch: '#f7f3ec', blurb: 'Will fetch until the sun goes down. Then a little longer.' },
-  { id: 'maggie', name: 'Maggie', kind: 'lab', base: '#d9a85e', patch: '#f0d29a', blurb: 'Supervises from the porch. Accepts belly rubs.' },
+  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.25, blurb: 'Eighty pounds of black Lab. Will lean on you. Will find the chew toy.' },
 ];
 
 export interface DonkeyDef {

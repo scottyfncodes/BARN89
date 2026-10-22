@@ -32,7 +32,7 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 
 ## Customizing the family
 
-Everything family-specific lives in [`src/content/cast.ts`](src/content/cast.ts): names, roles, hair, clothes and hats for the five family members, and the names and coats of the two dogs and two donkeys. The barn cats are in [`src/games/kitten/levels.ts`](src/games/kitten/levels.ts). What each person says when you walk up is in [`src/content/activities.ts`](src/content/activities.ts). These are fictionalized game roles; the dog and donkey names are placeholders until the real ones are filled in.
+Everything family-specific lives in [`src/content/cast.ts`](src/content/cast.ts): names, roles, hair, clothes and hats for the five family members, and the names and coats of the two dogs and two donkeys. The barn cats are in [`src/games/kitten/levels.ts`](src/games/kitten/levels.ts). What each person says when you walk up is in [`src/content/activities.ts`](src/content/activities.ts). These are fictionalized game roles drawn from family reference photos. Annie (the big black Lab) is the real dog; Scout and the donkeys' names are placeholders until the real ones are filled in.
 
 ## Getting started
 

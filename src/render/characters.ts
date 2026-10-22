@@ -262,7 +262,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
     ctx.moveTo(x + bx, y - 26);
     ctx.quadraticCurveTo(x + bx - 6, y - 18, x + bx - 7 + braidSw, y - 10);
     ctx.stroke();
-    ctx.strokeStyle = '#e8cc8a';
+    ctx.strokeStyle = '#b9935e';
     ctx.lineWidth = 4;
     ctx.stroke();
     ctx.strokeStyle = C.ink;
@@ -339,7 +339,7 @@ function drawNatalie(ctx: Ctx, x: number, seatY: number, s: RiderPose): void {
   ctx.lineTo(hx + 8, hy - 8);
   ctx.lineTo(hx - 8, hy - 8);
   ctx.closePath();
-  ctx.fillStyle = '#e8cc8a';
+  ctx.fillStyle = '#b9935e';
   ctx.fill();
   // Face.
   ctx.fillStyle = C.ink;
