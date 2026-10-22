@@ -1271,6 +1271,7 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
           ctx.lineTo(ix + 11 + sway, y - 18);
           ctx.lineTo(ix + 10 + sway, y - 14);
           ctx.lineTo(ix + sway, y - 16);
+          ctx.closePath();
         } else {
           ctx.rect(ix + sway * 0.3, y - 31, 16, 15);
         }
