@@ -111,7 +111,8 @@ export function normalize(raw: unknown): SaveData {
     pets: arr(r.pets),
     fetches: typeof r.fetches === 'number' ? r.fetches : 0,
     carrots: typeof r.carrots === 'number' ? r.carrots : 0,
-    hunt: { found: arr(r.hunt?.found), done: !!r.hunt?.done },
+    // Grandpa's hunt used to send you after reading glasses; it's his truck keys now.
+    hunt: { found: arr(r.hunt?.found).map((id) => (id === 'glasses' ? 'keys' : id)), done: !!r.hunt?.done },
     barnPlan: r.barnPlan === 'supper' || r.barnPlan === 'neighbors' || r.barnPlan === 'dance' ? r.barnPlan : null,
     sundays: typeof r.sundays === 'number' ? r.sundays : 0,
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },

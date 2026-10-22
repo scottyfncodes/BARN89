@@ -37,10 +37,10 @@ export interface HuntItem {
 
 export const HUNT_ITEMS: HuntItem[] = [
   {
-    id: 'glasses',
-    name: 'Reading glasses',
-    clue: 'Last I had my reading glasses, I was reading the mail out by the road.',
-    found: 'His reading glasses, folded on the grass by the mailbox.',
+    id: 'keys',
+    name: 'Truck keys',
+    clue: 'Last I had my truck keys, I was getting the mail out by the road.',
+    found: 'His truck keys, dropped in the grass by the mailbox.',
     x: 1932,
     y: 248,
   },
