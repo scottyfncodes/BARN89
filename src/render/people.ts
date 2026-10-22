@@ -48,13 +48,18 @@ function shade(hex: string, k: number): string {
   return `rgb(${Math.min(255, r)},${Math.min(255, g)},${Math.min(255, b)})`;
 }
 
-function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string, boots: boolean, glitter: boolean): void {
+function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string, boots: boolean, glitter: boolean, shortsSkin?: string): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
   ctx.beginPath();
   ctx.roundRect(-3.6, -1, 7.2, len, 3.4);
-  fillStroke(ctx, pants, 1.4);
+  fillStroke(ctx, shortsSkin ?? pants, 1.4);
+  if (shortsSkin) {
+    ctx.beginPath();
+    ctx.roundRect(-4.4, -1.5, 8.8, len * 0.48, 2.5);
+    fillStroke(ctx, pants, 1.4);
+  }
   if (boots) {
     // Western boot: shaft up the shin, pointed toe, little heel.
     ctx.beginPath();
@@ -86,7 +91,7 @@ function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants
   ctx.restore();
 }
 
-function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: string, skin: string): void {
+function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: string, skin: string, stripe?: string): void {
   ctx.lineCap = 'round';
   // Elbow bends outward a touch so arms read as arms, not sticks.
   const mx = (sx + hx) / 2 - (hy - sy) * 0.08;
@@ -100,6 +105,11 @@ function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: s
   ctx.strokeStyle = sleeve;
   ctx.lineWidth = 3.8;
   ctx.stroke();
+  if (stripe) {
+    ctx.strokeStyle = stripe;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
   ellipse(ctx, hx, hy, 2.7, 2.7);
   fillStroke(ctx, skin, 1.1);
 }
@@ -132,6 +142,15 @@ function drawHair(ctx: Ctx, L: PersonLook, hx: number, hy: number, pose: PersonP
       ctx.quadraticCurveTo(hx - 13, hy - 4, hx - 11 + sway * 0.4, hy + 12);
       ctx.quadraticCurveTo(hx - 6, hy + 15, hx - 1, hy + 11);
       ctx.quadraticCurveTo(hx + 2, hy + 4, hx + 1, hy - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (L.hairStyle === 'long') {
+      ctx.beginPath();
+      ctx.moveTo(hx - 1, hy - 9);
+      ctx.quadraticCurveTo(hx - 12, hy - 6, hx - 11 + sway * 0.4, hy + 22);
+      ctx.lineTo(hx - 2 + sway * 0.4, hy + 23);
+      ctx.quadraticCurveTo(hx + 1, hy + 10, hx + 2, hy + 4);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
@@ -320,9 +339,9 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   drawHair(ctx, L, hx, hy, p, true);
   const sleeve = L.sleeveless ? L.skin : L.shirt;
   const boots = !!L.cowboyBoots;
-  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(sleeve, 0.85), L.skin);
-  leg(ctx, -1, hipY, swing, 22 + bob, shade(L.pants, 0.85), shade(L.shoes, 0.8), boots, !!L.glitter);
-  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes, boots, !!L.glitter);
+  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(sleeve, 0.85), L.skin, L.sleeveStripe);
+  leg(ctx, -1, hipY, swing, 22 + bob, shade(L.pants, 0.85), shade(L.shoes, 0.8), boots, !!L.glitter, L.shorts ? shade(L.skin, 0.92) : undefined);
+  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes, boots, !!L.glitter, L.shorts ? L.skin : undefined);
 
   // Torso.
   ctx.beginPath();
@@ -368,6 +387,23 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
       ctx.lineTo(0.5, hipY + 12);
       ctx.stroke();
     }
+  }
+  if (L.tee) {
+    // Open zip jacket: the tee shows down the front.
+    ctx.beginPath();
+    ctx.moveTo(2.5, shY + 0.5);
+    ctx.lineTo(7, shY + 0.5);
+    ctx.quadraticCurveTo(9.2, shY + 8, 8.2, hipY + 1.5);
+    ctx.lineTo(4.5, hipY + 1.5);
+    ctx.closePath();
+    ctx.fillStyle = L.tee;
+    ctx.fill();
+    ctx.strokeStyle = '#a9adb3';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(2.5, shY + 1);
+    ctx.lineTo(4.5, hipY + 1);
+    ctx.stroke();
   }
   if (L.check) {
     ctx.save();
@@ -457,7 +493,9 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
     ctx.quadraticCurveTo(hx, hy + 5, hx - 0.5, hy + 1);
     ctx.closePath();
     ctx.fillStyle = L.beard;
+    if (L.stubble) ctx.globalAlpha = 0.55;
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
   drawHair(ctx, L, hx, hy, p, false);
   // Face.
@@ -507,7 +545,7 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
 
   // Front arm and anything held.
   if (p.hold === 'axe') drawAxe(ctx, front.x, front.y, axeA);
-  arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin);
+  arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin, L.sleeveStripe);
   drawHeld(ctx, p.hold ?? null, front.x, front.y);
 }
 
