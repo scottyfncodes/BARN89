@@ -76,6 +76,8 @@ export interface Decor {
   fixedBulbs: boolean;
   /** Christmas lights on the houses and barn, and a little snow. */
   holiday: boolean;
+  /** Board under the old venue sign once the family picks the barn's next chapter. */
+  sign?: string | null;
 }
 
 const HOLIDAY = ['#e2483c', '#3fae5a', '#f2c53d', '#3d7fd6', '#f28aa0'];
@@ -246,7 +248,8 @@ export class WorldView {
     this.cam.x = clamp(this.cam.x, vw / 2, Math.max(vw / 2, m.width - vw / 2));
     // Let the camera slide up past the map edge by the HUD's height so nothing hides under it.
     const top = vh / 2 - this.insets.top / this.cam.zoom;
-    this.cam.y = clamp(this.cam.y, top, Math.max(top, m.height - vh / 2));
+    const bottom = m.height - vh / 2 + this.insets.bottom / this.cam.zoom;
+    this.cam.y = clamp(this.cam.y, top, Math.max(top, bottom));
     if (vw >= m.width) this.cam.x = m.width / 2;
     if (vh >= m.height) this.cam.y = m.height / 2;
   }
@@ -440,7 +443,13 @@ export class WorldView {
         });
       } else if (s.type === 'prop') {
         const pr = s.p;
-        items.push({ y: s.y, draw: () => drawProp(ctx, pr, clock) });
+        items.push({
+          y: s.y,
+          draw: () => {
+            drawProp(ctx, pr, clock);
+            if (pr.kind === 'venueSign' && this.decor.sign) drawSignNote(ctx, pr.x, pr.y, this.decor.sign);
+          },
+        });
       } else {
         const fp = s.f;
         items.push({ y: s.y, draw: () => drawFencePiece(ctx, fp) });
@@ -804,6 +813,33 @@ export class WorldView {
     ctx.fillText(text, x, y + 0.5);
     ctx.restore();
   }
+}
+
+/** Fresh-painted board hung on two little chains under the Barn 89 sign. */
+function drawSignNote(ctx: Ctx, x: number, y: number, text: string): void {
+  ctx.save();
+  ctx.font = '900 7.5px ui-rounded, system-ui, sans-serif';
+  const w = Math.max(58, ctx.measureText(text).width + 12);
+  ctx.strokeStyle = '#6b6b6b';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2 + 6, y - 30);
+  ctx.lineTo(x - w / 2 + 6, y - 25);
+  ctx.moveTo(x + w / 2 - 6, y - 30);
+  ctx.lineTo(x + w / 2 - 6, y - 25);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - 25, w, 12, 2);
+  ctx.fillStyle = '#fffaf0';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = C.barnRed;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y - 18.6);
+  ctx.restore();
 }
 
 export function drawCar(ctx: Ctx, x: number, y: number, dir: number, color: string): void {

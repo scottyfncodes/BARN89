@@ -1391,6 +1391,95 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       }
       break;
     }
+    case 'longTable': {
+      // A long farm table with benches, set for breakfast.
+      const w = p.w ?? 150;
+      const x0 = x - w / 2;
+      ctx.beginPath();
+      ctx.ellipse(x + 6, y + 8, w / 2 + 14, 16, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      // Back bench.
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x0 + 6, y - 40, w - 12, 7);
+      ctx.strokeRect(x0 + 6, y - 40, w - 12, 7);
+      // Legs.
+      ctx.fillStyle = C.woodDark;
+      for (const lx of [x0 + 8, x0 + w - 14]) {
+        ctx.fillRect(lx, y - 12, 6, 14);
+        ctx.strokeRect(lx, y - 12, 6, 14);
+      }
+      // Top.
+      ctx.beginPath();
+      ctx.roundRect(x0, y - 34, w, 26, 3);
+      ctx.fillStyle = '#b98a58';
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(90,55,25,0.35)';
+      ctx.lineWidth = 1;
+      for (const py of [y - 25, y - 17]) {
+        ctx.beginPath();
+        ctx.moveTo(x0 + 2, py);
+        ctx.lineTo(x0 + w - 2, py);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 1.6;
+      ctx.fillStyle = C.wood;
+      ctx.fillRect(x0, y - 8, w, 5);
+      ctx.strokeRect(x0, y - 8, w, 5);
+      // Checked runner down the middle.
+      ctx.fillStyle = '#fffaf0';
+      ctx.fillRect(x0 + 8, y - 25, w - 16, 9);
+      ctx.fillStyle = 'rgba(200,68,58,0.75)';
+      for (let i = 0; x0 + 8 + i * 6 < x0 + w - 8; i++) {
+        ctx.fillRect(x0 + 8 + i * 6, i % 2 ? y - 25 : y - 20.5, 3, 4.5);
+      }
+      // Plates, mugs, and the empty cinnamon roll plate.
+      for (let i = 0; i < 5; i++) {
+        const px = x0 + 18 + i * ((w - 36) / 4);
+        for (const py of [y - 29, y - 12]) {
+          ctx.beginPath();
+          ctx.ellipse(px, py, 6, 2.6, 0, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.lineWidth = 0.9;
+          ctx.stroke();
+        }
+        ctx.fillStyle = i % 2 ? '#3d7fd6' : '#d9434f';
+        ctx.fillRect(px + 7, y - 33, 3.4, 4);
+      }
+      ctx.lineWidth = 1.6;
+      ctx.fillStyle = '#e8c690';
+      for (let i = 0; i < 4; i++) ctx.fillRect(x0 + w - 22 + i * 2, y - 22 + (i % 2), 1.2, 1.2);
+      // Jar of wildflowers.
+      ctx.fillStyle = 'rgba(190,225,240,0.9)';
+      ctx.fillRect(x - 3, y - 30, 6, 8);
+      ctx.strokeRect(x - 3, y - 30, 6, 8);
+      for (const [fx, fy, fc] of [[-3, -34, '#f2c53d'], [1, -36, '#f26b8a'], [4, -33, '#ffffff']] as [number, number, string][]) {
+        ctx.beginPath();
+        ctx.arc(x + fx, y + fy, 2, 0, Math.PI * 2);
+        ctx.fillStyle = fc;
+        ctx.fill();
+      }
+      // Front bench.
+      ctx.fillStyle = C.woodLight;
+      ctx.fillRect(x0 + 6, y + 6, w - 12, 7);
+      ctx.strokeRect(x0 + 6, y + 6, w - 12, 7);
+      ctx.fillStyle = C.woodDark;
+      ctx.fillRect(x0 + 12, y + 13, 4, 6);
+      ctx.fillRect(x0 + w - 16, y + 13, 4, 6);
+      break;
+    }
+    case 'wallCross': {
+      // Small, plain, hung by the door.
+      ctx.fillStyle = C.wood;
+      ctx.fillRect(x - 1.8, y - 50, 3.6, 18);
+      ctx.strokeRect(x - 1.8, y - 50, 3.6, 18);
+      ctx.fillRect(x - 6, y - 45, 12, 3.4);
+      ctx.strokeRect(x - 6, y - 45, 12, 3.4);
+      break;
+    }
     case 'bench': {
       const w = p.w ?? 40;
       ctx.fillStyle = C.woodDark;

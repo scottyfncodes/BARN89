@@ -193,6 +193,24 @@ async function portrait() {
   await page.screenshot({ path: `${OUT}/p-hunt.png` });
   await b89(page, () => window.__b89.hub.endMission());
 
+  // Sunday at the Barn: optional, walk up to the long table.
+  await b89(page, () => window.__b89.hub.teleport(1670, 2955));
+  await page.waitForTimeout(300);
+  check('long table offers Sunday breakfast', (await page.textContent('#act-label')) === 'Sunday breakfast');
+  await tap(page, '#act-btn');
+  await page.waitForTimeout(400);
+  check('Sunday at the Barn opens', await visible(page, '#sunday'));
+  check('the family gathers at the table', await b89(page, () => window.__b89.hub.gathered));
+  await page.screenshot({ path: `${OUT}/p-sunday.png` });
+  for (let i = 0; i < 40 && (await visible(page, '#sunday')); i++) {
+    const n = await page.locator('#sunday-choices button').count();
+    if (n) await page.locator('#sunday-choices button').nth(n - 1).click();
+    else await page.click('#sunday-next');
+  }
+  check('Sunday ends back on the homestead', !(await visible(page, '#sunday')) && !(await b89(page, () => window.__b89.hub.gathered)));
+  check("the barn's next chapter is remembered", (await b89(page, () => window.__b89.store.data.barnPlan)) === 'dance');
+  check('no stars for Sunday', (await b89(page, () => Object.keys(window.__b89.store.data.stars).every((k) => !k.includes('sunday')))));
+
   // Persistence across a reload.
   await page.reload();
   await page.waitForTimeout(600);

@@ -1327,3 +1327,115 @@ body[data-scene='woodpile'] #hint {
   max-width: min(92vw, 420px);
   text-align: center;
 }
+
+/* Sunday at the Barn: a dialogue card at the bottom so the table stays in view. */
+.dialog-screen {
+  place-items: end center;
+  background: linear-gradient(rgba(40, 30, 10, 0), rgba(40, 30, 10, 0.35));
+}
+.dialog {
+  width: min(100%, 460px);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 rgba(59, 42, 32, 0.35);
+  padding: 12px 12px 8px;
+  animation: rise 0.22s ease-out;
+}
+.dialog-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 64px;
+}
+#sunday-face {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: 50%;
+  background: #f2dfb8;
+  border: 2px solid var(--ink);
+}
+#sunday-face[hidden] + .dialog-body {
+  padding-left: 2px;
+}
+.dialog-body {
+  flex: 1;
+  min-width: 0;
+}
+.dialog-body b {
+  display: block;
+  font-family: var(--display);
+  color: var(--red);
+  font-size: 16px;
+  min-height: 2px;
+}
+.dialog-body p {
+  margin: 3px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.dialog-body p.narration {
+  font-style: italic;
+  font-weight: 600;
+}
+.dialog-choices {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.dialog-choices button {
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 2.5px solid var(--ink);
+  background: var(--paper-2);
+  box-shadow: 0 3px 0 rgba(59, 42, 32, 0.3);
+  font-weight: 800;
+  font-size: 15px;
+  text-align: left;
+}
+.dialog-choices button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(59, 42, 32, 0.3);
+}
+.dialog-btns {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.dialog-head:has(#sunday-face[hidden]) {
+  min-height: 0;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .dialog {
+    width: min(100%, 640px);
+    padding: 8px 10px 6px;
+  }
+  .dialog-head {
+    min-height: 0;
+  }
+  #sunday-face {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+  .dialog-body p {
+    font-size: 15px;
+  }
+  .dialog-choices {
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 6px;
+  }
+  .dialog-choices button {
+    min-height: 44px;
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+  .dialog-btns {
+    margin-top: 2px;
+  }
+}

@@ -28,11 +28,13 @@ It's a static web app built for iPhone Safari and the Home Screen. No accounts, 
 | Megan's Morning Rounds | Megan | Morning Rounds | Six chores around the homestead in any order (eggs before the kitchen), against the clock. |
 | Grandpa's Treasure Hunt | Grandpa | Lost and Found | Follow five clues to his lost things, then crack his lockbox. Hints cost a star. |
 
+**Sunday at the Barn:** an optional breakfast at the long table under Barn 89's string lights. Walk up and tap *Sunday breakfast*: the family gathers, there's a squabble over a cinnamon roll and an open gate (patched up), a short grace, a round of "one good thing from this week," and a decision about what the barn becomes now that the wedding seasons are done. The choice hangs on a board under the old venue sign. It's always available, can be left at any point, and never gives stars or rewards. A couple of quiet details sit around the homestead too: a Bible on the kitchen counter (seen through the window) and a small cross by Grandpa's door.
+
 **Rewards:** straw hat, Santa hat and barn cat beanie for the explorer, green and golden mower paint, Deputy the tiger (Natalie rides him in Kitten Cowgirl), Evening at Barn 89 (the string lights come on), Christmas lights with snow, and fixed string-light bulbs from Grandpa's hunt. Eight Christmas ornaments are hidden around the homestead and get hung on Grandpa's porch tree as you find them.
 
 ## Customizing the family
 
-Everything family-specific lives in [`src/content/cast.ts`](src/content/cast.ts): names, roles, hair, clothes and hats for the five family members, and the names and coats of the two dogs and two donkeys. The barn cats are in [`src/games/kitten/levels.ts`](src/games/kitten/levels.ts). What each person says when you walk up is in [`src/content/activities.ts`](src/content/activities.ts). These are fictionalized game roles drawn from family reference photos. Annie (the big black Lab) and the scruffy terrier are the real dogs; Chewy and Yoda are the real donkeys. The terrier's name (Scout) is a placeholder until the real one is filled in.
+Everything family-specific lives in [`src/content/cast.ts`](src/content/cast.ts): names, roles, hair, clothes and hats for the five family members, and the names and coats of the two dogs and two donkeys. The barn cats are in [`src/games/kitten/levels.ts`](src/games/kitten/levels.ts). What each person says when you walk up is in [`src/content/activities.ts`](src/content/activities.ts). The Sunday at the Barn script is in [`src/content/sunday.ts`](src/content/sunday.ts); it's written fiction meant to be edited to fit the family (set `INCLUDE_GRACE` to `false` to leave the blessing out). These are fictionalized game roles drawn from family reference photos. Annie (the big black Lab) and the scruffy terrier are the real dogs; Chewy and Yoda are the real donkeys. The terrier's name (Scout) is a placeholder until the real one is filled in.
 
 ## Getting started
 

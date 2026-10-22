@@ -1,4 +1,5 @@
 import type { FamilyId, HatKind } from '../content/cast';
+import type { BarnPlan } from '../content/sunday';
 
 /**
  * Local-only progress. Nothing leaves the device and nothing syncs between family members'
@@ -28,6 +29,10 @@ export interface SaveData {
   fetches: number;
   carrots: number;
   hunt: { found: string[]; done: boolean };
+  /** What the family decided Barn 89 becomes next (Sunday at the Barn). Null until chosen. */
+  barnPlan: BarnPlan | null;
+  /** Times the family sat down for Sunday breakfast. Just remembered, never rewarded. */
+  sundays: number;
   cosmetics: Cosmetics;
   /** One-time hints already shown. */
   seen: string[];
@@ -48,6 +53,8 @@ export function freshSave(): SaveData {
     fetches: 0,
     carrots: 0,
     hunt: { found: [], done: false },
+    barnPlan: null,
+    sundays: 0,
     cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false },
     seen: [],
   };
@@ -93,6 +100,8 @@ export function normalize(raw: unknown): SaveData {
     fetches: typeof r.fetches === 'number' ? r.fetches : 0,
     carrots: typeof r.carrots === 'number' ? r.carrots : 0,
     hunt: { found: arr(r.hunt?.found), done: !!r.hunt?.done },
+    barnPlan: r.barnPlan === 'supper' || r.barnPlan === 'neighbors' || r.barnPlan === 'dance' ? r.barnPlan : null,
+    sundays: typeof r.sundays === 'number' ? r.sundays : 0,
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },
     seen: arr(r.seen),
   };

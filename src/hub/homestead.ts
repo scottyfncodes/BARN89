@@ -92,7 +92,8 @@ export type HubAction =
   | { kind: 'pet'; label: string; cat: HubCat }
   | { kind: 'carrot'; label: string }
   | { kind: 'task'; label: string; task: string }
-  | { kind: 'pickup'; label: string; item: string };
+  | { kind: 'pickup'; label: string; item: string }
+  | { kind: 'sunday'; label: string };
 
 export type HubEvent =
   | { type: 'ornament'; id: string; x: number; y: number; count: number }
@@ -107,7 +108,8 @@ export type HubEvent =
   | { type: 'task'; id: string; text: string; x: number; y: number; left: number }
   | { type: 'roundsDone'; seconds: number; stars: number }
   | { type: 'huntItem'; id: string; text: string; x: number; y: number; left: number }
-  | { type: 'huntReady' };
+  | { type: 'huntReady' }
+  | { type: 'sunday' };
 
 export interface RoundsState {
   kind: 'rounds';
@@ -125,6 +127,17 @@ export interface HuntState {
 }
 
 export type Mission = RoundsState | HuntState | null;
+
+/** The long table under the Barn 89 string lights (see ranch.ts). */
+export const LONG_TABLE = { x: 1670, y: 2890 };
+/** Where people sit for Sunday breakfast: three behind the table, the rest in front. */
+const TABLE_SEATS = [
+  { x: 1612, y: 2850 },
+  { x: 1662, y: 2850 },
+  { x: 1712, y: 2850 },
+  { x: 1618, y: 2942 },
+];
+const EXPLORER_SEAT = { x: 1708, y: 2942 };
 
 const CAT_HOMES: { id: keyof typeof COATS; name: string; personality: Personality; spots: Vec[] }[] = [
   { id: 'marshmallow', name: 'Marshmallow', personality: 'sleepy', spots: [{ x: 1440, y: 2165 }, { x: 1380, y: 2190 }] },
@@ -168,6 +181,8 @@ export class Homestead {
   discovered: Set<string>;
   huntFound: Set<string>;
   readonly pen: PenDef;
+  /** Everyone is at the long table for Sunday breakfast. */
+  gathered = false;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   private barkT = 3;
@@ -277,6 +292,42 @@ export class Homestead {
     this.ball = null;
   }
 
+  /** Bring the family to the long table (or send everyone back to what they were doing). */
+  gather(on: boolean): void {
+    this.gathered = on;
+    if (!on) {
+      for (const n of this.npcs) {
+        n.x = n.home.x;
+        n.y = n.home.y;
+      }
+      for (const d of this.dogs) d.state = 'follow';
+      return;
+    }
+    this.npcs.forEach((n, i) => {
+      const seat = TABLE_SEATS[i % TABLE_SEATS.length];
+      n.x = seat.x;
+      n.y = seat.y;
+      n.faceX = seat.x < LONG_TABLE.x ? 1 : -1;
+      n.waveT = 0;
+    });
+    const p = this.player;
+    p.x = p.px = EXPLORER_SEAT.x;
+    p.y = p.py = EXPLORER_SEAT.y;
+    p.vx = p.vy = 0;
+    p.faceX = -1;
+    const spots = [
+      { x: 1772, y: 2930 },
+      { x: 1575, y: 2945 },
+    ];
+    this.dogs.forEach((d, i) => {
+      d.x = d.px = spots[i].x;
+      d.y = d.py = spots[i].y;
+      d.state = 'rest';
+      d.faceX = i ? 1 : -1;
+    });
+    this.ball = null;
+  }
+
   /* -------------------------------------------------------------------------------------- */
   /* Missions                                                                                 */
   /* -------------------------------------------------------------------------------------- */
@@ -376,6 +427,7 @@ export class Homestead {
       const item = HUNT_ITEMS[m.step];
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
+    if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
     let cat: HubCat | null = null;
     let cd = 70;
     for (const c of this.cats) {
@@ -410,6 +462,9 @@ export class Homestead {
       }
       case 'pickup':
         this.pickUpHuntItem();
+        break;
+      case 'sunday':
+        this.emit({ type: 'sunday' });
         break;
     }
   }
