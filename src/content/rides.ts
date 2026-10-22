@@ -1,7 +1,7 @@
 import type { FamilyId } from './cast';
 
 /** Things the family can ride around the homestead and race on the Loop. */
-export type RideId = 'scooter' | 'truck' | 'rider' | 'dirtbike';
+export type RideId = 'scooter' | 'truck' | 'rider' | 'dirtbike' | 'golfcart';
 
 export interface RideDef {
   id: RideId;
@@ -21,7 +21,7 @@ export interface RideDef {
   /** Seconds for 3 and 2 stars (two laps). */
   starTimes: [number, number];
   /** Stars in the owner's own game that unlock it. */
-  unlock: { game: 'kitten' | 'mower' | 'rounds' | 'woodpile'; stars: number; label: string };
+  unlock: { game: 'kitten' | 'mower' | 'rounds' | 'woodpile' | 'putt'; stars: number; label: string };
 }
 
 export const RIDES: Record<RideId, RideDef> = {
@@ -76,6 +76,19 @@ export const RIDES: Record<RideId, RideDef> = {
     rivalSpeed: 365,
     starTimes: [18, 24],
     unlock: { game: 'woodpile', stars: 3, label: 'Woodpile' },
+  },
+  golfcart: {
+    id: 'golfcart',
+    owner: 'grandpa',
+    name: "Grandpa's golf cart",
+    race: 'race-5',
+    raceTitle: 'Golf Cart Race',
+    speed: 340,
+    accel: 6,
+    stand: 'natalie',
+    rivalSpeed: 258,
+    starTimes: [25, 33],
+    unlock: { game: 'putt', stars: 3, label: 'Putt-Putt' },
   },
 };
 
