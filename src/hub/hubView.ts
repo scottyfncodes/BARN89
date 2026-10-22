@@ -270,6 +270,14 @@ export class HubView extends WorldView {
           const { x: mx, y: my, heading } = MOWER_PARKED;
           items.push({ y: my, draw: () => drawMower(ctx, mx, my, heading, this.mowerPaint, null, clock, false) });
         }
+        // A skunk out for a stroll.
+        const sk = h.skunk;
+        if (sk && inBox(sk, v, 30)) {
+          const kx = lerp(sk.px, sk.x, alpha);
+          const ky = lerp(sk.py, sk.y, alpha);
+          const fade = sk.state === 'leave' ? Math.max(0, 1 - Math.max(0, sk.t - 3) / 1) : 1;
+          items.push({ y: ky, draw: () => drawSkunk(ctx, kx, ky, sk.faceX, sk.phase, sk.state === 'spray' || (sk.cloudT >= 0 && sk.cloudT < 1.6), fade) });
+        }
         // The snake (Grandpa's least favourite resident).
         const sn = h.snake;
         if (sn && inBox(sn, v, 30)) {
@@ -430,6 +438,10 @@ export class HubView extends WorldView {
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
         for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
+        // The spray, and the smell that follows Annie around after.
+        const sk2 = h.skunk;
+        if (sk2 && sk2.cloudT >= 0 && sk2.cloudT < 2.4) drawStinkCloud(ctx, sk2.x - sk2.faceX * 14, sk2.y - 12, sk2.cloudT);
+        for (const d of h.dogs) if (d.stinkT > 0 && inBox(d, v, 20)) drawStinkLines(ctx, lerp(d.px, d.x, alpha), lerp(d.py, d.y, alpha) - 30 * (d.def.size ?? 1), clock, Math.min(1, d.stinkT / 4));
         h.pups.forEach((d, i) => {
           if (d.yipT > 0 && d.state !== 'inside') this.bubbleText(ctx, d.x + d.faceX * 8, d.y - 30 - i * 16, 'yip!');
         });
@@ -592,6 +604,107 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
     default:
       return { action: 'none' };
   }
+}
+
+/** A skunk, side on: black, a white stripe, and a big tail that goes straight up when it matters. */
+function drawSkunk(ctx: Ctx, x: number, y: number, faceX: number, phase: number, tailUp: boolean, alpha: number): void {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.scale((faceX < 0 ? -1 : 1) * 1.3, 1.3);
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13, 3.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  // Legs, scurrying.
+  const sw = Math.sin(phase) * 2;
+  ctx.fillStyle = '#1d1b1f';
+  for (const lx of [-7 + sw, -3 - sw, 5 + sw, 8 - sw]) ctx.fillRect(lx - 1.2, -5, 2.4, 5);
+  // Body and stripe.
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 11, 6.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1d1b1f';
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#f6f3ea';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(10, -13);
+  ctx.quadraticCurveTo(0, -16, -10, -12);
+  ctx.stroke();
+  // Tail: trailing behind, or straight up.
+  ctx.save();
+  ctx.translate(-10, -10);
+  ctx.rotate(tailUp ? -1.25 : -0.35);
+  ctx.beginPath();
+  ctx.ellipse(-8, 0, 10, 5.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1d1b1f';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = '#f6f3ea';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-1, -2);
+  ctx.lineTo(-14, -2);
+  ctx.stroke();
+  ctx.restore();
+  // Head.
+  ctx.beginPath();
+  ctx.ellipse(12, -8, 5, 4, 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#1d1b1f';
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.fillStyle = '#f6f3ea';
+  ctx.fillRect(11, -12, 4, 1.4);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(13.5, -9, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** The spray: a yellow-green cloud that billows and fades. */
+function drawStinkCloud(ctx: Ctx, x: number, y: number, t: number): void {
+  const k = t / 2.4;
+  ctx.save();
+  ctx.globalAlpha = 0.55 * (1 - k);
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.05;
+    const r = 8 + k * 26 + (i % 3) * 3;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * k * 20, y + Math.sin(a) * k * 10 - k * 10, r, 0, Math.PI * 2);
+    ctx.fillStyle = i % 2 ? '#c9d36a' : '#a9c25a';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Wavy green lines rising off a dog who lost an argument with a skunk. */
+function drawStinkLines(ctx: Ctx, x: number, y: number, clock: number, alpha: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.8 * alpha;
+  ctx.strokeStyle = '#8fa83e';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  for (let i = -1; i <= 1; i++) {
+    const rise = (clock * 0.8 + i * 0.33) % 1;
+    ctx.beginPath();
+    for (let s = 0; s <= 6; s++) {
+      const py = y - s * 3 - rise * 8;
+      const px = x + i * 8 + Math.sin(s * 1.2 + clock * 4 + i) * 2.2;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /** A little garter snake, wiggling along (dx, dy), flicking its tongue. */

@@ -99,7 +99,7 @@ async function portrait() {
   // Board and map.
   await page.click('#hub-hud [data-open="board"]');
   check('activity board opens', await visible(page, '#board'));
-  check('board lists six activities', (await page.locator('#board-list li').count()) === 6);
+  check('board lists seven activities', (await page.locator('#board-list li').count()) === 7);
   await page.screenshot({ path: `${OUT}/p-board.png` });
   await page.click('#board [data-close]');
   await page.click('#hub-hud [data-open="map"]');
@@ -182,6 +182,17 @@ async function portrait() {
   await tap(page, '#home-btn');
   check('results return to the homestead', (await b89(page, () => window.__b89.mode)) === 'hub');
 
+  // Putt-Putt: pull back and let go.
+  await b89(page, () => window.__b89.startChallenge('putt-1'));
+  await page.waitForTimeout(1300);
+  check('Putt-Putt starts', (await b89(page, () => window.__b89.game?.challenge)) === 'putt-1');
+  const ball0 = await b89(page, () => ({ ...window.__b89.game.game.ball }));
+  await drag(page, vw / 2, 400, 0, 50, 400);
+  await page.waitForTimeout(700);
+  const putt1 = await b89(page, () => ({ strokes: window.__b89.game.game.strokes, card: window.__b89.game.game.card.length, y: window.__b89.game.game.ball.y }));
+  check('pulling back and letting go putts the ball up the hole', (putt1.strokes === 1 || putt1.card === 1) && putt1.y < ball0.y - 20, JSON.stringify(putt1));
+  await page.screenshot({ path: `${OUT}/p-putt.png` });
+
   // Morning Rounds and the hunt.
   await b89(page, () => window.__b89.startChallenge('rounds-1'));
   await page.waitForTimeout(300);
@@ -238,7 +249,7 @@ async function landscape() {
   await page.click('#play-btn');
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/l-hub.png` });
-  for (const id of ['kitten-1', 'mower-1', 'woodpile-1']) {
+  for (const id of ['kitten-1', 'mower-1', 'woodpile-1', 'putt-1']) {
     await b89(page, (c) => window.__b89.startChallenge(c), id);
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${OUT}/l-${id}.png` });

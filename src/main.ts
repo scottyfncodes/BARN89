@@ -7,7 +7,9 @@ import { Hud } from './app/hud';
 import { paintMap, type MapHit } from './app/mapScreen';
 import { MowerScene } from './app/mowerScene';
 import type { GameScene, SceneContext, SceneResult } from './app/scene';
+import { PuttScene } from './app/puttScene';
 import { WoodScene } from './app/woodScene';
+import { PUTT_ROUNDS } from './games/putt/putt';
 import { Sfx } from './audio/sfx';
 import {
   ACTIVITIES,
@@ -511,6 +513,12 @@ function onHubEvent(e: HubEvent): void {
     case 'sunday':
       openSunday();
       break;
+    case 'skunk': {
+      sfx.oops();
+      setTimeout(() => sfx.bark(), 250);
+      toast.show(store.addTo('seen', 'skunk') ? '<b>Annie vs. the skunk</b>The skunk wins. Annie will smell like it for a while.' : '<b>Annie got skunked.</b>Again.', 3);
+      break;
+    }
     case 'snake': {
       sfx.oops();
       // Explained once; after that, Grandpa's "SNAKE!" says it all.
@@ -1148,6 +1156,7 @@ function makeScene(id: string): GameScene | null {
   if (c.game === 'kitten') return new KittenScene(ctx, LEVELS.find((l) => l.id === id)!, shared);
   if (c.game === 'mower') return new MowerScene(ctx, MOW_LEVELS.find((l) => l.id === id)!, shared);
   if (c.game === 'woodpile') return new WoodScene(ctx, WOOD_ROUNDS.find((r) => r.id === id)!);
+  if (c.game === 'putt') return new PuttScene(ctx, PUTT_ROUNDS.find((r) => r.id === id)!);
   return null;
 }
 

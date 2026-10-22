@@ -553,3 +553,48 @@ describe('the chicken run and Blue Star', () => {
     expect(found?.type === 'discover' && found.text).toContain('Blue Star');
   });
 });
+
+describe('Annie and the skunk', () => {
+  it('Annie chases a skunk, gets sprayed, and comes back smelling of it', () => {
+    const h = fresh();
+    h.teleport(1250, 1500);
+    run(h, 2);
+    h.skunkT = 0;
+    let sprayed: HubEvent | undefined;
+    for (let i = 0; i < 20 * 60 && !sprayed; i++) {
+      h.step(still, DT, false);
+      if (i === 1) expect(h.dogs.find((d) => d.def.id === 'annie')!.state).toBe('skunk');
+      sprayed = h.drainEvents().find((e) => e.type === 'skunk') ?? sprayed;
+    }
+    expect(sprayed).toBeDefined();
+    const annie = h.dogs.find((d) => d.def.id === 'annie')!;
+    expect(annie.stinkT).toBeGreaterThan(20);
+    expect(annie.state).toBe('follow');
+    // The skunk strolls off; Annie stays smelly a good while, but not forever.
+    run(h, 8);
+    expect(h.skunk).toBeNull();
+    expect(annie.stinkT).toBeGreaterThan(0);
+    run(h, 30);
+    expect(annie.stinkT).toBe(0);
+  });
+
+  it('no skunks during Sunday breakfast or a mission', () => {
+    const h = fresh();
+    h.gather(true);
+    h.skunkT = 0;
+    run(h, 3);
+    expect(h.skunk).toBeNull();
+  });
+});
+
+describe('Putt-Putt on the homestead', () => {
+  it("starts at Grandpa's putting green, which you can walk to", () => {
+    const a = ACTIVITIES.find((x) => x.id === 'putt')!;
+    expect(a.who).toBe('grandpa');
+    expect(Math.hypot(a.station.x - PUTTING_GREEN.x, a.station.y - PUTTING_GREEN.y)).toBeLessThan(60);
+    const h = fresh();
+    h.teleport(a.station.x, a.station.y + 30);
+    run(h, 0.1);
+    expect(h.nearStation?.id).toBe('putt');
+  });
+});
