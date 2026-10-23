@@ -73,8 +73,8 @@ describe('animal names', () => {
   it('lists the barn cats and the chihuahuas, but never the dogs or donkeys', () => {
     const ids = NAMEABLE.map((a) => a.id);
     expect(ids).toHaveLength(10);
-    for (const locked of ['annie', 'axel', 'yoda', 'chewy']) expect(ids).not.toContain(locked);
-    expect(NAMED_BY_FAMILY.map((a) => a.name).sort()).toEqual(['Annie', 'Axel', 'Chewy', 'Yoda']);
+    for (const locked of ['annie', 'axle', 'yoda', 'chewy']) expect(ids).not.toContain(locked);
+    expect(NAMED_BY_FAMILY.map((a) => a.name).sort()).toEqual(['Annie', 'Axle', 'Chewy', 'Yoda']);
   });
 
   it('round-trips through storage', () => {

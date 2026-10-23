@@ -135,7 +135,7 @@ export interface Snake {
   speed: number;
   t: number;
   phase: number;
-  /** Axel's after it: off it goes, quick. */
+  /** Axle's after it: off it goes, quick. */
   fleeing: boolean;
   scared: boolean;
 }
@@ -291,7 +291,7 @@ const CAT_REST: Record<Personality, [number, number]> = {
 };
 
 /** How long the dogs put up with you standing still before going off to sniff something. */
-const SNIFF_AFTER: Record<string, number> = { axel: 8, annie: 18 };
+const SNIFF_AFTER: Record<string, number> = { axle: 8, annie: 18 };
 
 const PET_LINES: Record<Personality, string[]> = {
   hungry: ['{n} purrs and follows you, just in case you have snacks.', '{n} head-bonks your boots. Snacks were implied.'],
@@ -906,7 +906,7 @@ export class Homestead {
         }
       }
     } else if (d.state === 'chase') {
-      // Axel has found another snake.
+      // Axle has found another snake.
       const s = this.snake;
       if (!s) d.state = 'follow';
       else {
@@ -1122,11 +1122,11 @@ export class Homestead {
       g.stayT = this.life.range(...g.stop.stay);
       g.target = { ...g.stop.at };
       g.path = null;
-      const axel = this.dogs.find((d) => d.def.id === 'axel');
-      const chased = !!axel && dist(axel, s) < 600 && (axel.state === 'follow' || axel.state === 'rest' || axel.state === 'sniff');
-      if (axel && chased) {
-        axel.state = 'chase';
-        axel.path = null;
+      const axle = this.dogs.find((d) => d.def.id === 'axle');
+      const chased = !!axle && dist(axle, s) < 600 && (axle.state === 'follow' || axle.state === 'rest' || axle.state === 'sniff');
+      if (axle && chased) {
+        axle.state = 'chase';
+        axle.path = null;
       }
       this.emit({ type: 'snake', x: s.x, y: s.y, chased });
     }
