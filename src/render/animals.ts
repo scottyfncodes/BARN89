@@ -61,7 +61,7 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   const fluffy = d.kind === 'collie';
   // Axel: Mini Schnauzer coat and beard on a Frenchie's short face and bat ears.
   const schnauzer = d.kind === 'schnauzerFrenchie';
-  // Annie: Labradoodle curls in Rottweiler black and tan.
+  // Annie: Labradoodle curls on a big black Rottweiler-mix frame.
   const doodle = d.kind === 'doodleRottie';
   const tan = doodle ? d.points : undefined;
   const chi = d.kind === 'chihuahua';
