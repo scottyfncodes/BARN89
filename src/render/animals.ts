@@ -59,10 +59,14 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   const lie = s.pose === 'lie';
   const bodyY = lie ? -7 : sit ? -13 : -16 - bob;
   const fluffy = d.kind === 'collie';
-  const terrier = d.kind === 'terrier';
+  // Axel: Mini Schnauzer coat and beard on a Frenchie's short face and bat ears.
+  const schnauzer = d.kind === 'schnauzerFrenchie';
+  // Annie: Labradoodle curls in Rottweiler black and tan.
+  const doodle = d.kind === 'doodleRottie';
+  const tan = doodle ? d.points : undefined;
   const chi = d.kind === 'chihuahua';
-  // Chihuahuas: matchstick legs.
-  const lw = chi ? 3.2 : 4.5;
+  // Chihuahuas: matchstick legs. Axel: Frenchie-stocky.
+  const lw = chi ? 3.2 : schnauzer ? 5 : 4.5;
 
   // Tail.
   const wag = Math.sin(s.clock * (8 + s.wag * 12)) * (4 + s.wag * 7);
@@ -73,10 +77,10 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   ctx.moveTo(tx + 2, ty + 1);
   ctx.quadraticCurveTo(tx - 8, ty - 4, tx - 9 + wag * 0.5, ty - 12 + Math.abs(wag) * 0.2);
   ctx.strokeStyle = C.ink;
-  ctx.lineWidth = fluffy ? 8 : 6;
+  ctx.lineWidth = fluffy || doodle ? 8 : 6;
   ctx.stroke();
   ctx.strokeStyle = d.base;
-  ctx.lineWidth = fluffy ? 6 : 4;
+  ctx.lineWidth = fluffy || doodle ? 6 : 4;
   ctx.stroke();
   if (fluffy) {
     ellipse(ctx, tx - 9 + wag * 0.5, ty - 12, 2.6, 2.6);
@@ -87,29 +91,42 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   if (lie) {
     ellipse(ctx, 0, bodyY, 16, 6.5);
     fillStroke(ctx, d.base, 1.5);
-    if (terrier) wiryCoat(ctx, d, 0, bodyY, 16, 6.5);
-    limb(ctx, 10, -3, -1.5, 9, lw, d.base);
+    if (schnauzer) wiryCoat(ctx, d, 0, bodyY, 16, 6.5);
+    if (doodle) curlyCoat(ctx, d, 0, bodyY, 16, 6.5);
+    limb(ctx, 10, -3, -1.5, 9, lw, d.base, tan);
   } else if (sit) {
     // Haunch and straight front legs.
     ellipse(ctx, -4, -8, 10, 8);
     fillStroke(ctx, d.base, 1.5);
     ellipse(ctx, 4, -14, 7, 10, -0.5);
     fillStroke(ctx, d.base, 1.5);
-    limb(ctx, 6, -10, 0, 10, lw, d.base);
-    limb(ctx, 9, -10, 0, 10, lw, d.kind === 'collie' ? d.patch : d.base);
+    if (doodle) curlyCoat(ctx, d, 4, -14, 7, 10);
+    if (tan) {
+      ellipse(ctx, 8.5, -13, 2.6, 3.4);
+      ctx.fillStyle = tan;
+      ctx.fill();
+    }
+    limb(ctx, 6, -10, 0, 10, lw, d.base, tan);
+    limb(ctx, 9, -10, 0, 10, lw, d.kind === 'collie' ? d.patch : d.base, tan);
   } else {
-    limb(ctx, 9, bodyY + 4, -sw, 13 + bob, lw, d.base);
-    limb(ctx, -9, bodyY + 4, sw, 13 + bob, lw, d.base);
-    ellipse(ctx, 0, bodyY, 15, 7.5);
+    limb(ctx, 9, bodyY + 4, -sw, 13 + bob, lw, d.base, tan);
+    limb(ctx, -9, bodyY + 4, sw, 13 + bob, lw, d.base, tan);
+    ellipse(ctx, 0, bodyY, 15, schnauzer ? 8.2 : 7.5);
     fillStroke(ctx, d.base, 1.6);
-    if (terrier) wiryCoat(ctx, d, 0, bodyY, 15, 7.5);
+    if (schnauzer) wiryCoat(ctx, d, 0, bodyY, 15, 8.2);
+    if (doodle) curlyCoat(ctx, d, 0, bodyY, 15, 7.5);
+    if (tan) {
+      ellipse(ctx, 12, bodyY + 3, 3, 3.6);
+      ctx.fillStyle = tan;
+      ctx.fill();
+    }
     if (d.kind === 'collie') {
       ellipse(ctx, 8, bodyY + 2, 7, 5.5);
       ctx.fillStyle = d.patch;
       ctx.fill();
     }
-    limb(ctx, 11, bodyY + 5, sw, 12 + bob, lw, d.kind === 'collie' ? d.patch : d.base);
-    limb(ctx, -7, bodyY + 5, -sw, 12 + bob, lw, d.base);
+    limb(ctx, 11, bodyY + 5, sw, 12 + bob, lw, d.kind === 'collie' ? d.patch : d.base, tan);
+    limb(ctx, -7, bodyY + 5, -sw, 12 + bob, lw, d.base, tan);
   }
 
   // Head.
@@ -123,9 +140,14 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ellipse(ctx, hx + 5.5, hy + 2.6, 3.8, 2.7);
     fillStroke(ctx, d.base, 1.3);
     ellipse(ctx, hx + 8.8, hy + 1.8, 1.5, 1.3);
+  } else if (schnauzer) {
+    // Short, square Frenchie muzzle.
+    ellipse(ctx, hx + 6, hy + 2.8, 4.3, 3.9);
+    fillStroke(ctx, d.base, 1.3);
+    ellipse(ctx, hx + 9.8, hy + 1.6, 1.8, 1.5);
   } else {
     ellipse(ctx, hx + 7, hy + 2.5, 5.5, 3.6);
-    fillStroke(ctx, terrier ? d.base : d.patch, 1.3);
+    fillStroke(ctx, tan ?? d.patch, 1.3);
     ellipse(ctx, hx + 11.6, hy + 1.2, 1.8, 1.5);
   }
   ctx.fillStyle = C.ink;
@@ -164,22 +186,31 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
       ctx.fillStyle = d.patch;
       ctx.fill();
     }
-  } else if (terrier) {
-    // Two upright, pointed ears.
-    for (const [ex, lean] of [[-4.5, -1], [-0.5, 1.5]] as [number, number][]) {
+  } else if (schnauzer) {
+    // Frenchie bat ears: wide, upright, rounded at the top.
+    for (const ex of [-4.5, 0]) {
       ctx.beginPath();
-      ctx.moveTo(hx + ex - 2.5, hy - 5);
-      ctx.lineTo(hx + ex + lean, hy - 15);
-      ctx.lineTo(hx + ex + 3, hy - 5.5);
+      ctx.moveTo(hx + ex - 3, hy - 4);
+      ctx.lineTo(hx + ex - 3.8, hy - 11);
+      ctx.quadraticCurveTo(hx + ex + 0.2, hy - 18, hx + ex + 3.9, hy - 11);
+      ctx.lineTo(hx + ex + 3, hy - 4.5);
       ctx.closePath();
       fillStroke(ctx, d.base, 1.2);
     }
-    // Whiskery beard and eyebrows.
+    ctx.beginPath();
+    ctx.moveTo(hx - 1.6, hy - 6);
+    ctx.lineTo(hx - 2, hy - 10.5);
+    ctx.quadraticCurveTo(hx + 0.2, hy - 14.5, hx + 2.2, hy - 10.5);
+    ctx.lineTo(hx + 1.8, hy - 6);
+    ctx.closePath();
+    ctx.fillStyle = '#b98582';
+    ctx.fill();
+    // Schnauzer beard and eyebrows.
     ctx.strokeStyle = shadeHex(d.base, 1.6);
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-      const bx = hx + 4 + i * 1.6;
+      const bx = hx + 3.5 + i * 1.3;
       ctx.moveTo(bx, hy + 4.5);
       ctx.lineTo(bx - 0.6 + (i % 2), hy + 8.5 + (i % 3));
     }
@@ -187,13 +218,26 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ctx.lineTo(hx + 5.5, hy - 5.5);
     ctx.stroke();
   } else {
+    if (doodle) {
+      // Curly topknot.
+      for (const [cx, cy, cr] of [[-2.5, -6, 2.8], [0.8, -7, 3], [4, -6.2, 2.4]] as [number, number, number][]) {
+        ellipse(ctx, hx + cx, hy + cy, cr, cr * 0.85);
+        fillStroke(ctx, d.base, 1.1);
+      }
+    }
     // Floppy ear.
     ctx.beginPath();
     ctx.moveTo(hx - 3, hy - 5);
     ctx.quadraticCurveTo(hx - 8, hy - 2, hx - 5, hy + 6 + Math.sin(s.clock * 3) * 0.6);
     ctx.quadraticCurveTo(hx - 1, hy + 3, hx + 1, hy - 4);
     ctx.closePath();
-    fillStroke(ctx, d.patch, 1.2);
+    fillStroke(ctx, doodle ? d.base : d.patch, 1.2);
+    if (tan) {
+      // Rottweiler brow spot.
+      ellipse(ctx, hx + 3.6, hy - 4.3, 1.4, 0.95);
+      ctx.fillStyle = tan;
+      ctx.fill();
+    }
   }
   // Eye.
   ellipse(ctx, hx + 3.5, hy - 1.5, chi ? 1.9 : 1.3, chi ? 2.2 : 1.6);
@@ -227,7 +271,23 @@ function shadeHex(hex: string, k: number): string {
   return `rgb(${c((n >> 16) & 255)},${c((n >> 8) & 255)},${c(n & 255)})`;
 }
 
-/** Scruffy terrier coat: brindle streaks, wiry tufts along the back, white chest blaze. */
+/** Loose doodle curls: little loops over the coat, a shade lighter than the base. */
+function curlyCoat(ctx: Ctx, d: DogDef, x: number, y: number, rx: number, ry: number): void {
+  ctx.save();
+  ellipse(ctx, x, y, rx, ry);
+  ctx.clip();
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = shadeHex(d.base, 1.8);
+  ctx.lineWidth = 1.1;
+  for (const [ox, oy] of [[-0.7, -0.45], [-0.3, -0.6], [0.1, -0.4], [0.5, -0.55], [-0.5, 0.05], [0, 0.1], [0.4, 0]]) {
+    ctx.beginPath();
+    ctx.arc(x + ox * rx, y + oy * ry, 1.7, 0.4, Math.PI * 1.7);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Scruffy schnauzer coat: brindle streaks, wiry tufts along the back, white chest blaze. */
 function wiryCoat(ctx: Ctx, d: DogDef, x: number, y: number, rx: number, ry: number): void {
   ctx.save();
   ellipse(ctx, x, y, rx, ry);
