@@ -554,7 +554,7 @@ describe('races on the Loop', () => {
 });
 
 describe('Grandpa and snakes', () => {
-  it('a snake near Grandpa sends him hurrying back to his porch, and Axel chases it off', () => {
+  it('a snake near Grandpa sends him hurrying back to his porch, and Axle chases it off', () => {
     const h = fresh();
     const g = h.npcs.find((n) => n.who === 'grandpa')!;
     const front = NPC_ROUTINES.grandpa.find((s) => s.id === 'frontYard')!;
@@ -573,8 +573,8 @@ describe('Grandpa and snakes', () => {
     expect(scare).toBeDefined();
     expect(g.spookT).toBeGreaterThan(0);
     expect(g.stop.id).toBe('porch');
-    expect(h.dogs.find((d) => d.def.id === 'axel')!.state).toBe('chase');
-    // A few seconds later: no snake, Axel back at heel, Grandpa on his way home.
+    expect(h.dogs.find((d) => d.def.id === 'axle')!.state).toBe('chase');
+    // A few seconds later: no snake, Axle back at heel, Grandpa on his way home.
     run(h, 16);
     expect(h.snake).toBeNull();
     expect(h.dogs.every((d) => d.state !== 'chase')).toBe(true);

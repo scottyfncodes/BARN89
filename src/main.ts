@@ -566,7 +566,7 @@ function onHubEvent(e: HubEvent): void {
     case 'snake': {
       sfx.oops();
       // Explained once; after that, Grandpa's "SNAKE!" says it all.
-      if (store.addTo('seen', 'snake')) toast.show(`<b>Snake!</b>Grandpa is deathly afraid of snakes.${e.chased ? ' Axel is not.' : ''}`, 3.4);
+      if (store.addTo('seen', 'snake')) toast.show(`<b>Snake!</b>Grandpa is deathly afraid of snakes.${e.chased ? ' Axle is not.' : ''}`, 3.4);
       break;
     }
     case 'raceGo':

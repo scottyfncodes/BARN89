@@ -59,13 +59,13 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
   const lie = s.pose === 'lie';
   const bodyY = lie ? -7 : sit ? -13 : -16 - bob;
   const fluffy = d.kind === 'collie';
-  // Axel: Mini Schnauzer coat and beard on a Frenchie's short face and bat ears.
+  // Axle: Mini Schnauzer coat and beard on a Frenchie's short face and bat ears.
   const schnauzer = d.kind === 'schnauzerFrenchie';
   // Annie: Labradoodle curls on a big black Rottweiler-mix frame.
   const doodle = d.kind === 'doodleRottie';
   const tan = doodle ? d.points : undefined;
   const chi = d.kind === 'chihuahua';
-  // Chihuahuas: matchstick legs. Axel: Frenchie-stocky.
+  // Chihuahuas: matchstick legs. Axle: Frenchie-stocky.
   const lw = chi ? 3.2 : schnauzer ? 5 : 4.5;
 
   // Tail.
