@@ -157,7 +157,7 @@ export interface DogDef {
   breed: string;
   base: string;
   patch: string;
-  /** Rottweiler tan points: brows, muzzle, chest and socks. */
+  /** Optional tan points (brows, muzzle, chest, socks). */
   points?: string;
   blurb: string;
   /** Drawing scale (1 = medium dog). */
@@ -167,7 +167,7 @@ export interface DogDef {
 
 export const DOGS: DogDef[] = [
   { id: 'axel', name: 'Axel', kind: 'schnauzerFrenchie', breed: 'Mini Schnauzer and French Bulldog', base: '#2b2622', patch: '#f2efe8', size: 0.82, collar: '#2f5fb8', blurb: 'Schnauzer beard, Frenchie bat ears, about twenty-five pounds of nose. Has found every snake on the property.' },
-  { id: 'annie', name: 'Annie', kind: 'doodleRottie', breed: 'Labradoodle and Rottweiler', base: '#26252a', patch: '#3b393f', points: '#a9652f', size: 1.36, collar: '#8a8f96', blurb: 'Ninety pounds of curly black-and-tan doodle with Rottweiler markings. Will lean on you. Will find the chew toy.' },
+  { id: 'annie', name: 'Annie', kind: 'doodleRottie', breed: 'Labradoodle and Rottweiler', base: '#26252a', patch: '#3b393f', size: 1.36, collar: '#8a8f96', blurb: 'Ninety pounds of curly black doodle. Will lean on you. Will find the chew toy.' },
 ];
 
 /**
