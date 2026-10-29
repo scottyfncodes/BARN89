@@ -11,7 +11,7 @@ import type { RideId } from '../content/rides';
 import { drawMotorcycle, drawMower, drawRide, RIDE_SEAT, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
 import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
-import { AIR_TIME, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
+import { AIR_TIME, BIG_JUMP, DAD_TRUCK, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
 import type { Critter } from './critters';
 import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS, type OrnamentDef } from './missions';
 
@@ -93,6 +93,8 @@ export class HubView extends WorldView {
   }
 
   private dustT = 0;
+  /** Seconds until the next note drifts up off Grandpa while he hums. */
+  private humT = 0;
   private swing = { a: 0, v: 0 };
 
   update(dt: number, mode: 'title' | 'play'): void {
@@ -114,6 +116,18 @@ export class HubView extends WorldView {
     s.v += -s.a * 9 * dt;
     s.v *= Math.exp(-dt * 0.6);
     s.a += s.v * dt;
+    // Grandpa humming: a note drifts up off him now and then.
+    const hum = h.hummer();
+    this.humT -= dt;
+    if (hum && this.humT <= 0) {
+      this.humT = 0.55 + Math.random() * 0.4;
+      const tall = 64 * FAMILY.grandpa.look.scale;
+      this.push({ kind: 'note', x: hum.x + 8 + Math.random() * 6, y: hum.y - tall - 4, vx: 8 + Math.random() * 10, vy: -24, life: 2, max: 2, size: 5.6, color: '#3b2a20', rot: Math.random() * 6 });
+    }
+    // His chihuahuas, beside themselves to see him.
+    if (h.explorer === 'grandpa') {
+      for (const d of h.pups) if (d.heartT > 0 && d.state !== 'inside' && Math.random() < dt * 1.2) this.burst('heart', d.x, d.y - 22, '#ef5d84', 30);
+    }
     this.updateParticles(dt);
   }
 
@@ -152,6 +166,14 @@ export class HubView extends WorldView {
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fill();
       }
+      // Jay doesn't just jump on the trampoline: he flips.
+      const flip = h.explorer === 'jay' && h.bigJumpT > 0 && !riding ? (1 - h.bigJumpT / BIG_JUMP) * Math.PI * 2 * -p.faceX : 0;
+      if (flip) {
+        ctx.save();
+        ctx.translate(px, py - lift - 30);
+        ctx.rotate(flip);
+        ctx.translate(-px, -(py - lift - 30));
+      }
       drawPerson(ctx, me, {
         x: px,
         y: riding ? py - air - RIDE_SEAT[riding] : py - lift,
@@ -165,6 +187,7 @@ export class HubView extends WorldView {
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
         ghost: ghost || !!riding || lift > 0,
       });
+      if (flip) ctx.restore();
       if (riding && !ghost) drawRide(ctx, riding, px, py - air, p.faceX, true, spin);
     };
     const m = h.mission;
@@ -384,7 +407,8 @@ export class HubView extends WorldView {
           const moving = Math.hypot(d.x - d.px, d.y - d.py) > 0.3;
           const fast = Math.hypot(d.x - d.px, d.y - d.py) > 3.5;
           items.push({
-            y,
+            // Up in the truck bed, they draw over the truck.
+            y: d.inBed ? DAD_TRUCK.y + 3 : y,
             draw: () =>
               drawDog(ctx, d.def, {
                 x,
@@ -498,12 +522,28 @@ export class HubView extends WorldView {
               ctx.fillStyle = C.shadow;
               ctx.fill();
               ctx.beginPath();
-              ctx.arc(x, y - 4 - lift, 3.6, 0, Math.PI * 2);
-              ctx.fillStyle = '#d9e64a';
-              ctx.fill();
-              ctx.strokeStyle = C.ink;
-              ctx.lineWidth = 1.1;
-              ctx.stroke();
+              if (b.football) {
+                // A tight spiral: the football points where it's going.
+                const ang = Math.atan2(b.y - b.fromY - 40, b.x - b.fromX);
+                ctx.ellipse(x, y - 4 - lift, 6, 3.6, ang, 0, Math.PI * 2);
+                ctx.fillStyle = '#8a4b2a';
+                ctx.fill();
+                ctx.strokeStyle = C.ink;
+                ctx.lineWidth = 1.1;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - Math.cos(ang) * 2.5, y - 4 - lift - Math.sin(ang) * 2.5);
+                ctx.lineTo(x + Math.cos(ang) * 2.5, y - 4 - lift + Math.sin(ang) * 2.5);
+                ctx.strokeStyle = '#fffaf0';
+                ctx.stroke();
+              } else {
+                ctx.arc(x, y - 4 - lift, 3.6, 0, Math.PI * 2);
+                ctx.fillStyle = '#d9e64a';
+                ctx.fill();
+                ctx.strokeStyle = C.ink;
+                ctx.lineWidth = 1.1;
+                ctx.stroke();
+              }
             },
           });
         }

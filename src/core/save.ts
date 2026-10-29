@@ -48,6 +48,8 @@ export interface SaveData {
   seen: string[];
   /** Names the family picked for the barn cats and Grandpa's chihuahuas, by animal id. */
   names: Record<string, string>;
+  /** Eggs Mom has gathered from the hens. Just counted. */
+  eggs: number;
   /** Furniture restored in the Blue Star workshop, by piece id. Never rewarded, just kept. */
   restored: Record<string, Restored>;
 }
@@ -72,6 +74,7 @@ export function freshSave(): SaveData {
     cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false, golfcart: false },
     seen: [],
     names: {},
+    eggs: 0,
     restored: {},
   };
 }
@@ -122,6 +125,7 @@ export function normalize(raw: unknown): SaveData {
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },
     seen: arr(r.seen),
     names: cleanNames(r.names),
+    eggs: typeof r.eggs === 'number' && isFinite(r.eggs) ? Math.max(0, Math.floor(r.eggs)) : 0,
     restored: cleanRestored(r.restored),
   };
 }

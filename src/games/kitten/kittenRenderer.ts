@@ -61,7 +61,7 @@ export class Renderer extends WorldView {
             vy: -40 - Math.random() * 30,
             life: 1,
             max: 1,
-            size: 1,
+            size: 3.2,
             color: ['#7b54c9', '#3d7fd6', '#ef5d84'][i % 3],
           });
         }
