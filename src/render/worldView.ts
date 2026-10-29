@@ -1,8 +1,10 @@
+import { pieceDef, type Restored } from '../content/blueStar';
 import { DONKEYS } from '../content/cast';
 import { clamp, damp, hash2 } from '../core/math';
 import type { BuildingDef, PropDef, RanchMap, TreeDef } from '../world/mapTypes';
 import { drawChicken, drawDonkey } from './animals';
 import { heartPath, star } from './characters';
+import { drawPiece } from './furniture';
 import { C } from './palette';
 import {
   BuildingSprites,
@@ -78,7 +80,12 @@ export interface Decor {
   holiday: boolean;
   /** Board under the old venue sign once the family picks the barn's next chapter. */
   sign?: string | null;
+  /** Furniture restored in the Blue Star workshop, set out front of the shop. */
+  restored?: Record<string, Restored>;
 }
+
+/** World units per piece unit for restored furniture (the cabinet is 26 wide, like the old prop). */
+const PIECE_SCALE = 0.25;
 
 const HOLIDAY = ['#e2483c', '#3fae5a', '#f2c53d', '#3d7fd6', '#f28aa0'];
 
@@ -447,7 +454,10 @@ export class WorldView {
         items.push({
           y: s.y,
           draw: () => {
-            drawProp(ctx, pr, clock);
+            // The half-painted cabinet, once it's been finished, is drawn the way it was painted.
+            const done = pr.kind === 'cabinet' ? this.decor.restored?.cabinet : undefined;
+            if (done) drawPiece(ctx, pieceDef('cabinet'), done, pr.x, pr.y, PIECE_SCALE);
+            else drawProp(ctx, pr, clock);
             if (pr.kind === 'venueSign' && this.decor.sign) drawSignNote(ctx, pr.x, pr.y, this.decor.sign);
           },
         });
@@ -455,6 +465,14 @@ export class WorldView {
         const fp = s.f;
         items.push({ y: s.y, draw: () => drawFencePiece(ctx, fp) });
       }
+    }
+    // The rest of the restored furniture, set out along the front of the shop.
+    for (const [id, look] of Object.entries(this.decor.restored ?? {})) {
+      const def = pieceDef(id);
+      if (id === 'cabinet' || !def) continue;
+      const at = def.spot;
+      if (at.x < v.x0 - 60 || at.x > v.x1 + 60 || at.y < v.y0 - 60 || at.y > v.y1 + 60) continue;
+      items.push({ y: at.y, draw: () => drawPiece(ctx, def, look, at.x, at.y, PIECE_SCALE) });
     }
     if (this.ambient.chickens) this.addChickens(items, v, clock, f);
     if (this.ambient.donkeys) this.addDonkeys(items, v, clock);

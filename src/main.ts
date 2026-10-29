@@ -11,6 +11,7 @@ import { PuttScene } from './app/puttScene';
 import { PuzzleScene } from './app/puzzleScene';
 import { PUZZLE_ROUNDS } from './games/puzzle/puzzle';
 import { WoodScene } from './app/woodScene';
+import { WorkshopScene } from './app/workshopScene';
 import { PUTT_ROUNDS } from './games/putt/putt';
 import { Sfx } from './audio/sfx';
 import {
@@ -33,6 +34,7 @@ import {
   type GameId,
 } from './content/activities';
 import { RIDES, rideForRace, rideOf, type RideId } from './content/rides';
+import { PIECES } from './content/blueStar';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
@@ -114,6 +116,7 @@ function decor(): Decor {
     fixedBulbs: store.data.hunt.done,
     holiday: c.holiday && u.has('holiday'),
     sign: store.data.barnPlan ? BARN_PLAN_SIGN[store.data.barnPlan] : null,
+    restored: store.data.restored,
   };
 }
 
@@ -253,9 +256,9 @@ function syncScreens(): void {
   show($('mission'), inHub && !!m && !covered);
   show($('prompt'), inHub && !covered && !!hub.nearStation && !m);
   show($('act-btn'), inHub && !covered && !!hub.action);
-  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene)));
-  // Puzzles take raw touches: drag a bale, tap a pipe.
-  controls.pointerMode = mode === 'game' && game instanceof PuzzleScene && !covered && !paused && !resultsUp;
+  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene) && !(game instanceof WorkshopScene)));
+  // Puzzles and the workshop take raw touches: drag a bale, tap a pipe, sand and paint.
+  controls.pointerMode = mode === 'game' && (game instanceof PuzzleScene || game instanceof WorkshopScene) && !covered && !paused && !resultsUp;
   if (covered || mode !== 'game' || paused) {
     hint.set(null);
     if (mode === 'game') controls.reset();
@@ -537,6 +540,9 @@ function onHubEvent(e: HubEvent): void {
       break;
     case 'sunday':
       openSunday();
+      break;
+    case 'workshop':
+      startWorkshop();
       break;
     case 'splash':
       sfx.splash();
@@ -925,6 +931,7 @@ function buildBoard(): void {
     `<li><b>${s.pets.length}/${CAT_COUNT}</b> barn cats petted</li>`,
     `<li><b>${s.discoveries.length}/${shared.map.discoveries.length}</b> places discovered</li>`,
     `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys</li>`,
+    `<li><b>${Object.keys(s.restored).length}/${PIECES.length}</b> pieces restored in the Blue Star workshop</li>`,
     `<li><b>Sunday at the Barn</b> ${s.barnPlan ? `Next chapter: ${BARN_PLAN_LABEL[s.barnPlan].toLowerCase()}.` : 'Pull up a chair at the long table under the string lights, whenever you like.'}</li>`,
   ].join('');
 }
@@ -1218,6 +1225,48 @@ function makeScene(id: string): GameScene | null {
 
 let currentChallenge = '';
 
+// --- Blue Star workshop ----------------------------------------------------------------------
+// Grandpa's garage under the blue star. Unhurried and unrewarded: what you finish stays out front.
+const WORKSHOP_HOWTO = [
+  '<b>Drag</b> over the piece to sand off the old finish, back to bare wood.',
+  'Tap a <b>paint can</b> to pick a color, then drag to paint. Switch colors whenever you like.',
+  '<b>Tap</b> where the blue star should go.',
+  'No clock, and nothing to get wrong. When it is done it goes out front of the shop.',
+];
+
+function startWorkshop(): void {
+  const done = store.data.restored;
+  const left = PIECES.filter((p) => !done[p.id]);
+  // Once every piece is done, any of them can be painted again.
+  const piece = left[0] ?? PIECES[Math.floor(Math.random() * PIECES.length)];
+  const lastOne = left.length === 1 && left[0] === piece;
+  currentChallenge = '';
+  returnSpot = { x: hub.player.x, y: hub.player.y };
+  stack.length = 0;
+  resultsUp = false;
+  paused = false;
+  cheerFor = null;
+  toast.clear();
+  reveal();
+  game?.exit();
+  game = new WorkshopScene(ctx, piece, lastOne);
+  mode = 'game';
+  syncScreens();
+  game.enter({ cosmetics: store.data.cosmetics, decor: decor(), insetTop: insetTop() });
+  resize();
+  acc = 0;
+  last = performance.now();
+  sfx.startMusic();
+}
+
+function finishWorkshop(scene: WorkshopScene): void {
+  store.data.restored[scene.piece.id] = scene.restored();
+  store.save();
+  cheerFor = 'grandpa';
+  leaveGame();
+  toast.show(`<b>${scene.piece.name}</b>It's out front of the Blue Star shop now, for good.`, 4.5);
+}
+
 function startChallenge(id: string): void {
   const c = challengeDef(id);
   if (!isUnlocked(store.data, id)) return;
@@ -1298,9 +1347,9 @@ function leaveGame(): void {
   mode = 'hub';
   stack.length = 0;
   // Back where they set off from. Chores and the hunt already happen out on the homestead.
-  if (wasMinigame && c) {
-    const a = activity(c.game);
-    const spot = returnSpot ?? { x: a.station.x, y: a.station.y + 70 };
+  if (wasMinigame && (c || returnSpot)) {
+    const a = c ? activity(c.game) : null;
+    const spot = returnSpot ?? { x: a!.station.x, y: a!.station.y + 70 };
     hub.teleport(spot.x, spot.y);
   }
   returnSpot = null;
@@ -1337,6 +1386,10 @@ $('quit-btn').addEventListener('click', () => {
 });
 $('howto-btn').addEventListener('click', () => {
   sfx.click();
+  if (!currentChallenge) {
+    notice('Blue Star workshop', `<ul class="howto">${WORKSHOP_HOWTO.map((l) => `<li>${l}</li>`).join('')}</ul>`, 'Got it');
+    return;
+  }
   const c = challengeDef(currentChallenge);
   notice(activity(c.game).title, `<ul class="howto">${HOWTO[c.game].map((l) => `<li>${l}</li>`).join('')}</ul>`, 'Got it');
 });
@@ -1445,6 +1498,12 @@ function frame(now: number): void {
         steps++;
       }
       if (steps === 6) acc = 0;
+      if (game instanceof WorkshopScene && game.isComplete()) {
+        // Straight back out to the homestead: no results card, nothing scored.
+        finishWorkshop(game);
+        requestAnimationFrame(frame);
+        return;
+      }
       if (game.isComplete()) showResults(game.challenge, game.result());
     }
     game.frame(dt, running ? acc / STEP : 1, !running && !resultsUp);
@@ -1488,6 +1547,7 @@ requestAnimationFrame(frame);
     return [...stack];
   },
   startChallenge,
+  startWorkshop,
   enterHub,
   pauseGame,
   resumeGame,

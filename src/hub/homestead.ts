@@ -190,6 +190,7 @@ export type HubAction =
   | { kind: 'task'; label: string; task: string }
   | { kind: 'pickup'; label: string; item: string }
   | { kind: 'sunday'; label: string }
+  | { kind: 'workshop'; label: string }
   | { kind: 'moto'; label: string }
   | { kind: 'jump'; label: string };
 
@@ -208,6 +209,7 @@ export type HubEvent =
   | { type: 'huntItem'; id: string; text: string; x: number; y: number; left: number }
   | { type: 'huntReady' }
   | { type: 'sunday' }
+  | { type: 'workshop' }
   | { type: 'moto'; partner: string; ride: boolean }
   | { type: 'raceGo' }
   | { type: 'snake'; x: number; y: number; chased: boolean }
@@ -260,6 +262,8 @@ export type Mission = RoundsState | HuntState | RaceState | null;
 
 /** The long table under the Barn 89 string lights (see ranch.ts). */
 export const LONG_TABLE = { x: 1670, y: 2890 };
+/** The half-painted cabinet outside Grandpa's workshop, where the Blue Star workshop starts. */
+export const WORKSHOP = { x: 1792, y: 696 };
 /** Where people sit for Sunday breakfast: three behind the table, the rest in front. */
 const TABLE_SEATS = [
   { x: 1612, y: 2850 },
@@ -708,6 +712,7 @@ export class Homestead {
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
+    if (!m && dist(p, WORKSHOP) < 58) return { kind: 'workshop', label: this.explorer === 'grandpa' ? 'Into the workshop' : 'Paint with Grandpa' };
     if (this.onTrampoline) return { kind: 'jump', label: 'Jump!' };
     // Jason's motorcycle: Natalie and Jason ride it together.
     const moto = this.family.moto;
@@ -787,6 +792,9 @@ export class Homestead {
         break;
       case 'sunday':
         this.emit({ type: 'sunday' });
+        break;
+      case 'workshop':
+        this.emit({ type: 'workshop' });
         break;
     }
   }
