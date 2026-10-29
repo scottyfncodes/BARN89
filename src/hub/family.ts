@@ -82,17 +82,18 @@ export const NPC_ROUTINES: Record<FamilyId, NpcStop[]> = {
   jay: [{ id: 'mower', at: station('jay'), hold: null, gesture: 'look', gestureT: 1.2, gap: [3, 7], face: 0, roam: 40, stay: [20, 40] }],
   // Keeping an eye on the arena for loose cats.
   natalie: [{ id: 'arena', at: station('natalie'), hold: null, gesture: 'point', gestureT: 1.1, gap: [3, 6], face: 0, roam: 46, stay: [20, 40] }],
+  // Grandpa can't sit still: he paces even on the porch, and moves on sooner than anyone.
   grandpa: [
-    // On his back porch, waving at the trucks on Buffalo Gap Rd.
-    { id: 'porch', at: station('grandpa'), hold: null, gesture: 'wave', gestureT: 1.6, gap: [6, 11], face: 1, roam: 0, stay: [14, 26] },
+    // On his back porch, waving at the trucks on Buffalo Gap Rd (pacing the boards between).
+    { id: 'porch', at: station('grandpa'), hold: null, gesture: 'wave', gestureT: 1.4, gap: [2, 4], face: 1, roam: 40, stay: [8, 14] },
     // Raking the front yard, along the walk to his front door.
-    { id: 'frontYard', at: { x: 1565, y: 372 }, hold: 'rake', gesture: 'rake', gestureT: 2.4, gap: [1.5, 3.5], face: 0, roam: 50, stay: [18, 30] },
+    { id: 'frontYard', at: { x: 1565, y: 372 }, hold: 'rake', gesture: 'rake', gestureT: 2, gap: [1, 2.5], face: 0, roam: 60, stay: [10, 18] },
     // Watering the flower beds along the front of the house, bed by bed.
-    { id: 'frontBeds', at: { x: 1605, y: 400 }, hold: 'can', gesture: 'water', gestureT: 2.2, gap: [1, 2.5], face: 0, roam: 90, stay: [18, 30] },
+    { id: 'frontBeds', at: { x: 1605, y: 400 }, hold: 'can', gesture: 'water', gestureT: 1.8, gap: [0.8, 2], face: 0, roam: 90, stay: [10, 18] },
     // And the bed and pots along his back porch.
-    { id: 'backBeds', at: { x: 1535, y: 712 }, hold: 'can', gesture: 'water', gestureT: 2.2, gap: [1, 2.5], face: -1, roam: 40, stay: [14, 24] },
+    { id: 'backBeds', at: { x: 1535, y: 712 }, hold: 'can', gesture: 'water', gestureT: 1.8, gap: [0.8, 2], face: -1, roam: 40, stay: [8, 14] },
     // Practising his putting on the green out back.
-    { id: 'putting', at: PUTT_FROM, hold: 'putter', gesture: 'putt', gestureT: 1.2, gap: [2.5, 4.5], face: 1, roam: 0, stay: [20, 34] },
+    { id: 'putting', at: PUTT_FROM, hold: 'putter', gesture: 'putt', gestureT: 1.2, gap: [1.5, 3], face: 1, roam: 0, stay: [12, 20] },
   ],
 };
 
@@ -345,7 +346,7 @@ export class FamilyLife {
     n.idleT -= dt;
     if (n.idleT > 0 || n.busyT > 0) return;
     n.idleT = this.rng.range(s.gap[0], s.gap[1]);
-    if (s.roam > 0 && this.rng.next() < 0.45) {
+    if (s.roam > 0 && this.rng.next() < (n.who === 'grandpa' ? 0.7 : 0.45)) {
       n.target = this.strollSpot(n, s);
       return;
     }
@@ -372,7 +373,9 @@ export class FamilyLife {
     }
     const fromX = n.x;
     const fromY = n.y;
-    this.move(n, target, speed ?? (n.spookT > 0 ? 150 : far > 140 ? 64 : 34), dt);
+    // Grandpa doesn't amble anywhere; he gets there.
+    const brisk = n.who === 'grandpa' ? 1.7 : 1;
+    this.move(n, target, speed ?? (n.spookT > 0 ? 150 : (far > 140 ? 64 : 34) * brisk), dt);
     const moved = Math.hypot(n.x - fromX, n.y - fromY);
     if (Math.abs(n.x - fromX) > 0.3) n.faceX = n.x > fromX ? 1 : -1;
     n.walkPhase += dt * (2 + (moved / Math.max(dt, 1e-6) / 260) * 9);

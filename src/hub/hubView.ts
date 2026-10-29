@@ -120,7 +120,7 @@ export class HubView extends WorldView {
     const hum = h.hummer();
     this.humT -= dt;
     if (hum && this.humT <= 0) {
-      this.humT = 0.55 + Math.random() * 0.4;
+      this.humT = 0.35 + Math.random() * 0.3;
       const tall = 64 * FAMILY.grandpa.look.scale;
       this.push({ kind: 'note', x: hum.x + 8 + Math.random() * 6, y: hum.y - tall - 4, vx: 8 + Math.random() * 10, vy: -24, life: 2, max: 2, size: 5.6, color: '#3b2a20', rot: Math.random() * 6 });
     }
@@ -178,8 +178,9 @@ export class HubView extends WorldView {
         x: px,
         y: riding ? py - air - RIDE_SEAT[riding] : py - lift,
         faceX: p.faceX,
-        speed01: riding ? 0 : clamp(sp / p.maxSpeed, 0, 1),
-        walkPhase: p.walkPhase * 0.85,
+        // Exploring as Grandpa: standing still is more of a suggestion.
+        speed01: riding ? 0 : h.explorer === 'grandpa' && sp < 5 && lift === 0 ? 0.14 : clamp(sp / p.maxSpeed, 0, 1),
+        walkPhase: h.explorer === 'grandpa' && sp < 5 && !riding ? clock * 7 : p.walkPhase * 0.85,
         clock,
         action: p.throwT > 0 ? 'throw' : riding ? (air > 8 ? 'cheer' : 'point') : h.bigJumpT > 0 ? 'cheer' : 'none',
         actionT: p.throwT / 0.5,
@@ -344,8 +345,10 @@ export class HubView extends WorldView {
                 x,
                 y,
                 faceX: n.faceX,
-                speed01: moving ? 0.3 : 0,
-                walkPhase: n.walkPhase,
+                // Grandpa never quite stands still: foot to foot, even mid-conversation.
+                ...(n.who === 'grandpa' && !moving && n.busyT <= 0 && n.spookT <= 0 && !h.gathered
+                  ? { speed01: 0.14, walkPhase: clock * 7 }
+                  : { speed01: moving ? 0.3 : 0, walkPhase: n.walkPhase }),
                 clock: clock + n.home.x,
                 // Tools stay put at the breakfast table.
                 hold: h.gathered ? null : n.hold,
