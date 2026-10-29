@@ -8,6 +8,7 @@ import { createPlayer, updatePlayer } from '../games/kitten/player';
 import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
 import { CHICKEN_RUN } from '../world/ranch';
+import { GRANDPA_BUSY, GRANDPA_CHEER } from '../content/explorers';
 import type { SharedWorld } from '../world/shared';
 import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, NPC_ROUTINES, type MotoSeat, type Npc } from './family';
 import { createCritters, updateCritters, type Critter } from './critters';
@@ -381,6 +382,9 @@ export class Homestead {
   bigJumpT = 0;
   /** Seconds until the hens have eggs for Mom again. */
   eggT = 0;
+  /** Grandpa calling out something cheerful: what, and seconds left on the bubble. */
+  grandpaSays: { text: string; t: number } | null = null;
+  private sayT = 6;
   /** Natalie's cat parade got its toast this visit. */
   private paraded = false;
   private events: HubEvent[] = [];
@@ -680,6 +684,7 @@ export class Homestead {
     }
     this.updateBall(dt);
     this.eggT = Math.max(0, this.eggT - dt);
+    this.updateGrandpaSays(dt);
     for (const d of this.dogs) this.updateDog(d, dt);
     this.donkeysNotice();
     for (const d of this.donkeys) this.updateDonkey(d, dt);
@@ -1074,6 +1079,29 @@ export class Homestead {
     d.phase += dt * (2 + Math.min(1, sp / 300) * 14);
     d.wag = Math.max(0.3, d.wag - dt * 0.3);
     if (d.state === 'fetch' || d.state === 'return') d.wag = 1;
+  }
+
+  /** Where Grandpa is (the explorer, or out on the place), unless he's busy being scared or eating. */
+  grandpaAt(): Vec | null {
+    if (this.gathered) return null;
+    if (this.explorer === 'grandpa') return this.player;
+    const g = this.npcs.find((n) => n.who === 'grandpa');
+    return g && g.spookT <= 0 && g.outing !== 'race' ? g : null;
+  }
+
+  /** Every so often, within earshot, Grandpa says something cheerful. Stand idle as him and he wants a job. */
+  private updateGrandpaSays(dt: number): void {
+    if (this.grandpaSays) {
+      this.grandpaSays.t -= dt;
+      if (this.grandpaSays.t <= 0) this.grandpaSays = null;
+    }
+    const at = this.grandpaAt();
+    if (!at || this.mission?.kind === 'race' || (this.explorer !== 'grandpa' && dist(at, this.player) > 380)) return;
+    this.sayT -= dt;
+    if (this.sayT > 0) return;
+    this.sayT = this.life.range(9, 16);
+    const lines = this.explorer === 'grandpa' && this.player.idleT > 4 ? GRANDPA_BUSY : GRANDPA_CHEER;
+    this.grandpaSays = { text: lines[Math.floor(this.life.next() * lines.length)], t: 2.6 };
   }
 
   /** Down off the tailgate and back to heel. */

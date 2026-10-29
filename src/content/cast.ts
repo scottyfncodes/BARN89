@@ -36,6 +36,8 @@ export interface PersonLook {
   tee?: string;
   /** A pullover hoodie (the shirt colour): hood bunched at the neck, front pocket, drawstrings. */
   hoodie?: boolean;
+  /** Always smiling, whatever he's doing. */
+  grin?: boolean;
   /** Sleeves shoved up past the elbow. */
   rolledSleeves?: boolean;
   /** A little swoosh on the shorts, in this colour. */
@@ -141,6 +143,7 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
       hairStyle: 'short',
       // Hoodie with the sleeves shoved up, Nike running shorts, sneakers. Always on the move.
       shirt: '#2b2c33',
+      grin: true,
       hoodie: true,
       rolledSleeves: true,
       pants: '#1d1d22',

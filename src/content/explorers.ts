@@ -50,6 +50,11 @@ export const GREETINGS: Record<FamilyId, Partial<Record<FamilyId, string>>> = {
   },
 };
 
+/** What Grandpa calls out now and then, happy as anything. Edit to sound like him. */
+export const GRANDPA_CHEER = ['Beautiful day!', 'Living the dream!', "Can't complain!", 'Another good one!', 'Blessed!', 'Keeps me young!', 'Good day for it!'];
+/** And when there's nothing in his hands for a minute. */
+export const GRANDPA_BUSY = ['Gotta stay busy!', "Something needs fixing somewhere!", 'Idle hands!'];
+
 export function greeting(who: FamilyId, explorer: FamilyId): string {
   return GREETINGS[who][explorer] ?? '';
 }

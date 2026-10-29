@@ -276,7 +276,7 @@ describe('family outings', () => {
     expect(world.clearPath(MOW_LAP[MOW_LAP.length - 1].x, MOW_LAP[MOW_LAP.length - 1].y, MOWER_PARKED.x, MOWER_PARKED.y, 16)).toBe(true);
   });
 
-  it('Grandpa works the front yard and putts out back', () => {
+  it('Grandpa keeps busy: yard, beds, porch, workshop, truck, and putting out back', () => {
     const h = fresh();
     h.teleport(far.x, far.y);
     const seen = new Set<string>();
@@ -286,9 +286,9 @@ describe('family outings', () => {
       const g = h.npcs.find((n) => n.who === 'grandpa')!;
       if (!g.target) seen.add(g.stop.id);
       if (h.family.putt && h.family.putt.t < 0 && h.family.putt.t > -DT * 1.5) putts++;
-      if (seen.size === 5 && putts > 0) break;
+      if (seen.size === 7 && putts > 0) break;
     }
-    expect([...seen].sort()).toEqual(['backBeds', 'frontBeds', 'frontYard', 'porch', 'putting']);
+    expect([...seen].sort()).toEqual(['backBeds', 'frontBeds', 'frontYard', 'porch', 'putting', 'truck', 'workshop']);
     expect(putts).toBeGreaterThan(0);
     expect(PUTTING_GREEN.x).toBeLessThan(2020);
   });

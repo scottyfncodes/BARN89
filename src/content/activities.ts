@@ -73,7 +73,7 @@ export const ACTIVITIES: Activity[] = [
     id: 'hunt',
     title: "Grandpa's Treasure Hunt",
     who: 'grandpa',
-    line: 'Lost my things again. Help an old man look?',
+    line: 'Lost my things again! Good excuse for a walk. Help me look?',
     station: { x: 1625, y: 728 },
     challenges: [{ id: 'hunt-1', game: 'hunt', name: 'Lost and Found', blurb: 'Follow his clues, then crack the lockbox.' }],
   },
@@ -81,7 +81,7 @@ export const ACTIVITIES: Activity[] = [
     id: 'putt',
     title: 'Putt-Putt',
     who: 'grandpa',
-    line: "Care for a round of putt-putt? I've been practising.",
+    line: "Care for a round of putt-putt? I've been practising every day!",
     // By his putting green in the back yard.
     station: { x: 1965, y: 765 },
     fixed: true,
