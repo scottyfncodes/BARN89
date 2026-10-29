@@ -35,6 +35,7 @@ import {
 } from './content/activities';
 import { RIDES, rideForRace, rideOf, type RideId } from './content/rides';
 import { PIECES } from './content/blueStar';
+import { greeting, PERKS } from './content/explorers';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
@@ -106,6 +107,7 @@ let returnSpot: { x: number; y: number } | null = null;
 let cheerFor: FamilyId | null = null;
 const dial = [0, 0];
 const top = (): string | undefined => stack[stack.length - 1];
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 
 // --- Cosmetics and decorations ---------------------------------------------------------------
 function decor(): Decor {
@@ -264,6 +266,7 @@ function syncScreens(): void {
     if (mode === 'game') controls.reset();
   }
   if (covered && mode === 'hub') controls.reset();
+  if (covered || mode !== 'hub') sfx.setHum(0);
   if ((covered || mode !== 'hub') && motoEngine) {
     sfx.setEngine(-1);
     motoEngine = false;
@@ -380,7 +383,8 @@ function buildWho(): void {
     const c = document.createElement('canvas');
     b.append(c);
     const t = document.createElement('span');
-    t.innerHTML = `<b>${m.name}</b><small>${m.role}</small>`;
+    // Whoever's picked shows what's theirs alone.
+    t.innerHTML = `<b>${m.name}</b><small>${m.role}</small>${store.data.explorer === id ? `<small class="perk">${PERKS[id]}</small>` : ''}`;
     b.append(t);
     b.addEventListener('click', () => {
       sfx.click();
@@ -544,6 +548,22 @@ function onHubEvent(e: HubEvent): void {
     case 'workshop':
       startWorkshop();
       break;
+    case 'eggs':
+      if (e.n) {
+        sfx.collect();
+        store.data.eggs += e.n;
+        store.save();
+        toast.show(`<b>${e.n === 1 ? 'One egg' : `${e.n} eggs`}</b>Still warm. That's ${store.data.eggs} gathered so far.`, 2.8);
+      } else toast.show('<b>Nothing yet.</b>The hens are working on it. Give them a minute.', 2.6);
+      break;
+    case 'truck':
+      sfx.bark();
+      toast.show(e.on ? '<b>Load up!</b>Annie and Axle hop in the back. Best seats on the place.' : '<b>Everybody out.</b>Back to heel.', 2.8);
+      break;
+    case 'parade':
+      sfx.meow(1.2);
+      toast.show(`<b>Cat parade!</b>${e.count} barn cats in a line behind Natalie. They'll follow her anywhere.`, 3.6);
+      break;
     case 'splash':
       sfx.splash();
       break;
@@ -622,7 +642,9 @@ function updatePrompt(): void {
     if (a) {
       const who = FAMILY[a.who];
       $('prompt-who').textContent = a.title;
-      $('prompt-line').textContent = hub.explorer === a.who ? `${who.name}, this one is yours. Ready?` : `${who.name}: "${a.line}"`;
+      // Who you are changes how they say hello.
+      const hello = greeting(a.who, hub.explorer);
+      $('prompt-line').textContent = hub.explorer === a.who ? `${who.name}, this one is yours. Ready?` : `${who.name}: "${hello ? `${hello} ` : ''}${a.line}"`;
       const st = activityStars(store.data, a.id);
       $('prompt-stars').innerHTML = `${starSvg(st.got > 0, 14)} ${st.got}/${st.max}`;
       requestAnimationFrame(() => paintPortrait($<HTMLCanvasElement>('prompt-face'), who.look, { wave: true }));
@@ -734,6 +756,10 @@ function hubFrame(dt: number): void {
     if (motoOn) sfx.setEngine(0.5);
     else if (motoEngine) sfx.setEngine(-1);
     motoEngine = motoOn;
+    // Grandpa's humming, louder the closer you are (and right there when you're him).
+    const hum = hub.hummer();
+    const near = hum ? Math.hypot(hum.x - hub.player.x, hum.y - hub.player.y) : Infinity;
+    sfx.setHum(hub.explorer === 'grandpa' ? (hum ? 0.75 : 0) : clamp01(1 - (near - 60) / 300));
     updatePrompt();
     updateMissionHud();
     // Back at Grandpa's with everything: open the lockbox.
@@ -930,7 +956,7 @@ function buildBoard(): void {
     `<li><b>${s.ornaments.length}/${ORNAMENT_COUNT}</b> Christmas ornaments found</li>`,
     `<li><b>${s.pets.length}/${CAT_COUNT}</b> barn cats petted</li>`,
     `<li><b>${s.discoveries.length}/${shared.map.discoveries.length}</b> places discovered</li>`,
-    `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys</li>`,
+    `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys · <b>${s.eggs}</b> eggs gathered by Mom</li>`,
     `<li><b>${Object.keys(s.restored).length}/${PIECES.length}</b> pieces restored in the Blue Star workshop</li>`,
     `<li><b>Sunday at the Barn</b> ${s.barnPlan ? `Next chapter: ${BARN_PLAN_LABEL[s.barnPlan].toLowerCase()}.` : 'Pull up a chair at the long table under the string lights, whenever you like.'}</li>`,
   ].join('');

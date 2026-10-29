@@ -1,3 +1,5 @@
+import { HUM_BEAT, HUM_TUNE } from '../content/explorers';
+
 /**
  * Tiny synthesised sound kit (Web Audio). No audio files, no network.
  * iOS requires the context to be resumed from a user gesture, see `unlock`.
@@ -9,6 +11,10 @@ export class Sfx {
   private musicTimer: number | null = null;
   private musicStep = 0;
   private nextNoteTime = 0;
+  /** Grandpa's humming: how loud (0 silent), where in the tune, and when the next note starts. */
+  private humLevel = 0;
+  private humAt = 0;
+  private humNext = 0;
   muted = false;
 
   unlock(): void {
@@ -269,6 +275,60 @@ export class Sfx {
     const notes = [523, 659, 784, 1046, 784, 1046, 1318];
     notes.forEach((f, i) => this.tone(f, i === notes.length - 1 ? 0.6 : 0.16, 'triangle', 0.18, i * 0.13));
     notes.forEach((f, i) => this.tone(f / 2, 0.16, 'square', 0.04, i * 0.13));
+  }
+
+  /**
+   * Grandpa humming, at this loudness (0..1, by how close he is). Call every frame; notes are
+   * scheduled a moment ahead, and the background tune steps back a little while he hums.
+   */
+  setHum(level: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) return;
+    const was = this.humLevel;
+    this.humLevel = level;
+    if (Math.abs(level - was) > 0.02 || (level === 0 && was !== 0)) this.musicGain.gain.setTargetAtTime(0.16 * (1 - 0.55 * level), ctx.currentTime, 0.3);
+    if (level <= 0.01) return;
+    const now = ctx.currentTime;
+    if (this.humNext < now) this.humNext = now + 0.05;
+    while (this.humNext < now + 0.2) {
+      const [note, beats] = HUM_TUNE[this.humAt];
+      const dur = beats * HUM_BEAT;
+      if (note > 0) this.hummed(440 * Math.pow(2, (note - 69) / 12), dur, 0.11 * level, this.humNext);
+      this.humNext += dur;
+      this.humAt = (this.humAt + 1) % HUM_TUNE.length;
+    }
+  }
+
+  /** One hummed note: a soft, closed-mouth "mm" with a little wobble in it. */
+  private hummed(freq: number, dur: number, vol: number, t: number): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const depth = ctx.createGain();
+    const f = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(freq * 0.985, t);
+    // Slides up into the note, the way people hum.
+    o.frequency.exponentialRampToValueAtTime(freq, t + 0.08);
+    lfo.frequency.value = 5;
+    depth.gain.value = freq * 0.008;
+    lfo.connect(depth);
+    depth.connect(o.frequency);
+    f.type = 'lowpass';
+    f.frequency.value = 650;
+    f.Q.value = 0.7;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.07);
+    g.gain.setValueAtTime(vol, t + Math.max(0.08, dur - 0.12));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+    o.connect(f);
+    f.connect(g);
+    g.connect(this.master!);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + dur + 0.1);
+    lfo.stop(t + dur + 0.1);
   }
 
   /** A gentle, loping banjo-ish loop: plucked triangle notes over a I–IV–V–I bass. */

@@ -704,15 +704,19 @@ export class WorldView {
           ctx.fillStyle = q.color;
           ctx.fillRect(-q.size, -q.size * 0.35, q.size * 2, q.size * 0.7);
           break;
-        case 'note':
+        case 'note': {
+          // An eighth note; size 3.2 is the small one.
+          const k = q.size / 3.2;
+          const nx = q.x + Math.sin((q.max - q.life) * 4 + (q.rot ?? 0)) * 3;
           ctx.globalAlpha = f;
           ctx.fillStyle = q.color;
           ctx.beginPath();
-          ctx.ellipse(q.x, q.y, 3.2, 2.4, -0.4, 0, Math.PI * 2);
+          ctx.ellipse(nx, q.y, 3.2 * k, 2.4 * k, -0.4, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillRect(q.x + 2, q.y - 11, 1.6, 11);
-          ctx.fillRect(q.x + 2, q.y - 11, 5, 2);
+          ctx.fillRect(nx + 2 * k, q.y - 11 * k, 1.6 * k, 11 * k);
+          ctx.fillRect(nx + 2 * k, q.y - 11 * k, 5 * k, 2 * k);
           break;
+        }
         case 'ring': {
           const r = q.size * (1 - f * f);
           ctx.globalAlpha = f * 0.9;
