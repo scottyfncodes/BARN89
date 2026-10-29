@@ -206,6 +206,16 @@ export class Sfx {
     this.tone(250, 0.2, 'triangle', 0.1, 0.12, 190);
   }
 
+  /** Sandpaper on old paint: a dry little rasp. */
+  sand(): void {
+    this.noise(0.07, 0.07, 3400 + Math.random() * 900);
+  }
+
+  /** A brush stroke: soft and wet. */
+  brush(): void {
+    this.noise(0.1, 0.05, 900 + Math.random() * 200);
+  }
+
   tick(): void {
     this.tone(1200, 0.03, 'square', 0.03);
   }

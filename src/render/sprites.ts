@@ -604,7 +604,7 @@ export function chimneyTop(b: BuildingDef): { x: number; y: number } | null {
 }
 
 /** A plain five-pointed star with a little folded-metal shading, like a star hung on a shop wall. */
-function wallStar(ctx: Ctx, cx: number, cy: number, r: number, color: string): void {
+export function wallStar(ctx: Ctx, cx: number, cy: number, r: number, color: string): void {
   const pts: [number, number][] = [];
   for (let i = 0; i < 10; i++) {
     const a = -Math.PI / 2 + (i * Math.PI) / 5;

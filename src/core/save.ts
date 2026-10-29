@@ -1,3 +1,4 @@
+import { PIECES, type Restored } from '../content/blueStar';
 import type { FamilyId, HatKind } from '../content/cast';
 import { cleanNames } from '../content/names';
 import type { BarnPlan } from '../content/sunday';
@@ -47,6 +48,8 @@ export interface SaveData {
   seen: string[];
   /** Names the family picked for the barn cats and Grandpa's chihuahuas, by animal id. */
   names: Record<string, string>;
+  /** Furniture restored in the Blue Star workshop, by piece id. Never rewarded, just kept. */
+  restored: Record<string, Restored>;
 }
 
 const KEY = 'barn89.save.v1';
@@ -69,6 +72,7 @@ export function freshSave(): SaveData {
     cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false, golfcart: false },
     seen: [],
     names: {},
+    restored: {},
   };
 }
 
@@ -118,7 +122,25 @@ export function normalize(raw: unknown): SaveData {
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },
     seen: arr(r.seen),
     names: cleanNames(r.names),
+    restored: cleanRestored(r.restored),
   };
+}
+
+/** Keep only restored pieces that still exist, with a colour for every part. */
+function cleanRestored(o: unknown): Record<string, Restored> {
+  const out: Record<string, Restored> = {};
+  if (!o || typeof o !== 'object') return out;
+  const hex = (c: unknown) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  for (const [id, v] of Object.entries(o as Record<string, unknown>)) {
+    const def = PIECES.find((p) => p.id === id);
+    const r = v as Partial<Restored> | null;
+    if (!def || !r || !Array.isArray(r.parts) || r.parts.length !== def.parts.length || !r.parts.every(hex)) continue;
+    const st = r.star;
+    const star: [number, number] | null =
+      Array.isArray(st) && st.length === 2 && st.every((n) => typeof n === 'number' && n >= 0 && n <= 1) ? [st[0], st[1]] : null;
+    out[id] = { parts: [...r.parts], star };
+  }
+  return out;
 }
 
 export class SaveStore {

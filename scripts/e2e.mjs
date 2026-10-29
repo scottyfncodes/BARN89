@@ -248,10 +248,31 @@ async function portrait() {
   check("the barn's next chapter is remembered", (await b89(page, () => window.__b89.store.data.barnPlan)) === 'dance');
   check('no stars for Sunday', (await b89(page, () => Object.keys(window.__b89.store.data.stars).every((k) => !k.includes('sunday')))));
 
+  // Blue Star workshop: sand, paint and star the cabinet with Grandpa, and it stays out front.
+  await b89(page, () => window.__b89.hub.teleport(1792, 728));
+  await page.waitForTimeout(300);
+  check('the cabinet offers the workshop', /Grandpa|workshop/.test(await page.textContent('#act-label')));
+  await tap(page, '#act-btn');
+  await page.waitForTimeout(400);
+  check('Blue Star workshop opens', (await b89(page, () => window.__b89.game?.challenge)) === 'workshop');
+  const wb = await b89(page, () => { const v = window.__b89.game.view; const p = window.__b89.game.piece; return { x: v.px, y: v.py, w: p.w * v.s, h: p.h * v.s, s: v.s }; });
+  for (let y = wb.y; y <= wb.y + wb.h; y += 7 * wb.s) await drag(page, wb.x - 4, y, wb.w + 8, 0, 10);
+  check('painting covers the cabinet', await b89(page, () => window.__b89.game.game.covered));
+  const db = await b89(page, () => window.__b89.game.view.doneBox());
+  await page.mouse.click(db.x + db.w / 2, db.y + db.h / 2);
+  await page.mouse.click(wb.x + wb.w * 0.7, wb.y + wb.h * 0.3);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${OUT}/p-workshop.png` });
+  await page.mouse.click(db.x + db.w / 2, db.y + db.h / 2);
+  await page.waitForTimeout(500);
+  check('the cabinet goes out front, back on the homestead', (await b89(page, () => window.__b89.mode)) === 'hub' && (await b89(page, () => !!window.__b89.store.data.restored.cabinet?.star)));
+  check('no stars for the workshop', (await b89(page, () => !('workshop' in window.__b89.store.data.stars))));
+
   // Persistence across a reload.
   await page.reload();
   await page.waitForTimeout(600);
   check('progress survives a reload', (await b89(page, () => window.__b89.store.data.stars['woodpile-1'] ?? 0)) >= 1);
+  check('the restored cabinet survives a reload', await b89(page, () => !!window.__b89.store.data.restored.cabinet));
   check('explorer survives a reload', (await b89(page, () => window.__b89.store.data.explorer)) === 'grandpa');
 
   check('page never scrolls', (await page.evaluate(() => window.scrollY + document.documentElement.scrollTop)) === 0);
