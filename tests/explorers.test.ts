@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FAMILY_ORDER, type FamilyId } from '../src/content/cast';
-import { GREETINGS, HUM_TUNE, PERKS } from '../src/content/explorers';
+import { GRANDPA_BUSY, GRANDPA_CHEER, GREETINGS, HUM_TUNE, PERKS } from '../src/content/explorers';
 import { BACK_YARD, DAD_TRUCK, Homestead, type HubEvent } from '../src/hub/homestead';
 import { CHICKEN_RUN } from '../src/world/ranch';
 import { sharedWorld } from '../src/world/shared';
@@ -48,6 +48,27 @@ describe('who you explore as', () => {
     // Exploring as Grandpa, he hums as he goes.
     const me = as('grandpa');
     expect(me.hummer()).toBe(me.player);
+  });
+
+  it('Grandpa calls out something cheerful when you are near, and wants a job when idle', () => {
+    const h = as('natalie');
+    run(h, 0.5);
+    const g = h.npcs.find((n) => n.who === 'grandpa')!;
+    h.teleport(g.x + 250, g.y + 60);
+    const said = new Set<string>();
+    for (let i = 0; i < 40 * 60; i++) {
+      h.step(still, DT, false);
+      if (h.grandpaSays) said.add(h.grandpaSays.text);
+    }
+    expect(said.size).toBeGreaterThan(0);
+    for (const t of said) expect(GRANDPA_CHEER).toContain(t);
+    const me = as('grandpa');
+    const idle = new Set<string>();
+    for (let i = 0; i < 40 * 60; i++) {
+      me.step(still, DT, false);
+      if (me.grandpaSays) idle.add(me.grandpaSays.text);
+    }
+    expect([...idle].some((t) => GRANDPA_BUSY.includes(t))).toBe(true);
   });
 
   it("Grandpa's chihuahuas don't yap at him", () => {

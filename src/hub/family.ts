@@ -10,7 +10,7 @@ import type { CollisionWorld } from '../world/collision';
  * and turns to talk, and their prompt goes wherever they are.
  */
 
-export type NpcHold = 'basket' | 'axe' | 'rake' | 'putter' | 'can' | null;
+export type NpcHold = 'basket' | 'axe' | 'rake' | 'putter' | 'can' | 'pail' | null;
 export type Gesture = 'toss' | 'swing' | 'point' | 'look' | 'wave' | 'rake' | 'putt' | 'throw' | 'catch' | 'water';
 
 export interface NpcStop {
@@ -92,6 +92,10 @@ export const NPC_ROUTINES: Record<FamilyId, NpcStop[]> = {
     { id: 'frontBeds', at: { x: 1605, y: 400 }, hold: 'can', gesture: 'water', gestureT: 1.8, gap: [0.8, 2], face: 0, roam: 90, stay: [10, 18] },
     // And the bed and pots along his back porch.
     { id: 'backBeds', at: { x: 1535, y: 712 }, hold: 'can', gesture: 'water', gestureT: 1.8, gap: [0.8, 2], face: -1, roam: 40, stay: [8, 14] },
+    // Touching up the cabinet outside the Blue Star shop.
+    { id: 'workshop', at: { x: 1772, y: 728 }, hold: null, gesture: 'point', gestureT: 2.2, gap: [0.6, 1.5], face: 1, roam: 24, stay: [10, 18] },
+    // Washing his truck on the drive, bucket in hand.
+    { id: 'truck', at: { x: 1790, y: 362 }, hold: 'pail', gesture: 'point', gestureT: 2, gap: [0.6, 1.5], face: 1, roam: 40, stay: [10, 18] },
     // Practising his putting on the green out back.
     { id: 'putting', at: PUTT_FROM, hold: 'putter', gesture: 'putt', gestureT: 1.2, gap: [1.5, 3], face: 1, roam: 0, stay: [12, 20] },
   ],

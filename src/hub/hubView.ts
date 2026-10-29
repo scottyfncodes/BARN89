@@ -566,6 +566,10 @@ export class HubView extends WorldView {
         // A dog barking up the treehouse at the cat that got away.
         for (const d of h.dogs) if (d.state === 'treed' && d.treedT % 0.9 > 0.45) this.bubbleText(ctx, d.x + d.faceX * 12, d.y - 42 * (d.def.size ?? 1), 'WOOF!');
         for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
+        // Grandpa, cheerful as ever (above his name tag).
+        const says = h.grandpaSays;
+        const ga = says ? h.grandpaAt() : null;
+        if (says && ga) this.bubbleText(ctx, ga.x, ga.y - 64 * FAMILY.grandpa.look.scale - (h.explorer === 'grandpa' ? 14 : 36), says.text);
         // The spray, and the smell that follows Annie around after.
         const sk2 = h.skunk;
         if (sk2 && sk2.cloudT >= 0 && sk2.cloudT < 2.4) drawStinkCloud(ctx, sk2.x - sk2.faceX * 14, sk2.y - 12, sk2.cloudT);

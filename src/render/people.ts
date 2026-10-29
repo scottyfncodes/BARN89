@@ -576,6 +576,8 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   // Face.
   const blink = Math.sin(p.clock * 1.7 + L.scale * 9) > 0.985;
   const happy = action === 'cheer' || action === 'wave';
+  // Some folks are just always smiling.
+  const smile = happy || !!L.grin;
   ctx.fillStyle = C.ink;
   ctx.strokeStyle = C.ink;
   if (blink || happy) {
@@ -609,8 +611,8 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   } else {
     ctx.lineWidth = 1.15;
     ctx.beginPath();
-    ctx.arc(hx + 5, hy + 3.8, happy ? 2.4 : 1.9, 0.15, Math.PI * 0.8);
-    if (happy) {
+    ctx.arc(hx + 5, hy + 3.8, smile ? 2.4 : 1.9, 0.15, Math.PI * 0.8);
+    if (smile) {
       ctx.fillStyle = '#8a2f3a';
       ctx.fill();
     }
