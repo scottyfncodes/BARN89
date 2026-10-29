@@ -13,7 +13,7 @@ export const PERKS: Record<FamilyId, string> = {
   jason: 'Loads Annie and Axle in the back of his truck.',
   jay: 'Throws a long spiral for the dogs, and flips on the trampoline.',
   natalie: 'The barn cats follow her around in a little parade.',
-  grandpa: 'Hums wherever he goes. His chihuahuas think he hung the moon.',
+  grandpa: "Can't sit still, and hums the whole time. His chihuahuas think he hung the moon.",
 };
 
 /** What someone says first when you walk up, by who they are and who you are. */
@@ -57,18 +57,19 @@ export function greeting(who: FamilyId, explorer: FamilyId): string {
 /**
  * Grandpa's tune, hummed: [MIDI note, beats], 0 for a breath. Nobody's sure what he hums, but
  * it's somewhere between Sunday worship and Brooks & Dunn, so this is an original tune in that
- * spirit: a swung two-step verse on the country pentatonic, then a chorus that lifts and holds
- * its long notes like a worship song. Not any real song; swap in a better guess any time.
+ * spirit: a swung two-step verse on the country pentatonic, then a chorus that lifts like a
+ * worship song. He can't sit still, and neither can the tune: brisk, bouncy, barely a breath
+ * between times through. Not any real song; swap in a better guess any time.
  */
 export const HUM_TUNE: [number, number][] = [
-  // Verse: a little two-step shuffle (long-short pairs swing it).
-  [62, 0.67], [64, 0.33], [67, 1], [67, 0.67], [69, 0.33], [71, 1], [69, 0.67], [67, 0.33], [64, 1], [62, 2],
-  [62, 0.67], [64, 0.33], [67, 1], [67, 0.67], [69, 0.33], [71, 1], [74, 1], [71, 0.67], [69, 0.33], [69, 2],
-  // Chorus: up it goes, and he leans on the long notes.
-  [71, 1], [74, 2], [72, 1], [71, 1.5], [69, 0.5], [67, 2],
-  [67, 1], [69, 1], [71, 1], [74, 1], [76, 3],
-  [74, 1], [71, 2], [69, 1], [67, 4],
-  [0, 6],
+  // Verse: a driving two-step, long-short pairs swinging it along.
+  [62, 0.5], [64, 0.5], [67, 1], [67, 0.67], [69, 0.33], [71, 1], [71, 0.67], [69, 0.33], [67, 0.67], [64, 0.33], [67, 1], [69, 1],
+  [71, 0.67], [74, 0.33], [74, 1], [71, 0.67], [69, 0.33], [67, 1], [64, 0.67], [62, 0.33], [64, 0.67], [67, 0.33], [69, 2],
+  // Chorus: it lifts like a worship chorus, but he can't hang on a note for long.
+  [71, 1], [74, 1.5], [72, 0.5], [71, 1], [69, 0.5], [67, 0.5], [69, 1],
+  [67, 0.67], [69, 0.33], [71, 1], [74, 1], [76, 2], [74, 0.67], [71, 0.33], [69, 1], [67, 2],
+  // A quick breath and he's off again.
+  [0, 1.5],
 ];
-/** Seconds per beat: an easy amble, two steps of the background tune so they sit together. */
-export const HUM_BEAT = 0.4;
+/** Seconds per beat: brisk. He hums the way he moves. */
+export const HUM_BEAT = 0.3;

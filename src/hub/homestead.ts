@@ -659,7 +659,8 @@ export class Homestead {
     const held = this.mission?.kind === 'race' && this.mission.countdown > 0;
     // Paths and roads are a little quicker going (races keep everyone on even terms).
     this.onPath = this.isOnPath(p.x, p.y);
-    if (this.mission?.kind !== 'race') p.maxSpeed = this.speedBase * (this.onPath ? PATH_BOOST : 1);
+    // Grandpa walks everywhere like he's late for something.
+    if (this.mission?.kind !== 'race') p.maxSpeed = this.speedBase * (this.onPath ? PATH_BOOST : 1) * (this.explorer === 'grandpa' && !this.ride ? 1.1 : 1);
     if (!wasRiding && !held) updatePlayer(p, input, this.shared.world, dt);
     this.family.update(this.npcs, this.player, dt, this.gathered);
     const ride = this.family.moto;

@@ -50,7 +50,7 @@ function shade(hex: string, k: number): string {
   return `rgb(${Math.min(255, r)},${Math.min(255, g)},${Math.min(255, b)})`;
 }
 
-function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string, boots: boolean, glitter: boolean, shortsSkin?: string): void {
+function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants: string, shoes: string, boots: boolean, glitter: boolean, shortsSkin?: string, mark?: string): void {
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(angle);
@@ -61,6 +61,18 @@ function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants
     ctx.beginPath();
     ctx.roundRect(-4.4, -1.5, 8.8, len * 0.42, 2.5);
     fillStroke(ctx, pants, 1.4);
+    if (mark) {
+      // The swoosh, low on the leg of the shorts.
+      const y = len * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(-2.6, y - 0.6);
+      ctx.quadraticCurveTo(-1.6, y + 1.4, 0, y + 0.6);
+      ctx.lineTo(3, y - 1.4);
+      ctx.strokeStyle = mark;
+      ctx.lineWidth = 0.9;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
   }
   if (boots) {
     // Western boot: shaft up the shin, pointed toe, little heel.
@@ -93,7 +105,7 @@ function leg(ctx: Ctx, hx: number, hy: number, angle: number, len: number, pants
   ctx.restore();
 }
 
-function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: string, skin: string, stripe?: string): void {
+function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: string, skin: string, stripe?: string, rolled = false): void {
   ctx.lineCap = 'round';
   // Elbow bends outward a touch so arms read as arms, not sticks.
   const mx = (sx + hx) / 2 - (hy - sy) * 0.08;
@@ -104,9 +116,29 @@ function arm(ctx: Ctx, sx: number, sy: number, hx: number, hy: number, sleeve: s
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 5.6;
   ctx.stroke();
-  ctx.strokeStyle = sleeve;
-  ctx.lineWidth = 3.8;
-  ctx.stroke();
+  if (rolled) {
+    // Bare forearm, with the sleeve shoved up past the elbow in a thick roll.
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = 3.8;
+    ctx.stroke();
+    const t = 0.55;
+    const cx = sx + (mx - sx) * t;
+    const cy = sy + (my - sy) * t;
+    const ex = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * mx + t * t * hx;
+    const ey = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * my + t * t * hy;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(cx, cy, ex, ey);
+    ctx.strokeStyle = sleeve;
+    ctx.lineWidth = 4.2;
+    ctx.stroke();
+    ellipse(ctx, ex, ey, 2.7, 2.3);
+    fillStroke(ctx, shade(sleeve.startsWith('#') ? sleeve : '#2b2c33', 1.35), 1);
+  } else {
+    ctx.strokeStyle = sleeve;
+    ctx.lineWidth = 3.8;
+    ctx.stroke();
+  }
   if (stripe) {
     ctx.strokeStyle = stripe;
     ctx.lineWidth = 1.2;
@@ -362,9 +394,9 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   drawHair(ctx, L, hx, hy, p, true);
   const sleeve = L.sleeveless ? L.skin : L.shirt;
   const boots = !!L.cowboyBoots;
-  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(sleeve, 0.85), L.skin, L.sleeveStripe);
+  arm(ctx, sh.x - 1, sh.y, back.x, back.y, shade(sleeve, 0.85), L.skin, L.sleeveStripe, !!L.rolledSleeves);
   leg(ctx, -1, hipY, swing, 22 + bob, shade(L.pants, 0.85), shade(L.shoes, 0.8), boots, !!L.glitter, L.shorts ? shade(L.skin, 0.92) : undefined);
-  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes, boots, !!L.glitter, L.shorts ? L.skin : undefined);
+  leg(ctx, 2, hipY, -swing, 22 + bob, L.pants, L.shoes, boots, !!L.glitter, L.shorts ? L.skin : undefined, L.shortsMark);
 
   // Torso.
   ctx.beginPath();
@@ -410,6 +442,26 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
       ctx.lineTo(0.5, hipY + 12);
       ctx.stroke();
     }
+  }
+  if (L.hoodie) {
+    // Kangaroo pocket, drawstrings, and the hood bunched up behind the neck.
+    ctx.beginPath();
+    ctx.roundRect(-5, hipY - 7, 11, 6.5, 2);
+    ctx.fillStyle = shade(L.shirt, 0.82);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+    ctx.strokeStyle = '#c9ccd2';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(-0.5, shY + 1.5);
+    ctx.lineTo(-1, shY + 7);
+    ctx.moveTo(3, shY + 1.5);
+    ctx.lineTo(3.4, shY + 7);
+    ctx.stroke();
+    ellipse(ctx, -2.5, shY + 0.4, 7, 2.8);
+    fillStroke(ctx, shade(L.shirt, 1.25), 1.2);
   }
   if (L.tee) {
     // Open zip jacket: the tee shows down the front.
@@ -569,7 +621,7 @@ function drawPersonRight(ctx: Ctx, L: PersonLook, p: PersonPose): void {
   // Front arm and anything held.
   if (p.hold === 'axe') drawAxe(ctx, front.x, front.y, axeA);
   if (toolHead && (p.hold === 'rake' || p.hold === 'putter')) drawLongTool(ctx, p.hold, back, toolHead);
-  arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin, L.sleeveStripe);
+  arm(ctx, sh.x + 2, sh.y, front.x, front.y, sleeve, L.skin, L.sleeveStripe, !!L.rolledSleeves);
   if (p.hold === 'can') drawWateringCan(ctx, front.x, front.y, p.tool ?? 0, p.clock);
   else drawHeld(ctx, p.hold ?? null, front.x, front.y);
 }

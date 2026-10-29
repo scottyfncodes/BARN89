@@ -34,6 +34,12 @@ export interface PersonLook {
   shorts?: boolean;
   /** Open jacket worn over a tee of this colour. */
   tee?: string;
+  /** A pullover hoodie (the shirt colour): hood bunched at the neck, front pocket, drawstrings. */
+  hoodie?: boolean;
+  /** Sleeves shoved up past the elbow. */
+  rolledSleeves?: boolean;
+  /** A little swoosh on the shorts, in this colour. */
+  shortsMark?: string;
   /** Stripe down the jacket sleeves. */
   sleeveStripe?: string;
   /** Draw the beard as light stubble. */
@@ -133,11 +139,13 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
       skin: '#c6936b',
       hair: '#d4d1cb',
       hairStyle: 'short',
-      shirt: '#24242a',
-      tee: '#d9302f',
-      sleeveStripe: '#a9adb3',
-      pants: '#3d4048',
+      // Hoodie with the sleeves shoved up, Nike running shorts, sneakers. Always on the move.
+      shirt: '#2b2c33',
+      hoodie: true,
+      rolledSleeves: true,
+      pants: '#1d1d22',
       shorts: true,
+      shortsMark: '#f4f4f2',
       shoes: '#e9e9ea',
       hat: 'none',
       beard: '#d8d4cc',
