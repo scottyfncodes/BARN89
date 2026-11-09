@@ -891,6 +891,17 @@ $('lock-open').addEventListener('click', () => {
 });
 
 // --- Activity board, rewards, map -----------------------------------------------------------
+/** Star rows for the open challenges, then one chip saying how many are still to come. */
+function chalChips(chs: readonly { id: string; name: string }[]): string {
+  const s = store.data;
+  const open = chs.filter((ch) => isUnlocked(s, ch.id));
+  const shut = chs.length - open.length;
+  return (
+    open.map((ch) => `<span class="chal" title="${ch.name}">${starRow(s.stars[ch.id] ?? 0, 3, 13)}</span>`).join('') +
+    (shut ? `<span class="chal locked">${shut} more to unlock</span>` : '')
+  );
+}
+
 function buildBoard(): void {
   const s = store.data;
   $('board-sub').textContent = `${totalStars(s)} of ${MAX_STARS} stars earned. Stars unlock rewards.`;
@@ -905,9 +916,7 @@ function buildBoard(): void {
     const best = Math.max(0, ...a.challenges.map((ch) => s.best[ch.id] ?? 0));
     const info = document.createElement('div');
     info.className = 'board-info';
-    info.innerHTML = `<b>${a.title}</b><small>with ${who.name}</small><span class="chals">${a.challenges
-      .map((ch) => `<span class="chal ${isUnlocked(s, ch.id) ? '' : 'locked'}" title="${ch.name}">${isUnlocked(s, ch.id) ? starRow(s.stars[ch.id] ?? 0, 3, 13) : 'Locked'}</span>`)
-      .join('')}</span>${best ? `<small>Best score ${best}</small>` : ''}`;
+    info.innerHTML = `<b>${a.title}</b><small>with ${who.name}</small><span class="chals">${chalChips(a.challenges)}</span>${best ? `<small>Best score ${best}</small>` : ''}`;
     const b = document.createElement('button');
     b.className = 'go-btn';
     b.textContent = st.got ? 'Play' : 'Try it';

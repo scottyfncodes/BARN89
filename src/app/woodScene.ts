@@ -111,7 +111,7 @@ export class WoodScene implements GameScene {
       hud.setCount(String(g.stacked));
       hud.setBar(g.stacked / g.round.goal);
       hud.setTime(`${formatTime(g.timeLeft)} left`);
-      hud.setScore(String(g.score));
+      hud.setScore(`${g.score} pts`);
       const aiming = g.phase === 'aim' || g.phase === 'ready' || g.phase === 'arrive';
       show(this.tossBtn, aiming);
       let h: string | null = null;
