@@ -2218,3 +2218,107 @@ export function drawFishTreat(ctx: Ctx, x: number, y: number, s: number, rot = 0
   ctx.fill();
   ctx.restore();
 }
+
+/** A field pumpkin sitting on the ground at (x, y); s scales it (1 is about 16 units wide). */
+export function drawPumpkin(ctx: Ctx, x: number, y: number, s = 1): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 9, 2.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = C.shadow;
+  ctx.fill();
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1.4;
+  // Three lobes, outer ones first.
+  for (const [lx, rx, col] of [[-4, 5, '#d9741f'], [4, 5, '#d9741f'], [0, 5.5, '#ec8a2a']] as const) {
+    ctx.beginPath();
+    ctx.ellipse(lx, -6, rx, 6.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.stroke();
+  }
+  // Stem and a curl of vine.
+  ctx.fillStyle = '#6b5a2a';
+  ctx.beginPath();
+  ctx.moveTo(-1.2, -12);
+  ctx.lineTo(-0.6, -16);
+  ctx.lineTo(1.8, -15.4);
+  ctx.lineTo(1.2, -12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#4f8a3a';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(1.5, -14);
+  ctx.quadraticCurveTo(5, -16.5, 5.5, -13.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A small flag on a pole leaning out from a porch post, stirring in the breeze. */
+export function drawPorchFlag(ctx: Ctx, x: number, y: number, clock: number, s = 1): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = C.ink;
+  // Bracket on the post and the pole, angled out toward the yard.
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -18);
+  ctx.lineTo(20, -40);
+  ctx.stroke();
+  ctx.fillStyle = '#e8c76a';
+  ctx.beginPath();
+  ctx.arc(20.5, -40.5, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // The flag hangs from the upper part of the pole and ripples a little toward the fly end.
+  const h = 13;
+  const pt = (u: number, v: number): [number, number] => {
+    const ripple = Math.sin(clock * 3 + u * 5) * 1.3 * u;
+    return [8 + u * 11 + ripple * 0.3, -26.8 - u * 12.1 + v * h + ripple];
+  };
+  const quad = (u0: number, u1: number, v0: number, v1: number, col: string) => {
+    const a = pt(u0, v0);
+    const b = pt(u1, v0);
+    const c = pt(u1, v1);
+    const d = pt(u0, v1);
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]);
+    ctx.lineTo(b[0], b[1]);
+    ctx.lineTo(c[0], c[1]);
+    ctx.lineTo(d[0], d[1]);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+  };
+  const STEPS = 6;
+  for (let i = 0; i < STEPS; i++) {
+    const u0 = i / STEPS;
+    const u1 = (i + 1) / STEPS;
+    for (let r = 0; r < 7; r++) quad(u0, u1, r / 7, (r + 1) / 7, r % 2 ? '#fff8e9' : '#c8382e');
+  }
+  // Blue canton by the pole, with a few white dots for stars.
+  for (let i = 0; i < 3; i++) quad(i / STEPS, (i + 1) / STEPS, 0, 4 / 7, '#2f4f8f');
+  ctx.fillStyle = '#fff8e9';
+  for (const [u, v] of [[0.1, 0.15], [0.3, 0.15], [0.2, 0.32], [0.1, 0.48], [0.3, 0.48]]) {
+    const [px, py] = pt(u, v);
+    ctx.fillRect(px - 0.5, py - 0.5, 1, 1);
+  }
+  // Outline.
+  ctx.beginPath();
+  const corners: [number, number][] = [];
+  for (let i = 0; i <= STEPS; i++) corners.push(pt(i / STEPS, 0));
+  for (let i = STEPS; i >= 0; i--) corners.push(pt(i / STEPS, 1));
+  corners.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+  ctx.closePath();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = C.ink;
+  ctx.stroke();
+  ctx.restore();
+}

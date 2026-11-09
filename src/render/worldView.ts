@@ -1,4 +1,5 @@
 import { pieceDef, type Restored } from '../content/blueStar';
+import type { SeasonTouch } from '../content/seasons';
 import { DONKEYS } from '../content/cast';
 import { clamp, damp, hash2 } from '../core/math';
 import type { BuildingDef, PropDef, RanchMap, TreeDef } from '../world/mapTypes';
@@ -10,7 +11,9 @@ import {
   BuildingSprites,
   drawBuilding,
   drawFencePiece,
+  drawPorchFlag,
   drawProp,
+  drawPumpkin,
   drawTree,
   festoonBulbs,
   propIsFlat,
@@ -82,7 +85,19 @@ export interface Decor {
   sign?: string | null;
   /** Furniture restored in the Blue Star workshop, set out front of the shop. */
   restored?: Record<string, Restored>;
+  /** This month's small decoration (real calendar). */
+  touch?: SeasonTouch;
 }
+
+/** Where the month's decorations go: by the farm stand and on Grandpa's porch steps. */
+const PUMPKINS = [
+  { x: 604, y: 152, s: 1.45 },
+  { x: 620, y: 160, s: 1 },
+  { x: 678, y: 154, s: 1.2 },
+  { x: 1678, y: 708, s: 1.4 },
+  { x: 1664, y: 714, s: 1 },
+];
+const FLAG = { x: 1652, y: 700 };
 
 /** World units per piece unit for restored furniture (the cabinet is 26 wide, like the old prop). */
 const PIECE_SCALE = 0.25;
@@ -473,6 +488,11 @@ export class WorldView {
       const at = def.spot;
       if (at.x < v.x0 - 60 || at.x > v.x1 + 60 || at.y < v.y0 - 60 || at.y > v.y1 + 60) continue;
       items.push({ y: at.y, draw: () => drawPiece(ctx, def, look, at.x, at.y, PIECE_SCALE) });
+    }
+    if (this.decor.touch === 'pumpkins') {
+      for (const pk of PUMPKINS) if (pk.x > v.x0 - 30 && pk.x < v.x1 + 30 && pk.y > v.y0 - 30 && pk.y < v.y1 + 30) items.push({ y: pk.y, draw: () => drawPumpkin(ctx, pk.x, pk.y, pk.s) });
+    } else if (this.decor.touch === 'flag' && FLAG.x > v.x0 - 60 && FLAG.x < v.x1 + 60 && FLAG.y > v.y0 - 80 && FLAG.y < v.y1 + 40) {
+      items.push({ y: FLAG.y, draw: () => drawPorchFlag(ctx, FLAG.x, FLAG.y, clock, 1.35) });
     }
     if (this.ambient.chickens) this.addChickens(items, v, clock, f);
     if (this.ambient.donkeys) this.addDonkeys(items, v, clock);

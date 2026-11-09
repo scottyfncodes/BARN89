@@ -231,10 +231,10 @@ export interface Reward {
 export const REWARDS: Reward[] = [
   { id: 'hat-straw', name: 'Straw hat', desc: 'For whoever is exploring. Very summer.', stars: 2, kind: 'hat', hat: 'straw' },
   { id: 'mower-green', name: 'Green mower paint', desc: 'Classic green and yellow for Yard Boss.', stars: 4, kind: 'mower' },
-  { id: 'evening', name: 'Evening at Barn 89', desc: 'Switch the homestead to golden evening. The string lights come on.', stars: 6, kind: 'decor' },
+  { id: 'evening', name: 'Evening at Barn 89', desc: 'Golden evening any time of day, string lights and all. Out here they also come on by themselves at sundown.', stars: 6, kind: 'decor' },
   { id: 'ride-deputy', name: 'Deputy the tiger', desc: 'Natalie rides a very large, very friendly tiger in Kitten Cowgirl.', stars: 9, kind: 'ride' },
   { id: 'hat-santa', name: 'Santa hat', desc: 'Festive. Slightly floppy.', stars: 12, kind: 'hat', hat: 'santa' },
-  { id: 'holiday', name: 'Christmas lights', desc: 'Lights on every roof, and a little snow.', stars: 15, kind: 'decor' },
+  { id: 'holiday', name: 'Christmas lights', desc: 'Lights on every roof, and a little snow, any time of year. They go up by themselves every December.', stars: 15, kind: 'decor' },
   { id: 'mower-gold', name: 'Golden mower', desc: 'For the true Yard Boss.', stars: 20, kind: 'mower' },
   { id: 'scooter', name: RIDES.scooter.name, desc: 'Natalie zips around the homestead on her e-scooter whenever she is the one exploring. Scooter races open up too.', how: 'ride', kind: 'vehicle' },
   { id: 'truck', name: RIDES.truck.name, desc: 'Jay drives it all over the homestead whenever he is the one exploring. Monster truck races open up too.', how: 'ride', kind: 'vehicle' },

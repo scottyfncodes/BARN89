@@ -229,6 +229,18 @@
         </div>
       </section>
 
+      <!-- Family scrapbook -->
+      <section id="scrapbook" class="screen" hidden>
+        <div class="panel wide scrollable">
+          <h2>Family Scrapbook</h2>
+          <p class="sub" id="scrapbook-sub"></p>
+          <ol id="scrapbook-pages" class="scrapbook"></ol>
+          <div class="btn-row">
+            <button class="mid-btn" data-close>Done</button>
+          </div>
+        </div>
+      </section>
+
       <!-- Map -->
       <section id="map" class="screen" hidden>
         <div class="panel wide map-panel">
@@ -248,14 +260,15 @@
           <p class="sub" id="menu-sub"></p>
           <button class="big-btn" data-close>Back outside</button>
           <div class="btn-row">
+            <button class="mid-btn" id="menu-scrapbook" data-open="scrapbook">Scrapbook</button>
             <button class="mid-btn" data-open="rewards">Rewards</button>
+          </div>
+          <div class="btn-row">
             <button class="mid-btn" data-open="who">Who's exploring</button>
-          </div>
-          <div class="btn-row">
             <button class="mid-btn" data-open="names">Animal names</button>
-            <button id="menu-sound" class="mid-btn" aria-pressed="true">Sound: on</button>
           </div>
           <div class="btn-row">
+            <button id="menu-sound" class="mid-btn" aria-pressed="true">Sound: on</button>
             <button id="menu-title" class="mid-btn">Title screen</button>
           </div>
           <button id="erase-btn" class="link-btn small">Erase progress on this device</button>

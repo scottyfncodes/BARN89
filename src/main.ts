@@ -38,6 +38,9 @@ import { PIECES } from './content/blueStar';
 import { greeting, PERKS } from './content/explorers';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
+import { clockNow, seasonAt } from './content/seasons';
+import { fillPages, PAGES, prettyDay, type PageDef } from './content/scrapbook';
+import { paintPage } from './app/scrapbookView';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
 import { PERSONALITIES } from './games/kitten/kittenTypes';
 import { LEVELS } from './games/kitten/levels';
@@ -113,10 +116,13 @@ const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 function decor(): Decor {
   const u = unlockedRewards(store.data);
   const c = store.data.cosmetics;
+  const now = seasonAt(clockNow());
   return {
-    evening: c.evening && u.has('evening'),
+    // Real sundown and real December light the place up on their own; the rewards do it any time.
+    evening: now.dusk || (c.evening && u.has('evening')),
     fixedBulbs: store.data.hunt.done,
-    holiday: c.holiday && u.has('holiday'),
+    holiday: now.christmas || (c.holiday && u.has('holiday')),
+    touch: now.touch,
     sign: store.data.barnPlan ? BARN_PLAN_SIGN[store.data.barnPlan] : null,
     restored: store.data.restored,
   };
@@ -150,6 +156,84 @@ function applyLook(): void {
   hubView.hat = explorerHat();
   hubView.mowerPaint = c.mower;
   hubView.untried = new Set(ACTIVITIES.filter((a) => activityStars(store.data, a.id).got === 0).map((a) => a.id));
+  checkScrapbook();
+}
+
+// --- Family scrapbook ------------------------------------------------------------------------
+/** Pages pasted in but not yet announced on the homestead. */
+let pendingPages: PageDef[] = [];
+
+/** Pastes in any page the save has earned since last time, to be announced when it's quiet. */
+function checkScrapbook(): void {
+  const fresh = fillPages(store.data, clockNow());
+  if (!fresh.length) return;
+  store.save();
+  pendingPages.push(...fresh);
+  markNews();
+}
+
+const unreadPages = (): PageDef[] => PAGES.filter((p) => store.data.scrapbook[p.id] && !store.data.seen.includes(`page-${p.id}`));
+
+function markNews(): void {
+  document.querySelector('#hub-hud [data-open="menu"]')?.classList.toggle('news', unreadPages().length > 0);
+}
+
+/** One note for whatever's new, once nothing else is being said and no screen is open. */
+function announcePages(): void {
+  if (!pendingPages.length || mode !== 'hub' || stack.length || toast.busy || hub.mission) return;
+  const [first, ...rest] = pendingPages;
+  pendingPages = [];
+  toast.show(
+    rest.length
+      ? `<b>${rest.length + 1} new pages in the scrapbook</b>${first.title}, ${rest[0].title}${rest.length > 1 ? ' and more' : ''}. They're in the menu.`
+      : `<b>New page in the scrapbook</b>${first.title}. It's in the menu.`,
+    4.2,
+  );
+  sfx.discover();
+  hub.holdFinds = Math.max(hub.holdFinds, 4.6);
+}
+
+function buildScrapbook(): void {
+  const s = store.data;
+  const got = PAGES.filter((p) => s.scrapbook[p.id]);
+  $('scrapbook-sub').textContent = got.length === PAGES.length ? `Every page filled. ${PAGES.length} of ${PAGES.length}.` : `${got.length} of ${PAGES.length} pages filled in.`;
+  const unread = new Set(unreadPages().map((p) => p.id));
+  const ol = $('scrapbook-pages');
+  ol.innerHTML = '';
+  const paint: [HTMLCanvasElement, PageDef][] = [];
+  for (const p of PAGES) {
+    const li = document.createElement('li');
+    const day = s.scrapbook[p.id];
+    if (day) {
+      li.className = 'got';
+      const c = document.createElement('canvas');
+      c.className = 'photo';
+      c.setAttribute('role', 'img');
+      c.setAttribute('aria-label', p.title);
+      const h = document.createElement('h3');
+      h.textContent = p.title;
+      if (unread.has(p.id)) h.insertAdjacentHTML('beforeend', '<span class="new">New</span>');
+      const cap = document.createElement('p');
+      cap.textContent = p.caption(s);
+      const t = document.createElement('time');
+      t.dateTime = day;
+      t.textContent = prettyDay(day);
+      li.append(c, h, cap, t);
+      paint.push([c, p]);
+    } else {
+      li.className = 'empty';
+      li.innerHTML = '<div class="slot" aria-hidden="true"><i></i><i></i><i></i><i></i></div>';
+      const hint = document.createElement('p');
+      hint.textContent = p.hint;
+      li.append(hint);
+    }
+    ol.append(li);
+  }
+  requestAnimationFrame(() => {
+    for (const [c, p] of paint) paintPage(c, p.id, s);
+  });
+  for (const id of unread) store.addTo('seen', `page-${id}`);
+  markNews();
 }
 
 /**
@@ -244,7 +328,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- Screens ---------------------------------------------------------------------------------
-const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names'];
+const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names', 'scrapbook'];
 
 function syncScreens(): void {
   document.body.dataset.scene = mode === 'game' && game instanceof WoodScene ? 'woodpile' : mode;
@@ -283,13 +367,19 @@ function open(id: string): void {
   else if (id === 'who') buildWho();
   else if (id === 'herd') buildRoster();
   else if (id === 'names') buildNames();
-  else if (id === 'menu') $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
+  else if (id === 'scrapbook') buildScrapbook();
+  else if (id === 'menu') {
+    $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
+    const n = unreadPages().length;
+    $('menu-scrapbook').innerHTML = n ? `Scrapbook <span class="count" aria-label="${n} new">${n}</span>` : 'Scrapbook';
+  }
   syncScreens();
 }
 
 function close(): void {
-  stack.pop();
+  const was = stack.pop();
   if (top() === 'board') buildBoard();
+  if (was === 'scrapbook' && top() === 'menu') $('menu-scrapbook').textContent = 'Scrapbook';
   syncScreens();
   last = performance.now();
 }
@@ -419,9 +509,16 @@ function enterHub(): void {
   sfx.startMusic();
   playT = 0;
   syncScreens();
+  markNews();
+  const note = seasonAt(clockNow()).note;
   if (!store.data.seen.includes('welcome')) {
     store.addTo('seen', 'welcome');
     toast.show('<b>Welcome to Barn 89!</b>Walk up to anyone in a glowing ring to play with them.', 5);
+    hub.holdFinds = 5.4;
+  } else if (note && store.addTo('seen', note.key)) {
+    toast.show(`<b>${note.title}</b>${note.text}`, 4.6);
+    hub.holdFinds = 5;
+    checkScrapbook();
   }
 }
 
@@ -459,6 +556,7 @@ $('erase-btn').addEventListener('click', () => {
 
 function onHubEvent(e: HubEvent): void {
   hubView.handleEvent(e);
+  queueMicrotask(checkScrapbook);
   switch (e.type) {
     case 'ornament': {
       sfx.collect();
@@ -1516,11 +1614,19 @@ window.addEventListener('pagehide', () => pauseGame());
 
 // --- Main loop -------------------------------------------------------------------------------
 let warmed = false;
+let seasonT = 30;
 const hero = $<HTMLCanvasElement>('hero');
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   toast.update(dt);
+  announcePages();
+  // Sundown can arrive mid-visit: look at the clock again now and then.
+  seasonT -= dt;
+  if (seasonT <= 0) {
+    seasonT = 30;
+    if (mode === 'hub') hubView.decor = decor();
+  }
 
   if (mode === 'game' && game) {
     const running = !paused && !resultsUp && !stack.length;

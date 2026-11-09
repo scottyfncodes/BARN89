@@ -52,6 +52,8 @@ export interface SaveData {
   eggs: number;
   /** Furniture restored in the Blue Star workshop, by piece id. Never rewarded, just kept. */
   restored: Record<string, Restored>;
+  /** Family scrapbook: the day each page was pasted in ("2026-11-09"), by page id. */
+  scrapbook: Record<string, string>;
 }
 
 const KEY = 'barn89.save.v1';
@@ -76,6 +78,7 @@ export function freshSave(): SaveData {
     names: {},
     eggs: 0,
     restored: {},
+    scrapbook: {},
   };
 }
 
@@ -127,7 +130,16 @@ export function normalize(raw: unknown): SaveData {
     names: cleanNames(r.names),
     eggs: typeof r.eggs === 'number' && isFinite(r.eggs) ? Math.max(0, Math.floor(r.eggs)) : 0,
     restored: cleanRestored(r.restored),
+    scrapbook: cleanDays(r.scrapbook),
   };
+}
+
+/** Keep only well-formed dates ("2026-11-09") keyed by page id. */
+function cleanDays(o: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, v] of Object.entries(o as Record<string, unknown>)) if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out[k] = v;
+  return out;
 }
 
 /** Keep only restored pieces that still exist, with a colour for every part. */

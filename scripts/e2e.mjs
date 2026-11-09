@@ -24,6 +24,7 @@ const check = (name, ok, detail = '') => {
 const browser = await chromium.launch();
 try {
   await portrait();
+  await seasons();
   await landscape();
 } finally {
   await browser.close();
@@ -277,11 +278,56 @@ async function portrait() {
   check('the restored cabinet survives a reload', await b89(page, () => !!window.__b89.store.data.restored.cabinet));
   check('explorer survives a reload', (await b89(page, () => window.__b89.store.data.explorer)) === 'grandpa');
 
+  // Family scrapbook: earned pages are pasted in, announced, and shown with their photos.
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(400);
+  const pages = await b89(page, () => Object.keys(window.__b89.store.data.scrapbook));
+  check('scrapbook pastes in the earned pages', pages.includes('home') && pages.includes('woodpile') && pages.includes('workshop'), pages.join(','));
+  check('menu button shows there is something new', await page.evaluate(() => document.querySelector('#hub-hud [data-open="menu"]').classList.contains('news')));
+  await page.click('#hub-hud [data-open="menu"]');
+  await page.click('#menu-scrapbook');
+  await page.waitForTimeout(300);
+  check('scrapbook opens', await visible(page, '#scrapbook'));
+  const book = await page.evaluate(() => {
+    const got = [...document.querySelectorAll('#scrapbook-pages li.got canvas')];
+    const painted = got.filter((c) => {
+      const d = c.getContext('2d').getImageData(c.width / 2, c.height / 4, 1, 1).data;
+      return d[3] > 0;
+    }).length;
+    return { got: got.length, painted, empty: document.querySelectorAll('#scrapbook-pages li.empty').length };
+  });
+  check('every filled page has its photo', book.got === pages.length && book.painted === book.got, JSON.stringify(book));
+  check('empty pages say how to fill them', book.empty === 17 - pages.length);
+  await page.screenshot({ path: `${OUT}/p-scrapbook.png` });
+  await page.click('#scrapbook [data-close]');
+  await page.click('#menu [data-close]');
+  check('reading the scrapbook clears the dot', !(await page.evaluate(() => document.querySelector('#hub-hud [data-open="menu"]').classList.contains('news'))));
+
   check('page never scrolls', (await page.evaluate(() => window.scrollY + document.documentElement.scrollTop)) === 0);
   check('no horizontal overflow', (await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)));
   check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   check('no external network requests besides Pulse', external.length === 0, external.slice(0, 3).join(' '));
   check('no failed requests', failedReq.length === 0, failedReq.slice(0, 3).join(' '));
+  await ctx.close();
+}
+
+async function seasons() {
+  // The real calendar: Christmas Eve after sundown lights the place up without any reward.
+  const { page, ctx, errors } = await newPage(devices['iPhone 13']);
+  await page.goto(`${BASE}?date=2026-12-24T19:00`);
+  await page.waitForTimeout(600);
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(500);
+  const d = await b89(page, () => window.__b89.hubView.decor);
+  check('Christmas Eve evening: lights and snow come on by themselves', d.evening && d.holiday);
+  await page.screenshot({ path: `${OUT}/p-christmas.png` });
+  await page.goto(`${BASE}?date=2026-10-15T11:00`);
+  await page.waitForTimeout(600);
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(500);
+  const o = await b89(page, () => window.__b89.hubView.decor);
+  check('October morning: pumpkins out, no evening, no Christmas', o.touch === 'pumpkins' && !o.evening && !o.holiday);
+  check('seasons: no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
 
