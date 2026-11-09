@@ -38,6 +38,7 @@ import { PIECES } from './content/blueStar';
 import { greeting, PERKS } from './content/explorers';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
+import { clockNow, seasonAt } from './content/seasons';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
 import { PERSONALITIES } from './games/kitten/kittenTypes';
 import { LEVELS } from './games/kitten/levels';
@@ -113,10 +114,13 @@ const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 function decor(): Decor {
   const u = unlockedRewards(store.data);
   const c = store.data.cosmetics;
+  const now = seasonAt(clockNow());
   return {
-    evening: c.evening && u.has('evening'),
+    // Real sundown and real December light the place up on their own; the rewards do it any time.
+    evening: now.dusk || (c.evening && u.has('evening')),
     fixedBulbs: store.data.hunt.done,
-    holiday: c.holiday && u.has('holiday'),
+    holiday: now.christmas || (c.holiday && u.has('holiday')),
+    touch: now.touch,
     sign: store.data.barnPlan ? BARN_PLAN_SIGN[store.data.barnPlan] : null,
     restored: store.data.restored,
   };
@@ -419,9 +423,14 @@ function enterHub(): void {
   sfx.startMusic();
   playT = 0;
   syncScreens();
+  const note = seasonAt(clockNow()).note;
   if (!store.data.seen.includes('welcome')) {
     store.addTo('seen', 'welcome');
     toast.show('<b>Welcome to Barn 89!</b>Walk up to anyone in a glowing ring to play with them.', 5);
+    hub.holdFinds = 5.4;
+  } else if (note && store.addTo('seen', note.key)) {
+    toast.show(`<b>${note.title}</b>${note.text}`, 4.6);
+    hub.holdFinds = 5;
   }
 }
 
@@ -1516,11 +1525,18 @@ window.addEventListener('pagehide', () => pauseGame());
 
 // --- Main loop -------------------------------------------------------------------------------
 let warmed = false;
+let seasonT = 30;
 const hero = $<HTMLCanvasElement>('hero');
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   toast.update(dt);
+  // Sundown can arrive mid-visit: look at the clock again now and then.
+  seasonT -= dt;
+  if (seasonT <= 0) {
+    seasonT = 30;
+    if (mode === 'hub') hubView.decor = decor();
+  }
 
   if (mode === 'game' && game) {
     const running = !paused && !resultsUp && !stack.length;

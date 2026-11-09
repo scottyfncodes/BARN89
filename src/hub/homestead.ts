@@ -373,6 +373,8 @@ export class Homestead {
   /** Seconds until a snake might next turn up near Grandpa. */
   snakeT = 35;
   skunk: Skunk | null = null;
+  /** Seconds before places can be discovered (so the welcome isn't talked over). */
+  holdFinds = 0;
   /** Seconds until a skunk might next wander by. */
   skunkT = 70;
   /** Seconds until a dog might next go after a cat. */
@@ -1730,7 +1732,8 @@ export class Homestead {
         this.emit({ type: 'ornament', id: o.id, x: o.x, y: o.y, count: this.ornaments.size });
       }
     }
-    for (const d of this.map.discoveries) {
+    if (this.holdFinds > 0) this.holdFinds -= dt;
+    else for (const d of this.map.discoveries) {
       if (this.discovered.has(d.id)) continue;
       if (dist(p, d) < d.r) {
         this.discovered.add(d.id);
