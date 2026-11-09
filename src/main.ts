@@ -509,6 +509,7 @@ function enterHub(): void {
   sfx.startMusic();
   playT = 0;
   syncScreens();
+  markNews();
   const note = seasonAt(clockNow()).note;
   if (!store.data.seen.includes('welcome')) {
     store.addTo('seen', 'welcome');
