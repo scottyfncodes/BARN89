@@ -745,7 +745,7 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
 }
 
 /** A skunk, side on: black, a white stripe, and a big tail that goes straight up when it matters. */
-function drawSkunk(ctx: Ctx, x: number, y: number, faceX: number, phase: number, tailUp: boolean, alpha: number): void {
+export function drawSkunk(ctx: Ctx, x: number, y: number, faceX: number, phase: number, tailUp: boolean, alpha: number): void {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
@@ -825,7 +825,7 @@ function drawStinkCloud(ctx: Ctx, x: number, y: number, t: number): void {
 }
 
 /** Wavy green lines rising off a dog who lost an argument with a skunk. */
-function drawStinkLines(ctx: Ctx, x: number, y: number, clock: number, alpha: number): void {
+export function drawStinkLines(ctx: Ctx, x: number, y: number, clock: number, alpha: number): void {
   ctx.save();
   ctx.globalAlpha = 0.8 * alpha;
   ctx.strokeStyle = '#8fa83e';
@@ -1062,7 +1062,7 @@ export function drawOrnament(ctx: Ctx, o: OrnamentDef, clock: number): void {
   ctx.restore();
 }
 
-function drawPorchTree(ctx: Ctx, x: number, y: number, found: Set<string>, clock: number): void {
+export function drawPorchTree(ctx: Ctx, x: number, y: number, found: Set<string>, clock: number): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.beginPath();
