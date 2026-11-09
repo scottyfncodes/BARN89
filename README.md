@@ -126,3 +126,7 @@ scripts/make-icons.mjs  regenerates PNG icons from public/icon.svg
 - **Simulation, input, rendering and persistence are separate.** Games step at a fixed 60 Hz with no DOM access; renderers interpolate; `Controls` turns touches into a joystick, button presses or taps; `SaveStore` is the only thing that touches `localStorage` and degrades to memory when storage is blocked.
 - **Art is code.** Characters, animals, buildings and props are hand-drawn with Canvas 2D in a single storybook style; there are no image assets apart from the app icon.
 - **Adding content:** a new challenge is an entry in `content/activities.ts` plus a level in the game's levels file. New rewards go in `REWARDS`. Map features are plain data in `world/ranch.ts`, and collision is derived from them.
+
+## Artwork
+
+Everything you see is drawn in code for this project (`src/render/`), and the app icon in `public/` (`icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) was made for it too. None of it comes from a third-party asset pack. All rights reserved by the family.
