@@ -9,6 +9,8 @@ import { preview } from 'vite';
 const PORT = 4179;
 const BASE = `http://localhost:${PORT}/`;
 const OUT = 'test-results';
+// HaveAnApp Pulse (anonymous, cookieless usage counts) is the one outside origin the app may call.
+const PULSE = 'https://haveanapp-pulse-collect.vercel.app/';
 mkdirSync(OUT, { recursive: true });
 
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'silent' });
@@ -40,7 +42,7 @@ async function newPage(device) {
   const failedReq = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('request', (r) => !r.url().startsWith(BASE) && !r.url().startsWith('data:') && external.push(r.url()));
+  page.on('request', (r) => !r.url().startsWith(BASE) && !r.url().startsWith('data:') && !r.url().startsWith(PULSE) && external.push(r.url()));
   page.on('response', (r) => r.status() >= 400 && failedReq.push(`${r.status()} ${r.url()}`));
   return { page, ctx, errors, external, failedReq };
 }
@@ -278,7 +280,7 @@ async function portrait() {
   check('page never scrolls', (await page.evaluate(() => window.scrollY + document.documentElement.scrollTop)) === 0);
   check('no horizontal overflow', (await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)));
   check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
-  check('no external network requests', external.length === 0, external.slice(0, 3).join(' '));
+  check('no external network requests besides Pulse', external.length === 0, external.slice(0, 3).join(' '));
   check('no failed requests', failedReq.length === 0, failedReq.slice(0, 3).join(' '));
   await ctx.close();
 }

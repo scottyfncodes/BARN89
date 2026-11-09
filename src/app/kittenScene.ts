@@ -149,7 +149,7 @@ export class KittenScene implements GameScene {
     hud.setCount(String(g.pennedCount));
     hud.setPips(g.pennedCount);
     hud.setTime(kcTime(g.elapsed));
-    hud.setScore(String(g.score));
+    hud.setScore(`${g.score} pts`);
     if (g.treatsLeft !== this.last.treats) {
       this.last.treats = g.treatsLeft;
       this.treatCount.textContent = String(g.treatsLeft);

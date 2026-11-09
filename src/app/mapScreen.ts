@@ -9,7 +9,7 @@ const LABELS: { text: string; x: number; y: number }[] = [
   { text: 'Main House', x: 760, y: 640 },
   { text: "Grandpa's", x: 1760, y: 380 },
   { text: 'Front Lawn', x: 1180, y: 300 },
-  { text: 'Barn 89', x: 1670, y: 2560 },
+  { text: 'Barn 89', x: 1600, y: 2380 },
   { text: 'Stable', x: 1680, y: 2050 },
   { text: 'Arena', x: 1720, y: 1740 },
   { text: 'Donkeys', x: 1180, y: 1790 },
@@ -135,43 +135,54 @@ export function paintMap(
   for (const a of ACTIVITIES) {
     if (hide(a.id)) continue;
     const { x, y } = where(a.id);
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff8e9';
-    ctx.fill();
-    ctx.lineWidth = 3 / s;
-    ctx.strokeStyle = C.ink;
-    ctx.stroke();
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, r - 1.5 / s, 0, Math.PI * 2);
-    ctx.clip();
-    const L = FAMILY[a.who].look;
-    const k = (r * 2.1) / 46 / L.scale;
-    ctx.translate(x - 2 * k, y + r * 0.9 + 40 * k * L.scale);
-    ctx.scale(k, k);
-    drawPerson(ctx, L, { x: 0, y: 0, faceX: 1, speed01: 0, walkPhase: 0, clock: 0.4, ghost: true });
-    ctx.restore();
+    portraitDisc(ctx, x, y, r, a.who, '#fff8e9', C.ink, 3 / s);
     hits.push({ id: a.id, x: x * s, y: y * s, r: 30 });
   }
-  // You are here.
-  ctx.beginPath();
-  ctx.arc(me.x, me.y, 14 / s, 0, Math.PI * 2);
-  ctx.fillStyle = FAMILY[me.who].look.shirt;
-  ctx.fill();
-  ctx.lineWidth = 4 / s;
-  ctx.strokeStyle = '#fff8e9';
-  ctx.stroke();
+  // You are here: your own face, ringed in barn red.
+  const yr = 16 / s;
+  portraitDisc(ctx, me.x, me.y, yr, me.who, '#f2dfb8', C.barnRed, 4 / s);
   ctx.font = `900 ${Math.round(13 / s)}px ui-rounded, system-ui, sans-serif`;
   ctx.lineWidth = 5 / s;
   ctx.strokeStyle = C.ink;
-  ctx.strokeText('You', me.x, me.y - 26 / s);
+  ctx.strokeText('You', me.x, me.y - yr - 10 / s);
   ctx.fillStyle = '#fff8e9';
-  ctx.fillText('You', me.x, me.y - 26 / s);
+  ctx.fillText('You', me.x, me.y - yr - 10 / s);
   // Frame.
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.strokeStyle = C.ink;
   ctx.lineWidth = 3;
   ctx.strokeRect(1.5, 1.5, w - 3, h - 3);
   return hits;
+}
+
+/** A round head-and-shoulders portrait, framed like the cards' portraits (paintPortrait). */
+function portraitDisc(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  who: FamilyId,
+  fill: string,
+  ring: string,
+  ringW: number,
+): void {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+  const L = FAMILY[who].look;
+  const k = (r * 2) / 46 / L.scale;
+  ctx.translate(x - 2 * k, y + 40 * k * L.scale);
+  ctx.scale(k, k);
+  drawPerson(ctx, L, { x: 0, y: 0, faceX: 1, speed01: 0, walkPhase: 0, clock: 0.4, ghost: true });
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.lineWidth = ringW;
+  ctx.strokeStyle = ring;
+  ctx.stroke();
 }

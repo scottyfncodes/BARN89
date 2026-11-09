@@ -4,7 +4,7 @@
 
 A mobile-first family adventure set on the real Barn 89 homestead on Buffalo Gap Rd. Walk around the property, meet Mom, Dad, Jay, Natalie and Grandpa, throw a ball for the dogs, offer the donkeys a carrot (they may decline), pet the barn cats, and play everyone's games. Stars unlock rewards; ornaments and secrets are hidden around the place.
 
-It's a static web app built for iPhone Safari and the Home Screen. No accounts, no backend, no analytics, no ads, and no network requests after the page loads. Progress is saved in the browser on each device. It does not sync between phones.
+It's a static web app built for iPhone Safari and the Home Screen. No accounts, no backend and no ads. The only outside request is HaveAnApp Pulse, which counts visits anonymously with no cookies. Progress is saved in the browser on each device. It does not sync between phones.
 
 ## What's in it
 
@@ -96,7 +96,7 @@ To try it on a phone during development, open the network URL Vite prints from a
 
 `npm test` includes bots that play the games: a careful and a sloppy Woodpile player (to check the star curve), a lawn-mowing bot that must finish every lawn in time, a cat-herding autopilot, and homestead checks that every station, chore, ornament and hunt item is reachable on foot.
 
-`test:e2e` uses Playwright's Chromium with iPhone 13 portrait and landscape profiles (touch enabled). It walks through the title, explorer picker, homestead, board, map travel, the station prompt and intro card, Yard Boss (driving, pause, restart, quit), Kitten Cowgirl, finishing a Woodpile round, results, Morning Rounds, the treasure hunt, persistence across a reload, page scrolling, console errors and network requests. Screenshots go to `test-results/`. If Playwright's browser isn't installed, run `npx playwright install chromium` first.
+`test:e2e` uses Playwright's Chromium with iPhone 13 portrait and landscape profiles (touch enabled). It walks through the title, explorer picker, homestead, board, map travel, the station prompt and intro card, Yard Boss (driving, pause, restart, quit), Kitten Cowgirl, finishing a Woodpile round, results, Morning Rounds, the treasure hunt, persistence across a reload, page scrolling, console errors and network requests (nothing outside the app except Pulse). Screenshots go to `test-results/`. If Playwright's browser isn't installed, run `npx playwright install chromium` first.
 
 Debug views: `?overview` shows the whole map on one screen.
 
@@ -138,3 +138,7 @@ scripts/make-icons.mjs  regenerates PNG icons from public/icon.svg
 - **Simulation, input, rendering and persistence are separate.** Games step at a fixed 60 Hz with no DOM access; renderers interpolate; `Controls` turns touches into a joystick, button presses or taps; `SaveStore` is the only thing that touches `localStorage` and degrades to memory when storage is blocked.
 - **Art is code.** Characters, animals, buildings and props are hand-drawn with Canvas 2D in a single storybook style; there are no image assets apart from the app icon.
 - **Adding content:** a new challenge is an entry in `content/activities.ts` plus a level in the game's levels file. New rewards go in `REWARDS`. Map features are plain data in `world/ranch.ts`, and collision is derived from them.
+
+## Artwork
+
+Everything you see is drawn in code for this project (`src/render/`), and the app icon in `public/` (`icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) was made for it too. None of it comes from a third-party asset pack. All rights reserved by the family.
