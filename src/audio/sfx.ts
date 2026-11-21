@@ -212,6 +212,30 @@ export class Sfx {
     this.tone(250, 0.2, 'triangle', 0.1, 0.12, 190);
   }
 
+  /** Coyotes, a long way off past the creek: a rising howl and a scatter of yips. */
+  howl(): void {
+    this.tone(520, 0.9, 'sine', 0.035, 0, 900);
+    this.tone(880, 0.6, 'sine', 0.03, 0.85, 640);
+    for (let i = 0; i < 4; i++) this.tone(1000 + i * 90, 0.08, 'sine', 0.025, 1.5 + i * 0.13, 760);
+  }
+
+  /** A wild turkey's gobble: a quick warbling run downward. */
+  gobble(): void {
+    for (let i = 0; i < 6; i++) this.tone(720 - i * 40, 0.06, 'square', 0.025, i * 0.06, 560 - i * 40);
+  }
+
+  /** The camera's click, for the family photo. */
+  shutter(): void {
+    this.noise(0.03, 0.35, 3200);
+    this.noise(0.05, 0.25, 1800, 0.08);
+  }
+
+  /** Fire ants: a yelp. */
+  ouch(): void {
+    this.tone(700, 0.12, 'triangle', 0.1, 0, 1100);
+    this.tone(1000, 0.16, 'triangle', 0.08, 0.13, 600);
+  }
+
   /** Sandpaper on old paint: a dry little rasp. */
   sand(): void {
     this.noise(0.07, 0.07, 3400 + Math.random() * 900);

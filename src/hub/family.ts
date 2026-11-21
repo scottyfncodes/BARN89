@@ -64,7 +64,7 @@ export interface Npc {
   /** Stopped to talk to you. */
   attending: boolean;
   /** On an outing that moves them about (see FamilyLife). */
-  outing: 'mow' | 'sport' | 'moto' | 'race' | null;
+  outing: 'mow' | 'sport' | 'moto' | 'race' | 'seek' | null;
 }
 
 const station = (who: FamilyId): Vec => ({ ...ACTIVITIES.find((a) => a.who === who)!.station });

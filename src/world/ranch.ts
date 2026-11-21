@@ -197,6 +197,12 @@ function props(): PropDef[] {
     { kind: 'sign', x: 1150, y: 2350, text: 'CATS', solid: true },
     { kind: 'cart', x: 640, y: 2190, solid: true },
     { kind: 'barrel', x: 570, y: 2110, w: 13, solid: true },
+    // Prickly pear on the red dirt by the creek, and one out in the north-west paddock.
+    { kind: 'pricklyPear', x: 300, y: 2236, w: 16, solid: true },
+    { kind: 'pricklyPear', x: 362, y: 2266, w: 13, solid: true },
+    { kind: 'pricklyPear', x: 210, y: 690, w: 14, solid: true },
+    // A fire ant mound beside the footpath. Everyone finds it eventually.
+    { kind: 'antMound', x: 1150, y: 1384, w: 20 },
   ];
 }
 
@@ -371,6 +377,10 @@ export function createRanchMap(): RanchMap {
       { id: 'tireSwing', x: 1250, y: 360, r: 70, title: 'Tire Swing', text: 'The rope has been replaced twice. The tire is the original.' },
       { id: 'puddles', x: 930, y: 1950, r: 60, title: 'Puddle', text: 'Faster through the middle. Muddier, too.' },
       { id: 'porch', x: 1670, y: 705, r: 70, title: "Grandpa's Porch", text: 'A lawn chair that faces the sunset, and a coffee can of dog treats he swears are for emergencies.' },
+      { id: 'pricklyPear', x: 330, y: 2250, r: 90, title: 'Prickly Pear', text: 'The purple fruit is called a tuna. The spines are called a bad idea. Ask any barn cat.' },
+      { id: 'paddock', x: 160, y: 430, r: 110, title: 'North-West Paddock', text: 'Nothing out here but sky, grass, and a jackrabbit who is sure you cannot see him.' },
+      { id: 'meadow', x: 1330, y: 2790, r: 110, title: 'The Meadow', text: 'Turkey tracks everywhere, and one fine turkey feather. The cats are taking credit for it.' },
+      { id: 'dryCreek', x: 880, y: 2420, r: 90, title: 'Dry Creek', text: 'Red dirt and smooth rocks. After a real gully-washer it runs for about one afternoon.' },
       { id: 'farmStand', x: 640, y: 180, r: 80, title: 'The Farm Stand', text: 'Extra eggs and garden tomatoes, free to anyone passing by. The sign says: Take what you need, share what you can. God bless.' },
     ],
     collectibles: [

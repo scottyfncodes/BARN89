@@ -1,8 +1,9 @@
 import type { SaveData } from '../core/save';
 import type { FamilyId, HatKind } from './cast';
 import { RIDE_IDS, RIDES, rideForRace, type RideId } from './rides';
+import { SPECIES_COUNT } from './wildlife';
 
-export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt' | 'race' | 'putt' | 'puzzle';
+export type GameId = 'kitten' | 'mower' | 'woodpile' | 'rounds' | 'hunt' | 'race' | 'putt' | 'puzzle' | 'barrels' | 'seek';
 
 export interface Challenge {
   id: string;
@@ -120,6 +121,25 @@ export const ACTIVITIES: Activity[] = [
       { id: 'race-4', game: 'race', name: 'Dirt Bike Race', blurb: "Dad's dirt bike. The fastest thing on the place." },
       { id: 'race-5', game: 'race', name: 'Golf Cart Race', blurb: "Grandpa's golf cart. Steady, comfortable, and he knows every corner." },
     ],
+  },  {
+    id: 'barrels',
+    title: 'Barrel Pattern',
+    who: 'megan',
+    line: 'Three barrels, one clock, and I want to see tight turns. Go round each one, then run it home.',
+    // At the arena's west gate, where the footpath comes in.
+    station: { x: 1388, y: 1712 },
+    fixed: true,
+    challenges: [{ id: 'barrels-1', game: 'barrels', name: 'Cloverleaf', blurb: 'Round all three barrels in order and back out the gate. Do not knock them.' }],
+  },
+  {
+    id: 'seek',
+    title: 'Hide and Seek',
+    who: 'jay',
+    line: "Hide and seek, whole place is fair game. I'll count, you... no wait, you count.",
+    // Home base is the treehouse (see HOME_BASE in hub/missions.ts).
+    station: { x: 1262, y: 984 },
+    fixed: true,
+    challenges: [{ id: 'seek-1', game: 'seek', name: 'Ready or Not', blurb: 'Three rounds. They could be anywhere, from the paddocks to the creek.' }],
   },
 ];
 
@@ -166,6 +186,18 @@ export const HOWTO: Record<GameId, string[]> = {
     '<b>Hay Loft</b>: drag a bale along its length. Clear a way and slide the <b>red wagon</b> out the door on the right.',
     '<b>Water Line</b>: tap a pipe to turn it. Join the <b>pump</b> to every <b>trough</b> and the water runs.',
     'Stuck? <b>Start this one over</b> puts the pieces back (the moves still count).',
+  ],
+  barrels: [
+    'Start at the gate. Run to the <b>glowing barrel</b> and go all the way <b>round</b> it, then the next.',
+    'The ring round each barrel fills up as you circle it. Keep it tight, but <b>don\'t touch</b>: a knocked barrel costs five seconds.',
+    'After the third barrel, sprint back out the <b>gate</b> to stop the clock.',
+    'This one is on foot. Mom says rides are cheating.',
+  ],
+  seek: [
+    'Someone is hiding <b>somewhere on the homestead</b>. Walk around and find them.',
+    'The card at the top says if you are getting <b>warmer</b> or <b>colder</b>.',
+    'Stuck? <b>Ask Axle</b> to sniff them out. It adds fifteen seconds.',
+    'Three rounds. They only show up once you are close, so check behind things.',
   ],
   hunt: [
     'Grandpa gives you a clue. Find the spot, and the lost thing will glint when you are close.',
@@ -243,6 +275,8 @@ export const REWARDS: Reward[] = [
   { id: 'golfcart', name: RIDES.golfcart.name, desc: 'Grandpa drives it round the homestead whenever he is the one exploring. Golf cart races open up too.', how: 'ride', kind: 'vehicle' },
   { id: 'hat-beanie', name: 'Barn cat beanie', desc: 'Pet every barn cat on the homestead.', how: 'pets', kind: 'hat', hat: 'beanie' },
   { id: 'bulbs', name: 'Fixed string lights', desc: "Finish Grandpa's Treasure Hunt. Every old bulb at Barn 89 shines again.", how: 'hunt', kind: 'decor' },
+  { id: 'hat-boonie', name: 'Field hat', desc: 'Fill the Big Country Field Guide. A proper bush hat with a feather in it.', how: 'wildlife', kind: 'hat', hat: 'boonie' },
+  { id: 'silly', name: 'Silly hats', desc: 'From Hat Day. Everybody wears their silly hat around the homestead.', how: 'hatday', kind: 'decor' },
 ];
 
 /** Stars in Kitten Cowgirl (Natalie's game) that unlock her e-scooter. */
@@ -263,6 +297,8 @@ export function rewardUnlocked(s: SaveData, r: Reward): boolean {
   if (r.stars !== undefined) return totalStars(s) >= r.stars;
   if (r.how === 'pets') return s.pets.length >= CAT_COUNT;
   if (r.how === 'hunt') return s.hunt.done;
+  if (r.how === 'wildlife') return s.wildlife.length >= SPECIES_COUNT;
+  if (r.how === 'hatday') return s.hatDay;
   if (r.how === 'ride') return rideUnlocked(s, r.id as RideId);
   return false;
 }

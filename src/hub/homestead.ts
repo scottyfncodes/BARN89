@@ -1,7 +1,7 @@
 import { ACTIVITIES, type Activity } from '../content/activities';
 import { raceRivalFor, RIDES, type RideId } from '../content/rides';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type DogDef, type DonkeyDef, type FamilyId } from '../content/cast';
-import { dist, fromAngle, Rng, type Vec } from '../core/math';
+import { angleDiff, dist, fromAngle, Rng, type Vec } from '../core/math';
 import { COATS } from '../games/kitten/levels';
 import { PERSONALITIES, type Coat, type Personality } from '../games/kitten/kittenTypes';
 import { createPlayer, updatePlayer } from '../games/kitten/player';
@@ -12,7 +12,32 @@ import { GRANDPA_BUSY, GRANDPA_CHEER } from '../content/explorers';
 import type { SharedWorld } from '../world/shared';
 import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, NPC_ROUTINES, type MotoSeat, type Npc } from './family';
 import { createCritters, updateCritters, type Critter } from './critters';
-import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_START, RAMPS, ROUNDS_STAR_TIMES, ROUNDS_TASKS } from './missions';
+import {
+  BARREL_KNOCK_R,
+  BARREL_LOOP_R,
+  BARREL_PENALTY,
+  BARREL_START,
+  BARREL_SWEEP,
+  BARRELS,
+  FIRE_ANTS,
+  HAT_LAWN,
+  HIDE_SPOTS,
+  HOME_BASE,
+  HUNT_ITEMS,
+  ORNAMENTS,
+  PUDDLES,
+  RACE_COURSE,
+  RACE_GATE_R,
+  RACE_START,
+  RAMPS,
+  ROUNDS_STAR_TIMES,
+  ROUNDS_TASKS,
+  SEEK_FIND_R,
+  SEEK_ROUNDS,
+  type HideSpot,
+} from './missions';
+import { canSpot, createWildlife, MOCK_SONGS, updateWildlife, type Wild } from './wildlife';
+import type { SpeciesId } from '../content/wildlife';
 
 /* ---------------------------------------------------------------------------------------- */
 /* Actors                                                                                     */
@@ -200,7 +225,8 @@ export type HubAction =
   | { kind: 'eggs'; label: string }
   | { kind: 'truck'; label: string }
   | { kind: 'moto'; label: string }
-  | { kind: 'jump'; label: string };
+  | { kind: 'jump'; label: string }
+  | { kind: 'hatday'; label: string };
 
 export type HubEvent =
   | { type: 'ornament'; id: string; x: number; y: number; count: number }
@@ -234,7 +260,18 @@ export type HubEvent =
   | { type: 'raceRival'; name: string }
   | { type: 'raceDone'; ride: RideId; seconds: number; won: boolean; rival: string; rivalSeconds: number | null }
   | { type: 'yip'; x: number; y: number }
-  | { type: 'pupPet'; name: string; text: string; x: number; y: number };
+  | { type: 'pupPet'; name: string; text: string; x: number; y: number }
+  | { type: 'wild'; species: SpeciesId; x: number; y: number }
+  | { type: 'mimic'; song: string; x: number; y: number }
+  | { type: 'ants'; x: number; y: number }
+  | { type: 'tumbleweed'; x: number; y: number }
+  | { type: 'barrelsGo' }
+  | { type: 'barrelRound'; n: number; x: number; y: number }
+  | { type: 'barrelKnock'; x: number; y: number }
+  | { type: 'barrelsDone'; seconds: number; penalty: number; knocks: number }
+  | { type: 'seekFound'; who: string; where: string; round: number; x: number; y: number }
+  | { type: 'seekDone'; seconds: number; sniffs: number; who: string }
+  | { type: 'hatday' };
 
 export interface RoundsState {
   kind: 'rounds';
@@ -269,7 +306,68 @@ export interface RaceState {
   rivalDone: number | null;
 }
 
-export type Mission = RoundsState | HuntState | RaceState | null;
+export interface BarrelState {
+  kind: 'barrels';
+  t: number;
+  countdown: number;
+  /** Next barrel to go round (BARRELS.length: run it home). */
+  next: number;
+  /** How far round the current barrel you've gone (radians, signed). */
+  sweep: number;
+  lastAng: number | null;
+  penalty: number;
+  knocks: number;
+  /** Per barrel: seconds before it can be knocked again, and how much it's rocking. */
+  knockCD: number[];
+  wobble: number[];
+}
+
+export interface SeekState {
+  kind: 'seek';
+  t: number;
+  round: number;
+  /** Who's hiding (Jay, or Natalie when Jay is the one seeking). */
+  hider: FamilyId;
+  spot: HideSpot;
+  used: Set<string>;
+  /** Seconds left with eyes shut, counting (you can't move). */
+  countT: number;
+  sniffs: number;
+  /** Seconds left of Axle pointing the way. */
+  sniffT: number;
+  warmth: 'start' | 'warmer' | 'colder' | 'hot';
+  warmT: number;
+  lastD: number;
+}
+
+export type Mission = RoundsState | HuntState | RaceState | BarrelState | SeekState | null;
+
+/** A tumbleweed bowling across the place on the west wind. */
+export interface Tumbleweed {
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  vx: number;
+  vy: number;
+  t: number;
+  spin: number;
+  hop: number;
+  kicked: boolean;
+}
+
+/** Where everyone stands for Hat Day, round the front of the big tree. */
+const LAWN_SPOTS = [
+  { x: 1122, y: 438 },
+  { x: 1166, y: 418 },
+  { x: 1256, y: 418 },
+  { x: 1300, y: 438 },
+];
+const LAWN_EXPLORER = { x: 1211, y: 470 };
+const LAWN_DOGS = [
+  { x: 1150, y: 486 },
+  { x: 1274, y: 486 },
+];
 
 /** The long table under the Barn 89 string lights (see ranch.ts). */
 export const LONG_TABLE = { x: 1670, y: 2890 };
@@ -366,6 +464,20 @@ export class Homestead {
   onPath = false;
   /** Birds, rabbits and butterflies. */
   critters: Critter[] = createCritters();
+  /** The Big Country wildlife (see wildlife.ts), and which species are already in the field guide. */
+  wild: Wild[] = createWildlife();
+  wildSeen: Set<string>;
+  /** Every member of the family has been beaten at their own game: Hat Day is on (set by the app). */
+  hatDayOpen = false;
+  /** The family is gathered on the front lawn for Hat Day (rather than at the long table). */
+  gatheredAt: 'table' | 'lawn' = 'table';
+  tumbleweed: Tumbleweed | null = null;
+  /** Seconds until a tumbleweed might next blow through. */
+  tumbleT = 50;
+  /** Seconds stood on the fire ant mound, and seconds left hopping about afterwards. */
+  private antT = 0;
+  ouchT = 0;
+  private mockSong = -1;
   private splashT = 0;
   /** Road and path segments, for the "paths are quicker" check. */
   private pathSegs: { ax: number; ay: number; bx: number; by: number; r: number }[] = [];
@@ -401,7 +513,7 @@ export class Homestead {
 
   constructor(
     readonly shared: SharedWorld,
-    opts: { explorer: FamilyId; ornaments: string[]; discoveries: string[]; huntFound: string[] },
+    opts: { explorer: FamilyId; ornaments: string[]; discoveries: string[]; huntFound: string[]; wildlife?: string[] },
   ) {
     this.map = shared.map;
     this.family = new FamilyLife(shared.world, (a, t, s, dt) => this.moveAgent(a, t, s, dt, 10), this.life);
@@ -409,6 +521,7 @@ export class Homestead {
     this.ornaments = new Set(opts.ornaments);
     this.discovered = new Set(opts.discoveries);
     this.huntFound = new Set(opts.huntFound);
+    this.wildSeen = new Set(opts.wildlife ?? []);
     this.pen = this.map.pens.find((p) => p.id === 'roundPen')!;
     for (const r of this.map.roads)
       for (let i = 0; i + 1 < r.points.length; i++) {
@@ -549,9 +662,11 @@ export class Homestead {
     this.ball = null;
   }
 
-  /** Bring the family to the long table (or send everyone back to what they were doing). */
-  gather(on: boolean): void {
+  /** Bring the family to the long table, or the front lawn for Hat Day (or send everyone back). */
+  gather(on: boolean, at: 'table' | 'lawn' = 'table'): void {
     this.gathered = on;
+    this.gatheredAt = at;
+    this.tumbleweed = null;
     this.snake = null;
     this.skunk = null;
     this.family.reset(this.npcs, !on);
@@ -559,22 +674,28 @@ export class Homestead {
       for (const d of this.dogs) d.state = 'follow';
       return;
     }
+    const lawn = at === 'lawn';
+    const seats = lawn ? LAWN_SPOTS : TABLE_SEATS;
+    const mid = lawn ? HAT_LAWN : LONG_TABLE;
     this.npcs.forEach((n, i) => {
-      const seat = TABLE_SEATS[i % TABLE_SEATS.length];
+      const seat = seats[i % seats.length];
       n.x = n.px = seat.x;
       n.y = n.py = seat.y;
-      n.faceX = seat.x < LONG_TABLE.x ? 1 : -1;
+      n.faceX = seat.x < mid.x ? 1 : -1;
       n.waveT = 0;
     });
     const p = this.player;
-    p.x = p.px = EXPLORER_SEAT.x;
-    p.y = p.py = EXPLORER_SEAT.y;
+    const me = lawn ? LAWN_EXPLORER : EXPLORER_SEAT;
+    p.x = p.px = me.x;
+    p.y = p.py = me.y;
     p.vx = p.vy = 0;
-    p.faceX = -1;
-    const spots = [
-      { x: 1772, y: 2930 },
-      { x: 1575, y: 2945 },
-    ];
+    p.faceX = lawn ? 1 : -1;
+    const spots = lawn
+      ? LAWN_DOGS
+      : [
+          { x: 1772, y: 2930 },
+          { x: 1575, y: 2945 },
+        ];
     this.dogs.forEach((d, i) => {
       d.x = d.px = spots[i].x;
       d.y = d.py = spots[i].y;
@@ -601,9 +722,9 @@ export class Homestead {
 
   endMission(): void {
     this.mission = null;
-    // A rival heads home after the race.
+    // A rival heads home after the race; whoever was hiding comes out.
     for (const n of this.npcs) {
-      if (n.outing !== 'race') continue;
+      if (n.outing !== 'race' && n.outing !== 'seek') continue;
       n.outing = null;
       n.target = { ...n.stop.at };
       n.path = null;
@@ -637,6 +758,62 @@ export class Homestead {
     return m?.kind === 'race' ? (this.npcs.find((n) => n.who === m.rival) ?? null) : null;
   }
 
+  /** Mom's Barrel Pattern: line up at the arena gate. */
+  startBarrels(): void {
+    this.family.reset(this.npcs, false);
+    this.mission = { kind: 'barrels', t: 0, countdown: 3, next: 0, sweep: 0, lastAng: null, penalty: 0, knocks: 0, knockCD: BARRELS.map(() => 0), wobble: BARRELS.map(() => 0) };
+    this.teleport(BARREL_START.x, BARREL_START.y);
+    this.player.faceX = 1;
+  }
+
+  /** Hide and Seek: you count at home base while they hide somewhere on the place. */
+  startSeek(): void {
+    this.family.reset(this.npcs, false);
+    const hider: FamilyId = this.explorer === 'jay' ? 'natalie' : 'jay';
+    this.teleport(HOME_BASE.x, HOME_BASE.y + 30);
+    const m: SeekState = { kind: 'seek', t: 0, round: 0, hider, spot: HIDE_SPOTS[0], used: new Set(), countT: 3, sniffs: 0, sniffT: 0, warmth: 'start', warmT: 1, lastD: 0 };
+    this.mission = m;
+    this.hide(m);
+  }
+
+  /** The hider picks somewhere new, well away from wherever you are now. */
+  private hide(m: SeekState): void {
+    const p = this.player;
+    const fresh = HIDE_SPOTS.filter((s) => !m.used.has(s.id) && dist(s, p) > 650);
+    const pool = fresh.length ? fresh : HIDE_SPOTS.filter((s) => !m.used.has(s.id));
+    m.spot = pool[Math.floor(this.life.next() * pool.length)] ?? HIDE_SPOTS[0];
+    m.used.add(m.spot.id);
+    m.lastD = dist(p, m.spot);
+    m.warmth = 'start';
+    m.warmT = 1;
+    m.sniffT = 0;
+    const n = this.npcs.find((x) => x.who === m.hider);
+    if (n) {
+      n.outing = 'seek';
+      n.x = n.px = m.spot.x;
+      n.y = n.py = m.spot.y;
+      n.target = null;
+      n.path = null;
+      n.busyT = 0;
+    }
+  }
+
+  /** Who's hiding, as a family member on the homestead. */
+  seekHider(): Npc | null {
+    const m = this.mission;
+    return m?.kind === 'seek' ? (this.npcs.find((n) => n.who === m.hider) ?? null) : null;
+  }
+
+  /** Axle sniffs out the hider: he barks and points the way for a few seconds. */
+  sniff(): void {
+    const m = this.mission;
+    if (m?.kind !== 'seek' || m.countT > 0) return;
+    m.sniffs++;
+    m.sniffT = 4.5;
+    const axel = this.dogs.find((d) => d.def.id === 'axle');
+    if (axel) this.emit({ type: 'bark', x: axel.x, y: axel.y });
+  }
+
   /** Marker for the hunt hint: the current item while a hint is showing. */
   huntTarget(): Vec | null {
     const m = this.mission;
@@ -662,7 +839,8 @@ export class Homestead {
     p.py = p.y;
     const wasRiding = !!this.family.moto?.player;
     // Held at the start line until "go".
-    const held = this.mission?.kind === 'race' && this.mission.countdown > 0;
+    const mm = this.mission;
+    const held = (mm?.kind === 'race' && mm.countdown > 0) || (mm?.kind === 'barrels' && mm.countdown > 0) || (mm?.kind === 'seek' && mm.countT > 0);
     // Paths and roads are a little quicker going (races keep everyone on even terms).
     this.onPath = this.isOnPath(p.x, p.y);
     // Grandpa walks everywhere like he's late for something.
@@ -697,6 +875,9 @@ export class Homestead {
     this.updatePuddles(dt);
     const scared = updateCritters(this.critters, [p, ...this.dogs], dt, this.life);
     if (scared && this.critters.some((c) => c.kind === 'bird' && c.state === 'flee' && dist(c, p) < 200)) this.emit({ type: 'flutter', x: p.x, y: p.y });
+    this.updateWild(dt);
+    this.updateTumbleweed(dt);
+    this.updateAnts(dt);
     this.updateSnake(dt);
     this.updateSkunk(dt);
     this.maybeChaseCat(dt);
@@ -716,6 +897,8 @@ export class Homestead {
 
   /** Where an activity is right now: with the person who runs it, wherever they've got to. */
   stationPos(a: Activity): Vec {
+    // Never give away a hiding place.
+    if (this.mission?.kind === 'seek' && this.mission.hider === a.who) return a.station;
     const n = this.npcs.find((x) => x.who === a.who);
     return n && !a.fixed ? { x: n.x, y: n.y } : a.station;
   }
@@ -755,13 +938,14 @@ export class Homestead {
       }
       return null;
     }
-    // Racing: eyes on the track.
-    if (m?.kind === 'race') return null;
+    // Racing, running barrels or seeking: eyes on the job.
+    if (m?.kind === 'race' || m?.kind === 'barrels' || m?.kind === 'seek') return null;
     if (m?.kind === 'hunt' && !m.ready) {
       const item = HUNT_ITEMS[m.step];
       if (item && dist(p, item) < 46) return { kind: 'pickup', label: 'Pick up', item: item.id };
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
+    if (!m && this.hatDayOpen && dist(p, HAT_LAWN) < 110) return { kind: 'hatday', label: 'Hat Day' };
     if (!m && this.explorer === 'megan' && dist(p, CHICKEN_RUN) < CHICKEN_RUN.r + 40) return { kind: 'eggs', label: 'Gather eggs' };
     if (!m && this.explorer === 'jason' && !this.ride && dist(p, DAD_TRUCK) < 90) {
       return { kind: 'truck', label: this.dogs.some((d) => d.state === 'truck') ? 'Let the dogs out' : 'Load up the dogs' };
@@ -846,6 +1030,9 @@ export class Homestead {
         break;
       case 'sunday':
         this.emit({ type: 'sunday' });
+        break;
+      case 'hatday':
+        this.emit({ type: 'hatday' });
         break;
       case 'workshop':
         this.emit({ type: 'workshop' });
@@ -1641,6 +1828,14 @@ export class Homestead {
       this.updateRace(m, dt);
       return;
     }
+    if (m.kind === 'barrels') {
+      this.updateBarrels(m, dt);
+      return;
+    }
+    if (m.kind === 'seek') {
+      this.updateSeek(m, dt);
+      return;
+    }
     if (m.kind === 'rounds') {
       m.t += dt;
       if (m.holding) {
@@ -1706,6 +1901,170 @@ export class Homestead {
         this.emit({ type: 'raceRival', name: FAMILY[m.rival].name });
       }
     }
+  }
+
+  private updateBarrels(m: BarrelState, dt: number): void {
+    for (let i = 0; i < BARRELS.length; i++) {
+      m.knockCD[i] = Math.max(0, m.knockCD[i] - dt);
+      m.wobble[i] = Math.max(0, m.wobble[i] - dt * 1.6);
+    }
+    if (m.countdown > 0) {
+      m.countdown -= dt;
+      if (m.countdown <= 0) this.emit({ type: 'barrelsGo' });
+      return;
+    }
+    m.t += dt;
+    const p = this.player;
+    // Brush a barrel and it rocks (five seconds).
+    BARRELS.forEach((b, i) => {
+      if (m.knockCD[i] > 0 || dist(p, b) > BARREL_KNOCK_R) return;
+      m.knockCD[i] = 1.4;
+      m.wobble[i] = 1;
+      m.penalty += BARREL_PENALTY;
+      m.knocks++;
+      this.emit({ type: 'barrelKnock', x: b.x, y: b.y });
+    });
+    if (m.next < BARRELS.length) {
+      const b = BARRELS[m.next];
+      if (dist(p, b) > BARREL_LOOP_R) {
+        // Wandered off: that loop doesn't count.
+        m.lastAng = null;
+        m.sweep = 0;
+        return;
+      }
+      const a = Math.atan2(p.y - b.y, p.x - b.x);
+      if (m.lastAng !== null) m.sweep += angleDiff(m.lastAng, a);
+      m.lastAng = a;
+      if (Math.abs(m.sweep) >= BARREL_SWEEP) {
+        m.next++;
+        m.sweep = 0;
+        m.lastAng = null;
+        this.emit({ type: 'barrelRound', n: m.next, x: b.x, y: b.y });
+      }
+      return;
+    }
+    // All three: run it home through the gate.
+    if (dist(p, BARREL_START) < 60 || (p.x < 1432 && Math.abs(p.y - BARREL_START.y) < 70)) {
+      this.emit({ type: 'barrelsDone', seconds: m.t + m.penalty, penalty: m.penalty, knocks: m.knocks });
+      m.next = BARRELS.length + 1;
+    }
+  }
+
+  /** How far round the current barrel you've got, 0..1. */
+  barrelProgress(): number {
+    const m = this.mission;
+    return m?.kind === 'barrels' ? Math.min(1, Math.abs(m.sweep) / BARREL_SWEEP) : 0;
+  }
+
+  private updateSeek(m: SeekState, dt: number): void {
+    m.sniffT = Math.max(0, m.sniffT - dt);
+    if (m.countT > 0) {
+      m.countT -= dt;
+      if (m.countT <= 0) m.lastD = dist(this.player, m.spot);
+      return;
+    }
+    if (m.round >= SEEK_ROUNDS) return;
+    m.t += dt;
+    const p = this.player;
+    const d = dist(p, m.spot);
+    // Warmer, colder: checked every second or so, against where you were.
+    m.warmT -= dt;
+    if (m.warmT <= 0) {
+      m.warmT = 0.9;
+      if (d < 230) m.warmth = 'hot';
+      else if (d < m.lastD - 25) m.warmth = 'warmer';
+      else if (d > m.lastD + 25) m.warmth = 'colder';
+      if (Math.abs(d - m.lastD) > 25 || d < 230) m.lastD = d;
+    }
+    if (d > SEEK_FIND_R) return;
+    m.round++;
+    const who = FAMILY[m.hider].name;
+    this.emit({ type: 'seekFound', who, where: m.spot.where, round: m.round, x: m.spot.x, y: m.spot.y });
+    const n = this.seekHider();
+    if (n) n.cheerT = 1.6;
+    if (m.round >= SEEK_ROUNDS) {
+      this.emit({ type: 'seekDone', seconds: m.t, sniffs: m.sniffs, who });
+      return;
+    }
+    // Again! Eyes shut while they find somewhere new.
+    m.countT = 3;
+    this.hide(m);
+  }
+
+  /* --- Wildlife, tumbleweeds, fire ants --------------------------------------------------- */
+
+  private updateWild(dt: number): void {
+    const p = this.player;
+    updateWildlife(this.wild, [p, ...this.dogs], dt, this.life);
+    for (const w of this.wild) {
+      if (this.wildSeen.has(w.sp) || !canSpot(w, p)) continue;
+      this.wildSeen.add(w.sp);
+      this.emit({ type: 'wild', species: w.sp, x: w.x, y: w.y - w.z });
+    }
+    // The mockingbird does impressions. Some of them are of you.
+    const mb = this.wild.find((w) => w.sp === 'mockingbird');
+    if (mb && mb.tint !== this.mockSong) {
+      this.mockSong = mb.tint;
+      const song = MOCK_SONGS[mb.tint];
+      if (dist(mb, p) < 300 && /meow|yip|HEE/.test(song)) this.emit({ type: 'mimic', song, x: mb.x, y: mb.y });
+    }
+  }
+
+  private updateTumbleweed(dt: number): void {
+    let w = this.tumbleweed;
+    const p = this.player;
+    if (!w) {
+      this.tumbleT -= dt;
+      if (this.tumbleT > 0 || this.gathered || this.mission) return;
+      this.tumbleT = this.life.range(70, 140);
+      // In from the west, just off screen, on the wind.
+      const x = p.x - 360;
+      const y = p.y + this.life.range(-90, 90);
+      if (!this.shared.world.isFree(x, y, 14)) return;
+      w = this.tumbleweed = { x, y, px: x, py: y, vx: this.life.range(80, 110), vy: this.life.range(-8, 8), t: 0, spin: 0, hop: 0, kicked: false };
+    }
+    w.px = w.x;
+    w.py = w.y;
+    w.t += dt;
+    w.hop = Math.abs(Math.sin(w.t * 4.2)) * (w.kicked ? 22 : 10);
+    w.spin += (w.vx / 14) * dt;
+    const nx = w.x + w.vx * dt;
+    const ny = w.y + w.vy * dt;
+    if (this.shared.world.isFree(nx, ny, 10)) {
+      w.x = nx;
+      w.y = ny;
+    } else {
+      // Snagged: it rolls off along whatever it hit.
+      w.vy = w.vy >= 0 ? 60 : -60;
+    }
+    if (!w.kicked && dist(w, p) < 26) {
+      w.kicked = true;
+      w.vx += 120;
+      w.vy += (w.y - p.y) * 2;
+      this.emit({ type: 'tumbleweed', x: w.x, y: w.y });
+    }
+    if (w.t > 13 || w.x > 2010) this.tumbleweed = null;
+  }
+
+  private updateAnts(dt: number): void {
+    this.ouchT = Math.max(0, this.ouchT - dt);
+    const p = this.player;
+    const on = !this.ride && !this.gathered && this.mission?.kind !== 'race' && dist(p, FIRE_ANTS) < FIRE_ANTS.r;
+    this.antT = on ? this.antT + dt : 0;
+    if (this.antT < 0.7 || this.ouchT > 0) return;
+    this.antT = 0;
+    this.ouchT = 1.4;
+    // Off the mound, smartly.
+    const d = dist(p, FIRE_ANTS) || 1;
+    const away = d > 1 ? { x: (p.x - FIRE_ANTS.x) / d, y: (p.y - FIRE_ANTS.y) / d } : { x: 0, y: 1 };
+    p.vx = away.x * 320;
+    p.vy = away.y * 320;
+    this.emit({ type: 'ants', x: p.x, y: p.y });
+  }
+
+  /** Hopping about after the fire ants found you. */
+  ouchLift(): number {
+    return this.ouchT > 0 ? Math.abs(Math.sin(this.ouchT * 14)) * 8 * Math.min(1, this.ouchT) : 0;
   }
 
   private pickUpHuntItem(): void {

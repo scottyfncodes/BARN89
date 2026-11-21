@@ -110,7 +110,11 @@ export type PropKind =
   | 'longTable'
   /** A help-yourself table of extra eggs and garden tomatoes by the drive. */
   | 'farmStand'
-  | 'nameSign';
+  | 'nameSign'
+  /** A clump of prickly pear cactus. */
+  | 'pricklyPear'
+  /** A fire ant mound (flat, not solid: you can stand on it, briefly). */
+  | 'antMound';
 
 export interface PropDef {
   kind: PropKind;

@@ -2081,6 +2081,74 @@ export function drawProp(ctx: Ctx, p: PropDef, clock: number): void {
       ctx.fillText('SHARE', x + 24, y - 39.5);
       break;
     }
+    case 'pricklyPear': {
+      // Flat green paddles, a few yellow flowers and purple fruit along the tops.
+      const r = p.w ?? 16;
+      ctx.beginPath();
+      ctx.ellipse(x + 3, y + 2, r * 1.1, r * 0.4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = C.shadow;
+      ctx.fill();
+      const pads: [number, number, number, number][] = [
+        [-0.55, -0.9, 0.5, -0.35],
+        [0.5, -1.0, 0.5, 0.3],
+        [0, -1.5, 0.6, 0],
+        [-0.3, -2.4, 0.45, -0.4],
+        [0.45, -2.3, 0.42, 0.45],
+      ];
+      for (const [px, py, s, rot] of pads) {
+        ctx.beginPath();
+        ctx.ellipse(x + px * r, y + py * r, r * s * 0.75, r * s * 1.1, rot, 0, Math.PI * 2);
+        ctx.fillStyle = '#6f9a4a';
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,250,220,0.85)';
+        for (const [dx, dy] of [
+          [-0.2, -0.3],
+          [0.2, 0.1],
+          [-0.1, 0.4],
+        ])
+          ctx.fillRect(x + px * r + dx * r * s - 0.6, y + py * r + dy * r * s - 0.6, 1.2, 1.2);
+      }
+      for (const [fx, fy, col] of [
+        [-0.3, -3.3, '#f2c53d'],
+        [0.75, -3.0, '#8e2f5e'],
+        [0.15, -2.15, '#8e2f5e'],
+      ] as const) {
+        ctx.beginPath();
+        ctx.arc(x + fx * r, y + fy * r, 2.4, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'antMound': {
+      // A low dome of fine red dirt with a hole on top. It is busier than it looks.
+      const r = p.w ?? 20;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.45, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#b5552f';
+      ctx.fill();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(59,42,32,0.6)';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x, y - 2, r * 0.6, r * 0.27, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#c96a3e';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x, y - 3, 2.2, 1.1, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#3b2a20';
+      ctx.fill();
+      ctx.fillStyle = '#3b1d14';
+      for (let i = 0; i < 9; i++) {
+        const a = clock * (0.8 + (i % 3) * 0.3) + i * 2.1;
+        const d = r * (0.25 + ((i * 37) % 10) / 14);
+        ctx.fillRect(x + Math.cos(a) * d - 0.6, y + Math.sin(a) * d * 0.45 - 0.6, 1.2, 1.2);
+      }
+      break;
+    }
     case 'bench': {
       const w = p.w ?? 40;
       ctx.fillStyle = C.woodDark;
@@ -2114,7 +2182,7 @@ export function festoonBulbs(p: PropDef): { x: number; y: number; out: boolean }
 
 /** Things drawn flat on the ground in the dynamic layer (no height). */
 export function propIsFlat(p: PropDef): boolean {
-  return p.kind === 'flowers' || p.kind === 'napHay' || p.kind === 'puttingGreen';
+  return p.kind === 'flowers' || p.kind === 'napHay' || p.kind === 'puttingGreen' || p.kind === 'antMound';
 }
 
 /* ------------------------------------------------------------------------------------------ */

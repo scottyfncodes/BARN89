@@ -48,7 +48,10 @@ import { MOW_LEVELS } from './games/mower/levels';
 import { WOOD_ROUNDS } from './games/woodpile/woodpile';
 import { Homestead, LONG_TABLE, type HubEvent } from './hub/homestead';
 import { HubView } from './hub/hubView';
-import { HUNT_ITEMS, LOCKBOX_CODE, RACE_GATES, RACE_LAPS, ROUNDS_TASKS } from './hub/missions';
+import { BARREL_STAR_TIMES, BARRELS, HUNT_ITEMS, LOCKBOX_CODE, RACE_GATES, RACE_LAPS, ROUNDS_TASKS, SEEK_ROUNDS, SEEK_STAR_TIMES, SNIFF_COST } from './hub/missions';
+import { beaten, beatenCount, hatDayReady, hatDayScript, HAT_ORDER, PRIMARY_GAME, SILLY_HAT_NAME, type HatBeat } from './content/hatday';
+import { SPECIES, SPECIES_COUNT, species } from './content/wildlife';
+import { paintSpecies } from './render/wildlife';
 import { drawDog, drawDonkey } from './render/animals';
 import { drawKittenFigure } from './render/characters';
 import { cleanName, NAME_MAX, NAMEABLE, NAMED_BY_FAMILY, nameFor } from './content/names';
@@ -76,6 +79,7 @@ const hub = new Homestead(shared, {
   ornaments: store.data.ornaments,
   discoveries: store.data.discoveries,
   huntFound: store.data.hunt.found,
+  wildlife: store.data.wildlife,
 });
 const hubView = new HubView(canvas, hub);
 hubView.overview = new URLSearchParams(location.search).has('overview');
@@ -109,6 +113,10 @@ let returnSpot: { x: number; y: number } | null = null;
 /** Whose game was just played well enough to earn a star (they're pleased about it). */
 let cheerFor: FamilyId | null = null;
 const dial = [0, 0];
+/** The Hat Day scene is playing (hats go on one at a time, so applyLook leaves them be). */
+let hatDayRunning = false;
+/** Seconds until the coyotes next tune up (evenings only). */
+let coyoteT = 25;
 const top = (): string | undefined => stack[stack.length - 1];
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 
@@ -145,7 +153,8 @@ function applyLook(): void {
   // The explorer rides their own ride when it's switched on; in a race, everyone rides the race's.
   const m = hub.mission;
   const own = rideOf(store.data.explorer);
-  const ride: RideId | null = m?.kind === 'race' ? m.ride : own && c[own.id] && u.has(own.id) ? own.id : null;
+  // Barrels are run on foot (Mom's rules).
+  const ride: RideId | null = m?.kind === 'race' ? m.ride : m?.kind === 'barrels' ? null : own && c[own.id] && u.has(own.id) ? own.id : null;
   hub.raceOpen = RIDE_IDS.some((id) => rideUnlocked(store.data, id));
   hub.ride = ride;
   hubView.ride = ride;
@@ -156,6 +165,13 @@ function applyLook(): void {
   hubView.hat = explorerHat();
   hubView.mowerPaint = c.mower;
   hubView.untried = new Set(ACTIVITIES.filter((a) => activityStars(store.data, a.id).got === 0).map((a) => a.id));
+  // Hat Day: open once everyone's been beaten; the hats stay on afterwards unless switched off.
+  hub.hatDayOpen = hatDayReady(store.data);
+  hubView.hatDayCall = hub.hatDayOpen && !store.data.hatDay;
+  if (!hatDayRunning) {
+    hubView.hatsOn.clear();
+    if (store.data.hatDay && c.silly) for (const id of [...FAMILY_ORDER, 'dogs']) hubView.hatsOn.add(id);
+  }
   checkScrapbook();
 }
 
@@ -328,7 +344,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- Screens ---------------------------------------------------------------------------------
-const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names', 'scrapbook'];
+const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names', 'scrapbook', 'field'];
 
 function syncScreens(): void {
   document.body.dataset.scene = mode === 'game' && game instanceof WoodScene ? 'woodpile' : mode;
@@ -340,6 +356,8 @@ function syncScreens(): void {
   show($('hud'), mode === 'game' && !resultsUp);
   const m = hub.mission;
   show($('mission'), inHub && !!m && !covered);
+  // Mid-mission the card sits where a wrapped third pill would go, and the guide can wait.
+  show($('hub-wild'), !m);
   show($('prompt'), inHub && !covered && !!hub.nearStation && !m);
   show($('act-btn'), inHub && !covered && !!hub.action);
   controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene) && !(game instanceof WorkshopScene)));
@@ -367,6 +385,7 @@ function open(id: string): void {
   else if (id === 'who') buildWho();
   else if (id === 'herd') buildRoster();
   else if (id === 'names') buildNames();
+  else if (id === 'field') buildField();
   else if (id === 'scrapbook') buildScrapbook();
   else if (id === 'menu') {
     $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
@@ -725,6 +744,90 @@ function onHubEvent(e: HubEvent): void {
       });
       break;
     }
+    case 'wild': {
+      sfx.discover();
+      if (store.addTo('wildlife', e.species)) {
+        const sp = species(e.species)!;
+        const n = store.data.wildlife.length;
+        toast.show(`<b>Field guide: ${sp.name}</b>${sp.fact} (${n} of ${SPECIES_COUNT})`, 5.5);
+        if (n >= SPECIES_COUNT) {
+          const before = new Set(unlockedRewards(store.data));
+          before.delete('hat-boonie');
+          announceUnlocks(before);
+          setTimeout(() => toast.show('<b>Field guide complete!</b>Every Big Country critter spotted. The field hat is yours: wear it from Rewards.', 5), 5600);
+        }
+      }
+      break;
+    }
+    case 'mimic':
+      if (store.addTo('seen', 'mimic')) toast.show(`<b>"${e.song}"</b>That was the mockingbird. It does everybody.`, 3.2);
+      break;
+    case 'ants':
+      sfx.ouch();
+      toast.show(store.addTo('seen', 'ants') ? '<b>Fire ants!</b>Every Texan steps in a mound eventually. Now you have.' : '<b>Fire ants.</b>Again.', 2.8);
+      break;
+    case 'tumbleweed':
+      sfx.thud();
+      if (store.addTo('seen', 'tumbleweed')) toast.show('<b>Tumbleweed!</b>The wind is out of the west today.', 2.8);
+      break;
+    case 'barrelsGo':
+      sfx.whistle();
+      toast.show('<b>Go!</b>All the way round the glowing barrel.', 1.6);
+      break;
+    case 'barrelRound':
+      sfx.collect();
+      if (e.n >= BARRELS.length) toast.show('<b>Run it home!</b>Back out the gate.', 1.8);
+      break;
+    case 'barrelKnock':
+      sfx.clunk();
+      break;
+    case 'barrelsDone': {
+      sfx.victory();
+      const [s3, s2] = BARREL_STAR_TIMES;
+      const stars = e.seconds <= s3 ? 3 : e.seconds <= s2 ? 2 : 1;
+      showResults('barrels-1', {
+        stars,
+        score: Math.max(0, Math.round(3000 - e.seconds * 60)),
+        title: e.knocks ? 'Pattern done!' : 'Clean run!',
+        sub: e.knocks
+          ? `${formatTime(e.seconds)} with ${e.knocks === 1 ? 'one barrel' : `${e.knocks} barrels`} knocked. "Tighter turns, less bumping," says Mom.`
+          : `${formatTime(e.seconds)}, and not a barrel touched. Mom whoops from the fence.`,
+        lines: [
+          { label: 'Time', value: formatTime(e.seconds - e.penalty) },
+          { label: 'Knocked barrels', value: e.penalty ? `+${e.penalty}s` : 'none' },
+        ],
+        finished: true,
+      });
+      break;
+    }
+    case 'seekFound':
+      sfx.penned();
+      toast.show(
+        e.round >= SEEK_ROUNDS ? `<b>Found ${e.who}!</b>${capital(e.where)}.` : `<b>Found ${e.who} ${e.where}!</b>Round ${e.round + 1} of ${SEEK_ROUNDS}: eyes shut while they hide again.`,
+        3,
+      );
+      break;
+    case 'seekDone': {
+      sfx.victory();
+      const total = e.seconds + e.sniffs * SNIFF_COST;
+      const [s3, s2] = SEEK_STAR_TIMES;
+      const stars = total <= s3 ? 3 : total <= s2 ? 2 : 1;
+      showResults('seek-1', {
+        stars,
+        score: Math.max(0, Math.round(3000 - total * 12)),
+        title: 'Found every time!',
+        sub: `${SEEK_ROUNDS} rounds in ${formatTime(e.seconds)}. "Okay, okay. Your turn to hide," says ${e.who}.`,
+        lines: [
+          { label: 'Seeking', value: formatTime(e.seconds) },
+          { label: 'Axle sniffed', value: e.sniffs ? `${e.sniffs} (+${e.sniffs * SNIFF_COST}s)` : 'not needed' },
+        ],
+        finished: true,
+      });
+      break;
+    }
+    case 'hatday':
+      openHatDay();
+      break;
     case 'huntReady':
       sfx.discover();
       setTimeout(() => toast.show("<b>That's everything!</b>Take it all back to Grandpa.", 4), 3700);
@@ -774,6 +877,12 @@ function updateMissionHud(): void {
   else if (m?.kind === 'race') {
     key = `c${Math.ceil(m.countdown)}g${m.gate}r${m.rivalGate}${m.rivalDone !== null}`;
     $('mission-time').textContent = m.countdown > 0 ? String(Math.ceil(m.countdown)) : formatTime(m.t);
+  } else if (m?.kind === 'barrels') {
+    key = `b${Math.ceil(m.countdown)}n${m.next}p${m.penalty}`;
+    $('mission-time').textContent = m.countdown > 0 ? String(Math.ceil(m.countdown)) : formatTime(m.t + m.penalty);
+  } else if (m?.kind === 'seek') {
+    key = `s${m.round}c${Math.ceil(m.countT)}w${m.warmth}n${m.sniffs}`;
+    $('mission-time').textContent = m.countT > 0 ? String(Math.ceil(m.countT)) : formatTime(m.t + m.sniffs * SNIFF_COST);
   }
   if (key === lastMission) return;
   lastMission = key;
@@ -791,6 +900,19 @@ function updateMissionHud(): void {
     $('mission-title').textContent = RIDES[m.ride].raceTitle;
     $('mission-body').innerHTML = `<p class="clue">Lap ${lap} of ${RACE_LAPS} · Gate ${gate} of ${per}. ${status}</p>`;
     show($('mission-hint'), false);
+  } else if (m.kind === 'barrels') {
+    $('mission-title').textContent = 'Barrel Pattern';
+    const steps = BARRELS.map((_, i) => `<li class="${i < m.next ? 'done' : ''}"><span>${i + 1}</span>Barrel ${i + 1}</li>`).join('');
+    const home = `<li class="${m.next > BARRELS.length ? 'done' : m.next < BARRELS.length ? 'wait' : ''}"><span>${BARRELS.length + 1}</span>Out the gate</li>`;
+    $('mission-body').innerHTML = `<ol class="chores">${steps}${home}</ol>${m.penalty ? `<p class="clue">Knocked barrels: +${m.penalty}s</p>` : ''}`;
+    show($('mission-hint'), false);
+  } else if (m.kind === 'seek') {
+    const who = FAMILY[m.hider].name;
+    $('mission-title').textContent = `Hide and Seek · ${Math.min(m.round + 1, SEEK_ROUNDS)} of ${SEEK_ROUNDS}`;
+    const warm = { start: `${who} is hiding somewhere on the place. Go look!`, warmer: 'Warmer...', colder: 'Colder.', hot: 'Red hot! Check behind things.' }[m.warmth];
+    $('mission-body').innerHTML = `<p class="clue">${m.countT > 0 ? `Eyes shut! ${who} is finding somewhere to hide...` : warm}</p>`;
+    show($('mission-hint'), m.countT <= 0);
+    $('mission-hint').textContent = m.sniffs ? `Ask Axle (${m.sniffs})` : 'Ask Axle';
   } else if (m.kind === 'rounds') {
     $('mission-title').textContent = "Mom's Morning Rounds";
     $('mission-body').innerHTML = `<ol class="chores">${ROUNDS_TASKS.map((t, i) => `<li class="${m.done.has(t.id) ? 'done' : t.needs && !m.done.has(t.needs) ? 'wait' : ''}"><span>${i + 1}</span>${t.short}</li>`).join('')}</ol>`;
@@ -809,20 +931,29 @@ function updateMissionHud(): void {
 
 $('mission-hint').addEventListener('click', () => {
   sfx.click();
-  hub.useHint();
   lastMission = '';
+  if (hub.mission?.kind === 'seek') {
+    hub.sniff();
+    toast.show(`<b>Axle's on it.</b>Follow the arrow. Adds ${SNIFF_COST} seconds.`, 2.4);
+    return;
+  }
+  hub.useHint();
   toast.show('<b>Follow the arrow.</b>Hints cost a star at the end.', 2.4);
 });
 $('mission-quit').addEventListener('click', () => {
   sfx.click();
   const m = hub.mission;
+  const stop: Record<string, [string, string]> = {
+    hunt: ['Stop the hunt?', 'Things you found stay found. Talk to Grandpa to pick it back up.'],
+    race: ['Stop the race?', 'Race again any time from the start line by the treehouse.'],
+    rounds: ['Stop the rounds?', 'The chores will wait. You can start again from Mom or the board.'],
+    barrels: ['Stop the run?', 'Mom will be at the arena gate whenever you want another go.'],
+    seek: ['Stop hide and seek?', `${m?.kind === 'seek' ? FAMILY[m.hider].name : 'They'} will come out. Start again from the treehouse.`],
+  };
+  const [stopTitle, stopText] = stop[m?.kind ?? 'rounds'];
   notice(
-    m?.kind === 'hunt' ? 'Stop the hunt?' : m?.kind === 'race' ? 'Stop the race?' : 'Stop the rounds?',
-    m?.kind === 'hunt'
-      ? 'Things you found stay found. Talk to Grandpa to pick it back up.'
-      : m?.kind === 'race'
-        ? 'Race again any time from the start line by the treehouse.'
-        : 'The chores will wait. You can start again from Mom or the board.',
+    stopTitle,
+    stopText,
     'Stop',
     () => {
       hub.endMission();
@@ -876,10 +1007,20 @@ function hubFrame(dt: number): void {
     else if (!hub.mission && playT > 4 && playT < 18 && !hub.nearStation && totalStars(store.data) === 0) hint.set('Look for the <em>glowing rings</em>. Each family member has a game.');
     else hint.set(null);
   }
+  // Coyotes, way off past the creek, on golden evenings.
+  if (!top && hubView.decor.evening && !hub.mission) {
+    coyoteT -= dt;
+    if (coyoteT <= 0) {
+      coyoteT = 70 + Math.random() * 70;
+      sfx.howl();
+      if (store.addTo('seen', 'coyotes')) toast.show('<b>Coyotes</b>Way off past the creek. The donkeys keep an eye out; it is their job.', 4);
+    }
+  }
   hubView.update(top ? 0 : dt, 'play');
   hubView.render(top ? 1 : acc / STEP);
   $('hub-stars-n').textContent = String(totalStars(store.data));
   $('hub-orn-n').textContent = `${store.data.ornaments.length}/${ORNAMENT_COUNT}`;
+  $('hub-wild-n').textContent = `${store.data.wildlife.length}/${SPECIES_COUNT}`;
 }
 
 // --- Sunday at the Barn ----------------------------------------------------------------------
@@ -954,6 +1095,14 @@ function showSundayBeat(): void {
 
 $('sunday-next').addEventListener('click', () => {
   sfx.click();
+  if (hatDayRunning) {
+    if (hatAt >= hatBeats.length - 1) closeHatDay();
+    else {
+      hatAt++;
+      showHatBeat();
+    }
+    return;
+  }
   if (sundayAt >= sundayBeats.length - 1) closeSunday();
   else {
     sundayAt++;
@@ -962,8 +1111,89 @@ $('sunday-next').addEventListener('click', () => {
 });
 $('sunday-leave').addEventListener('click', () => {
   sfx.click();
-  closeSunday();
+  if (hatDayRunning) closeHatDay();
+  else closeSunday();
 });
+
+// --- Hat Day ---------------------------------------------------------------------------------
+// Everyone beaten at their own game: the family gathers under the big tree for silly hats.
+let hatBeats: HatBeat[] = [];
+let hatAt = 0;
+
+function openHatDay(): void {
+  hatBeats = hatDayScript(hub.explorer);
+  hatAt = 0;
+  hatDayRunning = true;
+  hubView.hatsOn.clear();
+  hub.gather(true, 'lawn');
+  sfx.discover();
+  $('sunday').querySelector('.dialog')!.setAttribute('aria-label', 'Hat Day');
+  $('sunday-leave').textContent = 'Head back out';
+  showHatBeat();
+  open('sunday');
+  frameLawn();
+}
+
+function frameLawn(): void {
+  hubView.snapTo(1210, 430);
+  hubView.cam.y += hubView.insets.bottom / 2 / hubView.cam.zoom;
+  hubView.clampCam();
+}
+
+function showHatBeat(): void {
+  const beat = hatBeats[hatAt];
+  if (!('line' in beat)) return;
+  const face = $<HTMLCanvasElement>('sunday-face');
+  const who = beat.line.who;
+  show(face, who !== 'narrator');
+  $('sunday-who').textContent = who === 'narrator' ? '' : FAMILY[who].name;
+  const p = $('sunday-text');
+  p.textContent = beat.line.text;
+  p.classList.toggle('narration', who === 'narrator');
+  // Hats go on as they come out of the box (and stay on for everyone already given one).
+  hubView.hatsOn.clear();
+  for (let i = 0; i <= hatAt; i++) {
+    const h = hatBeats[i].hat;
+    if (h) hubView.hatsOn.add(h);
+  }
+  if (beat.hat && beat.hat !== 'dogs') {
+    sfx.collect();
+    const n = beat.hat === hub.explorer ? hub.player : hub.npcs.find((x) => x.who === beat.hat);
+    if (n) hubView.hatPop(n.x, n.y);
+  }
+  if (beat.photo) {
+    sfx.shutter();
+    hubView.flashT = 0.6;
+    setTimeout(() => hubView.confetti(), 250);
+  }
+  if (who !== 'narrator') requestAnimationFrame(() => paintPortrait(face, FAMILY[who].look, { hat: hubView.sillyHat(who) }));
+  $('sunday-choices').innerHTML = '';
+  show($('sunday-next'), true);
+  $('sunday-next').textContent = hatAt === hatBeats.length - 1 ? 'Back to it' : 'Next';
+  if (top() === 'sunday') {
+    resize();
+    frameLawn();
+  }
+}
+
+function closeHatDay(): void {
+  const first = !store.data.hatDay;
+  hatDayRunning = false;
+  // Leaving early still counts: the hats are handed out either way.
+  if (first) {
+    const before = unlockedRewards(store.data);
+    store.data.hatDay = true;
+    store.data.cosmetics.silly = true;
+    store.save();
+    announceUnlocks(before);
+  }
+  $('sunday').querySelector('.dialog')!.setAttribute('aria-label', 'Sunday at the Barn');
+  hub.gather(false);
+  close();
+  applyLook();
+  hubView.snap();
+  if (first) toast.show('<b>Silly hats for everyone</b>They stay on around the homestead. Switch them off in Rewards if you must.', 4.5);
+}
 
 // --- Lockbox ---------------------------------------------------------------------------------
 function syncDials(): void {
@@ -1034,6 +1264,7 @@ function chalChips(chs: readonly { id: string; name: string }[]): string {
 
 function buildBoard(): void {
   const s = store.data;
+  buildHatDay();
   $('board-sub').textContent = `${totalStars(s)} of ${MAX_STARS} stars earned. Stars unlock rewards.`;
   const ul = $('board-list');
   ul.innerHTML = '';
@@ -1063,10 +1294,69 @@ function buildBoard(): void {
     `<li><b>${s.ornaments.length}/${ORNAMENT_COUNT}</b> Christmas ornaments found</li>`,
     `<li><b>${s.pets.length}/${CAT_COUNT}</b> barn cats petted</li>`,
     `<li><b>${s.discoveries.length}/${shared.map.discoveries.length}</b> places discovered</li>`,
+    `<li><b>${s.wildlife.length}/${SPECIES_COUNT}</b> wild animals in the field guide</li>`,
     `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys · <b>${s.eggs}</b> eggs gathered by Mom</li>`,
     `<li><b>${Object.keys(s.restored).length}/${PIECES.length}</b> pieces restored in the Blue Star workshop</li>`,
     `<li><b>Sunday at the Barn</b> ${s.barnPlan ? `Next chapter: ${BARN_PLAN_LABEL[s.barnPlan].toLowerCase()}.` : 'Pull up a chair at the long table under the string lights, whenever you like.'}</li>`,
   ].join('');
+}
+
+/** Short names for each person's own game, to fit under their face. */
+const HAT_DAY_GAME: Record<FamilyId, string> = { natalie: 'Kitten Cowgirl', jay: 'Yard Boss', megan: 'Morning Rounds', jason: 'Woodpile', grandpa: 'Treasure Hunt' };
+
+/** Hat Day progress: everyone's face, ticked once you've beaten them at their own game. */
+function buildHatDay(): void {
+  const s = store.data;
+  const n = beatenCount(s);
+  $('hatday-sub').textContent = s.hatDay
+    ? 'Everyone got a silly hat. Walk up to the big tree on the front lawn for another family photo.'
+    : n >= FAMILY_ORDER.length
+      ? 'Everyone is beaten! The family is waiting under the big tree on the front lawn.'
+      : 'Beat each of them at their own game (every challenge, at least one star) and the whole family gets together for something silly.';
+  const ul = $('hatday-list');
+  ul.innerHTML = '';
+  for (const who of HAT_ORDER) {
+    const f = FAMILY[who];
+    const won = beaten(s, who);
+    const li = document.createElement('li');
+    li.className = won ? 'beat' : '';
+    const c = document.createElement('canvas');
+    const game = activity(PRIMARY_GAME[who]);
+    const label = document.createElement('span');
+    label.textContent = f.name;
+    const small = document.createElement('small');
+    small.textContent = won ? (s.hatDay ? SILLY_HAT_NAME[who] : 'Beaten') : HAT_DAY_GAME[who];
+    li.setAttribute('aria-label', `${f.name}: ${won ? 'beaten' : `not yet beaten at ${game.title}`}`);
+    li.append(c, label, small);
+    ul.append(li);
+    requestAnimationFrame(() => paintPortrait(c, f.look, { hat: s.hatDay && won ? hubView.sillyHat(who) ?? undefined : undefined }));
+  }
+}
+
+/** The Big Country Field Guide: everything you've spotted, and silhouettes of what's still out there. */
+function buildField(): void {
+  const s = store.data;
+  const n = s.wildlife.length;
+  $('field-sub').textContent =
+    n >= SPECIES_COUNT ? 'Every one of them spotted. A true Big Country naturalist.' : `${n} of ${SPECIES_COUNT} spotted. Walk close enough for a good look and it goes in the guide.`;
+  const ul = $('field-list');
+  ul.innerHTML = '';
+  for (const sp of SPECIES) {
+    const seen = s.wildlife.includes(sp.id);
+    const li = document.createElement('li');
+    li.className = seen ? 'seen' : '';
+    const c = document.createElement('canvas');
+    c.setAttribute('aria-hidden', 'true');
+    const info = document.createElement('div');
+    const b = document.createElement('b');
+    b.textContent = seen ? sp.name : 'Not spotted yet';
+    const p = document.createElement('p');
+    p.textContent = seen ? sp.fact : sp.where;
+    info.append(b, p);
+    li.append(c, info);
+    ul.append(li);
+    paintSpecies(c, sp.id, seen);
+  }
 }
 
 /** What's left to unlock a ride, e.g. "2/3 Yard Boss stars". */
@@ -1093,7 +1383,11 @@ function buildRewards(): void {
           ? `${s.pets.length}/${CAT_COUNT} cats petted`
           : r.how === 'ride'
             ? rideNeed(r.id as RideId)
-            : 'Secret';
+            : r.how === 'wildlife'
+              ? `${s.wildlife.length}/${SPECIES_COUNT} spotted`
+              : r.how === 'hatday'
+                ? `${beatenCount(s)}/${FAMILY_ORDER.length} beaten`
+                : 'Secret';
     let control = '';
     if (got) {
       if (r.kind === 'hat') control = `<button class="toggle ${c.hat === r.hat ? 'on' : ''}" data-hat="${r.hat}">${c.hat === r.hat ? 'Wearing' : 'Wear'}</button>`;
@@ -1105,7 +1399,7 @@ function buildRewards(): void {
         const on = c[r.id as RideId];
         control = `<button class="toggle ${on ? 'on' : ''}" data-flag="${r.id}">${on ? 'On' : 'Off'}</button>`;
       }
-      else if (r.id === 'evening' || r.id === 'holiday') control = `<button class="toggle ${c[r.id] ? 'on' : ''}" data-flag="${r.id}">${c[r.id] ? 'On' : 'Off'}</button>`;
+      else if (r.id === 'evening' || r.id === 'holiday' || r.id === 'silly') control = `<button class="toggle ${c[r.id] ? 'on' : ''}" data-flag="${r.id}">${c[r.id] ? 'On' : 'Off'}</button>`;
       else control = '<span class="have">Done</span>';
     }
     li.innerHTML = `<div><b>${r.name}</b><small>${got ? r.desc : r.how === 'hunt' ? "Finish Grandpa's Treasure Hunt." : r.desc}</small></div>${got ? control : `<span class="need">${need}</span>`}`;
@@ -1134,7 +1428,7 @@ function buildRewards(): void {
   ul.querySelectorAll<HTMLElement>('[data-flag]').forEach((b) =>
     b.addEventListener('click', () => {
       sfx.click();
-      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday' | RideId;
+      const f = b.dataset.flag as 'ride' | 'evening' | 'holiday' | 'silly' | RideId;
       c[f] = !c[f];
       store.save();
       applyLook();
@@ -1405,14 +1699,15 @@ function startChallenge(id: string): void {
   if (!isUnlocked(store.data, id)) return;
   currentChallenge = id;
   // Remember where they were standing (only when setting off from the homestead itself).
-  if (mode === 'hub') returnSpot = c.game === 'rounds' || c.game === 'hunt' || c.game === 'race' ? null : { x: hub.player.x, y: hub.player.y };
+  const onFoot = c.game === 'rounds' || c.game === 'hunt' || c.game === 'race' || c.game === 'barrels' || c.game === 'seek';
+  if (mode === 'hub') returnSpot = onFoot ? null : { x: hub.player.x, y: hub.player.y };
   stack.length = 0;
   resultsUp = false;
   paused = false;
   cheerFor = null;
   toast.clear();
   reveal();
-  if (c.game === 'rounds' || c.game === 'hunt' || c.game === 'race') {
+  if (onFoot) {
     game?.exit();
     game = null;
     mode = 'hub';
@@ -1425,6 +1720,16 @@ function startChallenge(id: string): void {
       applyLook();
       hubView.snap();
       toast.show('<b>On your marks...</b>Two laps. Ride through every glowing gate.', 2.6);
+    } else if (c.game === 'barrels') {
+      hub.startBarrels();
+      applyLook();
+      hubView.snap();
+      toast.show('<b>Ready...</b>Round each barrel in order, then back out the gate.', 2.6);
+    } else if (c.game === 'seek') {
+      hub.startSeek();
+      applyLook();
+      hubView.snap();
+      toast.show(`<b>Eyes shut, count to three...</b>${FAMILY[hub.explorer === 'jay' ? 'natalie' : 'jay'].name} is hiding.`, 2.8);
     } else {
       if (store.data.hunt.done && !store.data.hunt.found.length) hub.huntFound.clear();
       hub.startHunt();
@@ -1561,6 +1866,14 @@ function showResults(id: string, r: SceneResult, before = unlockedRewards(store.
   if (nextNew) notes.push(`New challenge: <b>${next.name}</b>`);
   for (const f of fresh) notes.push(`Unlocked: <b>${f}</b>`);
   if (!r.finished) notes.push('Get at least one star to unlock the next challenge.');
+  // Hat Day: beating someone at their own game for the first time.
+  const owner = (Object.keys(PRIMARY_GAME) as FamilyId[]).find((w) => PRIMARY_GAME[w] === c.game);
+  if (owner && r.stars > 0 && prevStars === 0 && beaten(store.data, owner)) {
+    const n = beatenCount(store.data);
+    const name = FAMILY[owner].name;
+    if (n >= FAMILY_ORDER.length && !store.data.hatDay) notes.push(`<b>Hat Day!</b> That's everyone beaten. The whole family is meeting under the big tree on the front lawn.`);
+    else if (!store.data.hatDay) notes.push(`You beat ${name} at ${owner === 'megan' || owner === 'natalie' ? 'her' : 'his'} own game: <b>${n} of ${FAMILY_ORDER.length}</b> for Hat Day.`);
+  }
   $('unlocks').innerHTML = notes.map((n) => `<p>${n}</p>`).join('');
   show($('next-btn'), !!next && isUnlocked(store.data, next.id));
   $('next-btn').textContent = next ? `Next: ${next.name}` : 'Next';
@@ -1694,3 +2007,7 @@ requestAnimationFrame(frame);
   resumeGame,
   allChallenges: ALL_CHALLENGES.map((c) => c.id),
 };
+
+function capital(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}

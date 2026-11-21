@@ -102,9 +102,13 @@ async function portrait() {
   // Board and map.
   await page.click('#hub-hud [data-open="board"]');
   check('activity board opens', await visible(page, '#board'));
-  check('board lists eight activities', (await page.locator('#board-list li').count()) === 8);
+  check('board lists all ten activities', (await page.locator('#board-list li').count()) === 10);
+  check('board shows Hat Day progress for all five', (await page.locator('#hatday-list li').count()) === 5);
   await page.screenshot({ path: `${OUT}/p-board.png` });
   await page.click('#board [data-close]');
+  await page.click('#hub-wild');
+  check('field guide opens with ten species', (await visible(page, '#field')) && (await page.locator('#field-list li').count()) === 10);
+  await page.click('#field [data-close]');
   await page.click('#hub-hud [data-open="map"]');
   await page.waitForTimeout(200);
   check('map opens and is drawn', (await page.evaluate(() => document.getElementById('map-canvas').getBoundingClientRect().width)) > 200);
@@ -156,6 +160,18 @@ async function portrait() {
   await page.waitForTimeout(200);
   check('whistle works', (await b89(page, () => window.__b89.game.game.player.whistleCooldown)) > 0);
   await page.screenshot({ path: `${OUT}/p-kitten.png` });
+
+  // Mom's Barrel Pattern and Hide and Seek run out on the homestead.
+  await b89(page, () => window.__b89.startChallenge('barrels-1'));
+  await page.waitForTimeout(400);
+  check('Barrel Pattern starts in the arena', (await b89(page, () => window.__b89.hub.mission?.kind)) === 'barrels' && (await visible(page, '#mission')));
+  await page.screenshot({ path: `${OUT}/p-barrels.png` });
+  await b89(page, () => window.__b89.hub.endMission());
+  await b89(page, () => window.__b89.startChallenge('seek-1'));
+  await page.waitForTimeout(400);
+  check('Hide and Seek starts with someone hiding', (await b89(page, () => window.__b89.hub.seekHider()?.outing)) === 'seek');
+  await page.screenshot({ path: `${OUT}/p-seek.png` });
+  await b89(page, () => window.__b89.hub.endMission());
 
   // Woodpile, finished quickly with a tiny goal.
   await b89(page, () => window.__b89.startChallenge('woodpile-1'));
