@@ -6,7 +6,23 @@
 export type FamilyId = 'megan' | 'jason' | 'jay' | 'natalie' | 'grandpa';
 
 export type HairStyle = 'braids' | 'ponytail' | 'wavy' | 'long' | 'short' | 'shaggy' | 'grey';
-export type HatKind = 'cowgirl' | 'cap' | 'capBack' | 'flatcap' | 'straw' | 'santa' | 'beanie' | 'none';
+export type HatKind =
+  | 'cowgirl'
+  | 'cap'
+  | 'capBack'
+  | 'flatcap'
+  | 'straw'
+  | 'santa'
+  | 'beanie'
+  /** The field hat, for finishing the Big Country Field Guide. */
+  | 'boonie'
+  /** Hat Day's silly hats (see content/hatday.ts). */
+  | 'propeller'
+  | 'chicken'
+  | 'antlers'
+  | 'cone'
+  | 'kitty'
+  | 'none';
 
 export interface PersonLook {
   skin: string;

@@ -22,6 +22,8 @@ export interface Cosmetics {
   dirtbike: boolean;
   /** Grandpa in his golf cart (when he's exploring). */
   golfcart: boolean;
+  /** Everyone wears their Hat Day hat around the homestead. */
+  silly: boolean;
 }
 
 export interface SaveData {
@@ -47,6 +49,10 @@ export interface SaveData {
   seen: string[];
   /** Names the family picked for the barn cats and Grandpa's chihuahuas, by animal id. */
   names: Record<string, string>;
+  /** Species in the Big Country Field Guide (see content/wildlife.ts). */
+  wildlife: string[];
+  /** The family has had its Hat Day. */
+  hatDay: boolean;
 }
 
 const KEY = 'barn89.save.v1';
@@ -66,9 +72,11 @@ export function freshSave(): SaveData {
     hunt: { found: [], done: false },
     barnPlan: null,
     sundays: 0,
-    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false, golfcart: false },
+    cosmetics: { hat: 'default', mower: 'red', ride: false, evening: false, holiday: false, scooter: false, truck: false, rider: false, dirtbike: false, golfcart: false, silly: false },
     seen: [],
     names: {},
+    wildlife: [],
+    hatDay: false,
   };
 }
 
@@ -118,6 +126,8 @@ export function normalize(raw: unknown): SaveData {
     cosmetics: { ...base.cosmetics, ...(r.cosmetics && typeof r.cosmetics === 'object' ? r.cosmetics : {}) },
     seen: arr(r.seen),
     names: cleanNames(r.names),
+    wildlife: arr(r.wildlife),
+    hatDay: r.hatDay === true,
   };
 }
 
@@ -165,7 +175,7 @@ export class SaveStore {
     return { newStars, newBest };
   }
 
-  addTo(list: 'ornaments' | 'discoveries' | 'pets' | 'seen', id: string): boolean {
+  addTo(list: 'ornaments' | 'discoveries' | 'pets' | 'seen' | 'wildlife', id: string): boolean {
     const l = this.data[list];
     if (l.includes(id)) return false;
     l.push(id);

@@ -13,7 +13,11 @@ import { WorldView, type Box } from '../render/worldView';
 import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
 import { AIR_TIME, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
 import type { Critter } from './critters';
-import { HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS, type OrnamentDef } from './missions';
+import { BARREL_LOOP_R, BARREL_START, BARRELS, HAT_LAWN, HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS, type OrnamentDef } from './missions';
+import { MOCK_SONGS, VULTURE_ALT } from './wildlife';
+import { drawVultureShadow, drawWild } from '../render/wildlife';
+import { SILLY_HATS } from '../content/hatday';
+import { species } from '../content/wildlife';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -32,6 +36,12 @@ export class HubView extends WorldView {
   guideRect = { left: 0, top: 0, right: 0, bottom: 0 };
   /** Cats already petted (faint heart under them). */
   petted = new Set<string>();
+  /** Who's wearing their Hat Day hat (family ids, and 'dogs'). */
+  hatsOn = new Set<string>();
+  /** Hat Day is ready and hasn't happened yet: point the way to the front lawn. */
+  hatDayCall = false;
+  /** Seconds left of the family photo's flash. */
+  flashT = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -87,6 +97,33 @@ export class HubView extends WorldView {
       case 'hop':
         this.burst('dust', e.x, e.y, '#d8c49a', 70, 6);
         break;
+      case 'wild':
+        this.ring(e.x, e.y, 46, '#fff3b0');
+        this.floatText(e.x, e.y - 40, species(e.species)?.name ?? '', '#fff3b0', 12);
+        break;
+      case 'barrelRound':
+        this.burst('spark', e.x, e.y - 20, C.gold, 100, 14);
+        this.ring(e.x, e.y, 60, '#fff3b0');
+        break;
+      case 'barrelKnock':
+        this.floatText(e.x, e.y - 44, '+5', '#ffd0c8', 15);
+        this.burst('dust', e.x, e.y, '#e8d4a6', 60, 6);
+        break;
+      case 'barrelsDone':
+      case 'seekDone':
+        this.confetti();
+        break;
+      case 'seekFound':
+        this.burst('spark', e.x, e.y - 30, C.gold, 110, 16);
+        this.floatText(e.x, e.y - 76, 'Found you!', '#fff3b0', 14);
+        break;
+      case 'ants':
+        this.floatText(e.x, e.y - 70, 'OUCH!', '#ffd0c8', 15);
+        this.burst('dust', e.x, e.y, '#b5482e', 50, 8);
+        break;
+      case 'tumbleweed':
+        this.burst('dust', e.x, e.y, '#d8c49a', 60, 6);
+        break;
       default:
         break;
     }
@@ -114,6 +151,7 @@ export class HubView extends WorldView {
     s.v += -s.a * 9 * dt;
     s.v *= Math.exp(-dt * 0.6);
     s.a += s.v * dt;
+    this.flashT = Math.max(0, this.flashT - dt);
     this.updateParticles(dt);
   }
 
@@ -127,7 +165,7 @@ export class HubView extends WorldView {
     const sp = Math.hypot(p.vx, p.vy);
     const riding = !h.gathered ? this.ride : null;
     // Bouncing on the trampoline: lifted off the mat, with a shadow left on it.
-    const lift = h.trampolineLift();
+    const lift = h.trampolineLift() + h.ouchLift();
     // Airborne off a ramp.
     const air = riding ? h.airLift() : 0;
     const spin = p.walkPhase * 2;
@@ -161,7 +199,7 @@ export class HubView extends WorldView {
         clock,
         action: p.throwT > 0 ? 'throw' : riding ? (air > 8 ? 'cheer' : 'point') : h.bigJumpT > 0 ? 'cheer' : 'none',
         actionT: p.throwT / 0.5,
-        hat: this.hat,
+        hat: this.hat ?? this.sillyHat(h.explorer),
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
         ghost: ghost || !!riding || lift > 0,
       });
@@ -173,8 +211,8 @@ export class HubView extends WorldView {
       clock,
       focus: { x: px, y: py },
       ground: (ctx, v) => {
-        // Soft rings where activities start.
-        if (!m) {
+        // Soft rings where activities start (not while the family is gathered).
+        if (!m && !h.gathered) {
           for (const a of ACTIVITIES) {
             if (a.id === 'race' && !h.raceOpen) continue;
             if (!a.fixed && onOuting(h, a.who)) continue;
@@ -195,6 +233,22 @@ export class HubView extends WorldView {
             ctx.setLineDash([]);
           }
         }
+        // Hat Day: a glow under the big tree once the whole family is beaten.
+        if (!m && !h.gathered && h.hatDayOpen && inBox(HAT_LAWN, v, 80)) {
+          const near = h.action?.kind === 'hatday';
+          ctx.beginPath();
+          ctx.ellipse(HAT_LAWN.x, HAT_LAWN.y, 70, 28, 0, 0, Math.PI * 2);
+          ctx.fillStyle = near ? 'rgba(255,236,150,0.45)' : 'rgba(255,248,220,0.24)';
+          ctx.fill();
+          ctx.setLineDash([7, 6]);
+          ctx.lineDashOffset = -clock * 10;
+          ctx.strokeStyle = 'rgba(255,246,200,0.9)';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        // Vulture shadows sliding over the ground.
+        for (const w of h.wild) if (w.sp === 'vulture' && inBox(w, v, 40)) drawVultureShadow(ctx, w.x, w.y);
         // Rain puddles.
         for (const q of PUDDLES) if (inBox(q, v, 40)) drawPuddle(ctx, q.x, q.y, q.rx, q.ry, clock);
         // Dirt kickers on the Loop.
@@ -219,6 +273,55 @@ export class HubView extends WorldView {
             ctx.lineWidth = next ? 3.5 : 2;
             ctx.stroke();
             ctx.setLineDash([]);
+          }
+        }
+        if (m?.kind === 'barrels') {
+          // The next barrel glows, with a ring that fills as you go round it; then the gate.
+          const pulse = 0.5 + 0.5 * Math.sin(clock * 5);
+          if (m.next < BARRELS.length) {
+            const b = BARRELS[m.next];
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y, 62, 27, 0, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,220,110,${0.22 + pulse * 0.16})`;
+            ctx.fill();
+            ctx.setLineDash([6, 6]);
+            ctx.lineDashOffset = -clock * 12;
+            ctx.strokeStyle = 'rgba(255,246,200,0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            const k = h.barrelProgress();
+            if (k > 0) {
+              ctx.beginPath();
+              ctx.ellipse(b.x, b.y, 62, 27, 0, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2);
+              ctx.strokeStyle = C.gold;
+              ctx.lineWidth = 5;
+              ctx.stroke();
+            }
+            // Faint outer edge: stay inside it while you circle.
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y, BARREL_LOOP_R, BARREL_LOOP_R * 0.44, 0, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+          for (let i = 0; i < m.next && i < BARRELS.length; i++) {
+            const b = BARRELS[i];
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y, 30, 13, 0, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(140,220,120,0.8)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+          }
+          if (m.next >= BARRELS.length || m.countdown > 0) {
+            const g = BARREL_START;
+            ctx.beginPath();
+            ctx.ellipse(g.x - 10, g.y, 52, 24, 0, 0, Math.PI * 2);
+            ctx.fillStyle = m.countdown > 0 ? 'rgba(255,255,255,0.16)' : `rgba(255,220,110,${0.3 + pulse * 0.2})`;
+            ctx.fill();
+            ctx.strokeStyle = '#fff3b0';
+            ctx.lineWidth = 3;
+            ctx.stroke();
           }
         }
         if (m?.kind === 'rounds') {
@@ -301,7 +404,7 @@ export class HubView extends WorldView {
                   ctx.fill();
                 }
                 drawRide(ctx, rd, x, y - up, fx, false, sp);
-                drawPerson(ctx, L, { x, y: y - up - RIDE_SEAT[rd], faceX: fx, speed01: 0, walkPhase: 0, clock: clock + n.home.x, action: up > 8 ? 'cheer' : 'point', ghost: true });
+                drawPerson(ctx, L, { x, y: y - up - RIDE_SEAT[rd], faceX: fx, speed01: 0, walkPhase: 0, clock: clock + n.home.x, action: up > 8 ? 'cheer' : 'point', hat: this.sillyHat(n.who), ghost: true });
                 drawRide(ctx, rd, x, y - up, fx, true, sp);
               },
             });
@@ -313,6 +416,8 @@ export class HubView extends WorldView {
             items.push({ y, draw: () => drawMower(ctx, x, y, heading, this.mowerPaint, L, clock, !n.attending) });
             continue;
           }
+          // Hiding: only there once you're close enough to spot them.
+          if (n.outing === 'seek' && m?.kind === 'seek' && (m.countT > 0 || dist(n, p) > 175)) continue;
           const moving = Math.hypot(n.x - n.px, n.y - n.py) > 0.05;
           items.push({
             y,
@@ -326,6 +431,7 @@ export class HubView extends WorldView {
                 clock: clock + n.home.x,
                 // Tools stay put at the breakfast table.
                 hold: h.gathered ? null : n.hold,
+                hat: this.sillyHat(n.who),
                 ...npcGesture(n, clock),
               }),
           });
@@ -395,6 +501,7 @@ export class HubView extends WorldView {
                 clock: clock + d.side,
                 wag: d.wag,
                 ball: d.ball,
+                hat: this.hatsOn.has('dogs') ? (d.def.id === 'axel' ? 'topper' : 'party') : undefined,
               }),
           });
         }
@@ -472,6 +579,28 @@ export class HubView extends WorldView {
           const y = lerp(c.py, c.y, alpha);
           items.push({ y: c.kind === 'butterfly' ? y + 30 : y, draw: () => drawCritter(ctx, c, x, y, clock) });
         }
+        // The Big Country wildlife (the vultures are drawn way up, over everything).
+        for (const w of h.wild) {
+          if (w.sp === 'vulture' || w.state === 'away' || !inBox(w, v, 40)) continue;
+          const x = lerp(w.px, w.x, alpha);
+          const y = lerp(w.py, w.y, alpha);
+          const run = w.state === 'flee' || (w.sp === 'roadrunner' && !!w.goal);
+          const walk = !run && (!!w.goal || w.state === 'return');
+          const actT = w.sp === 'armadillo' ? 0.5 : w.sp === 'scissortail' ? 1.4 : w.sp === 'mockingbird' ? 2.2 : w.sp === 'turkey' ? 1.2 : w.sp === 'hornedLizard' ? 0.4 : 0.6;
+          // Fading into the trees at the end of a run.
+          const fade = w.state === 'flee' ? Math.min(1, w.t / 0.45) : 1;
+          items.push({
+            y: w.sp === 'monarch' ? y + 30 : y,
+            draw: () => drawWild(ctx, w.sp, { x, y, z: w.z, faceX: w.faceX, run, walk, act: w.act > 0 ? w.act / actT : 0, phase: w.phase, clock, tint: w.tint, alpha: fade }),
+          });
+        }
+        const tw = h.tumbleweed;
+        if (tw && inBox(tw, v, 40)) {
+          const x = lerp(tw.px, tw.x, alpha);
+          const y = lerp(tw.py, tw.y, alpha);
+          const fade = Math.min(1, tw.t / 0.6, (13 - tw.t) / 1.2);
+          items.push({ y, draw: () => drawTumbleweed(ctx, x, y, tw.hop, tw.spin, fade) });
+        }
         if (inBox(TIRE_SWING, v, 80)) items.push({ y: TIRE_SWING.y, draw: () => drawTireSwing(ctx, TIRE_SWING.x, TIRE_SWING.y, this.swing.a) });
         for (const o of ORNAMENTS) {
           if (h.ornaments.has(o.id) || !inBox(o, v, 30)) continue;
@@ -520,6 +649,15 @@ export class HubView extends WorldView {
           drawEmote(ctx, c.emote, c.x, c.y - lift, Math.min(1, c.emoteT * 4 + 0.3), clock);
         }
         for (const d of h.donkeys) if (d.brayT > 0) this.bubbleText(ctx, d.x + d.faceX * 30, d.y - 78, 'HEE-HAW');
+        for (const w of h.wild) {
+          if (w.sp === 'vulture') {
+            if (inBox({ x: w.x, y: w.y - VULTURE_ALT }, v, 40)) drawWild(ctx, 'vulture', { x: w.x, y: w.y - VULTURE_ALT, z: 0, faceX: w.faceX, run: false, walk: false, act: 0, phase: w.phase, clock, tint: w.tint });
+            continue;
+          }
+          if (!inBox(w, v, 20) || w.act <= 0) continue;
+          if (w.sp === 'mockingbird' && w.act > 0.4) this.bubbleText(ctx, w.x + w.faceX * 6, w.y - w.z - 22, MOCK_SONGS[w.tint]);
+          if (w.sp === 'turkey' && w.tint === 0 && w.act > 0.3) this.bubbleText(ctx, w.x + w.faceX * 8, w.y - 40, 'gobble gobble');
+        }
         // A dog barking up the treehouse at the cat that got away.
         for (const d of h.dogs) if (d.state === 'treed' && d.treedT % 0.9 > 0.45) this.bubbleText(ctx, d.x + d.faceX * 12, d.y - 42 * (d.def.size ?? 1), 'WOOF!');
         for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
@@ -532,7 +670,7 @@ export class HubView extends WorldView {
         });
         // Name tags over family members when you're close.
         for (const n of h.gathered ? [] : h.npcs) {
-          if (dist(n, p) > 240 || onOuting(h, n.who) || n.spookT > 0) continue;
+          if (dist(n, p) > 240 || onOuting(h, n.who) || n.spookT > 0 || n.outing === 'seek') continue;
           const L = FAMILY[n.who];
           this.bubbleText(ctx, n.x, n.y - 64 * L.look.scale - 12, L.name, C.barnRed);
         }
@@ -553,6 +691,22 @@ export class HubView extends WorldView {
       },
       screen: (ctx, left, top, z) => {
         if (!m && !h.gathered) this.familyMarkers(ctx, left, top, z);
+        if (!m && !h.gathered && this.hatDayCall)
+          this.edgeMarker(ctx, left, top, z, HAT_LAWN.x, HAT_LAWN.y, this.guideRect, (c) => {
+            c.fillStyle = C.ink;
+            c.font = '900 12px ui-rounded, system-ui, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('HAT', 0, 1);
+          });
+        // The family photo's flash.
+        if (this.flashT > 0) {
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = `rgba(255,255,255,${Math.min(1, this.flashT / 0.5) * 0.85})`;
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          ctx.restore();
+        }
         if (m?.kind === 'rounds') {
           for (const t of ROUNDS_TASKS) {
             if (m.done.has(t.id) || (t.needs && !m.done.has(t.needs))) continue;
@@ -572,6 +726,24 @@ export class HubView extends WorldView {
             c.textAlign = 'center';
             c.textBaseline = 'middle';
             c.fillText(String((m.gate % RACE_GATES.length) + 1), 0, 1);
+          });
+        } else if (m?.kind === 'barrels') {
+          const g = m.next < BARRELS.length ? BARRELS[m.next] : BARREL_START;
+          this.edgeMarker(ctx, left, top, z, g.x, g.y, this.guideRect, (c) => {
+            c.fillStyle = C.ink;
+            c.font = '900 13px ui-rounded, system-ui, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(m.next < BARRELS.length ? String(m.next + 1) : 'GO', 0, 1);
+          });
+        } else if (m?.kind === 'seek' && m.sniffT > 0) {
+          // Axel's nose points the way.
+          this.edgeMarker(ctx, left, top, z, m.spot.x, m.spot.y, this.guideRect, (c) => {
+            c.fillStyle = C.ink;
+            c.font = '900 15px ui-rounded, system-ui, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('?', 0, 1);
           });
         } else if (m?.kind === 'hunt' && m.hintT > 0) {
           const it = h.huntTarget();
@@ -594,6 +766,16 @@ export class HubView extends WorldView {
         }
       },
     });
+  }
+
+  /** A hat lands on someone's head: a little burst of sparkle. */
+  hatPop(x: number, y: number): void {
+    this.burst('spark', x, y - 70, C.gold, 90, 12);
+  }
+
+  /** A family member's Hat Day hat, if they're wearing it right now. */
+  sillyHat(who: FamilyId): HatKind | undefined {
+    return this.hatsOn.has(who) ? SILLY_HATS[who] : undefined;
   }
 
   /** Chimney tops on the main house and Grandpa's, for the smoke. */
@@ -1404,5 +1586,37 @@ function drawCritter(ctx: Ctx, c: Critter, x: number, y: number, clock: number):
   ctx.arc(6.4, run ? -7.6 : -9.6, 0.8, 0, Math.PI * 2);
   ctx.fillStyle = C.ink;
   ctx.fill();
+  ctx.restore();
+}
+
+/** A tumbleweed: a tangled ball of dry stems, bouncing along on the wind. */
+function drawTumbleweed(ctx: Ctx, x: number, y: number, hop: number, spin: number, alpha: number): void {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, alpha);
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, 12 - hop * 0.2, 3, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fill();
+  ctx.translate(x, y - 13 - hop);
+  ctx.rotate(spin);
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(196,166,112,0.35)';
+  ctx.fill();
+  ctx.strokeStyle = '#9c7d4e';
+  ctx.lineWidth = 1.1;
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 11, Math.sin(a) * 11);
+    ctx.quadraticCurveTo(Math.cos(a + 1.6) * 4, Math.sin(a + 1.6) * 4, Math.cos(a + 2.7) * 11, Math.sin(a + 2.7) * 11);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = C.ink;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha *= 0.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }

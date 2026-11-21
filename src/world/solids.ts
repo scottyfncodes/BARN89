@@ -15,6 +15,7 @@ export function propSolid(p: PropDef): Shape | null {
     case 'barrel':
     case 'rock':
     case 'flowers':
+    case 'pricklyPear':
       return { kind: 'circle', x: p.x, y: p.y, r: p.w ?? 16 };
     case 'squareBale':
     case 'trough': {

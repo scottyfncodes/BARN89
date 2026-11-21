@@ -48,6 +48,8 @@ export interface DogLook {
   wag: number;
   ball?: boolean;
   ghost?: boolean;
+  /** Hat Day: Annie's party hat, Axel's tiny top hat. */
+  hat?: 'party' | 'topper';
 }
 
 function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
@@ -218,6 +220,39 @@ function drawDogRight(ctx: Ctx, d: DogDef, s: DogLook): void {
     ctx.moveTo(hx - 5, hy + 4);
     ctx.lineTo(hx - 1, hy + 6.5);
     ctx.stroke();
+  }
+  if (s.hat === 'party') {
+    ctx.save();
+    ctx.translate(hx - 1, hy - 6);
+    ctx.rotate(-0.25);
+    ctx.beginPath();
+    ctx.moveTo(-5, 0);
+    ctx.lineTo(0, -15);
+    ctx.lineTo(5, 0);
+    ctx.closePath();
+    fillStroke(ctx, '#3d7fd6', 1.2);
+    ctx.fillStyle = '#f2c53d';
+    for (const [dx, dy] of [
+      [-1.5, -4],
+      [1.6, -7],
+      [-0.4, -10],
+    ])
+      ctx.fillRect(dx - 0.9, dy - 0.9, 1.8, 1.8);
+    ellipse(ctx, 0, -15.5, 2.2, 2.2);
+    fillStroke(ctx, '#ef5d84', 0.9);
+    ctx.restore();
+  } else if (s.hat === 'topper') {
+    ctx.save();
+    ctx.translate(hx - 1, hy - 6.5);
+    ctx.rotate(0.12);
+    ellipse(ctx, 0, 0, 6.5, 1.8);
+    fillStroke(ctx, '#2b2a30', 1.1);
+    ctx.beginPath();
+    ctx.rect(-4, -10, 8, 10);
+    fillStroke(ctx, '#2b2a30', 1.1);
+    ctx.fillStyle = '#d9434f';
+    ctx.fillRect(-4, -3.2, 8, 2);
+    ctx.restore();
   }
 }
 

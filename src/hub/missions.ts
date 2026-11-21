@@ -148,3 +148,72 @@ export const PUDDLES: { x: number; y: number; rx: number; ry: number }[] = [
   { x: 1372, y: 2040, rx: 26, ry: 11 },
   { x: 1120, y: 1420, rx: 22, ry: 9 },
 ];
+
+/* --- Mom's Barrel Pattern (the riding arena) --------------------------------------------- */
+
+/** Just inside the arena's west gate: start and finish. */
+export const BARREL_START = { x: 1462, y: 1688 };
+/**
+ * The arena's three barrels (the same barrels as on the map), in the order you run them: the
+ * near one, the far corner, then up the fence line to the north one, so every leg (and the run
+ * home) has a clear line past the others.
+ */
+export const BARRELS: { x: number; y: number }[] = [
+  { x: 1730, y: 1800 },
+  { x: 1900, y: 1940 },
+  { x: 1760, y: 1540 },
+];
+/** You've gone round a barrel once you've swept this far round it, staying within BARREL_LOOP_R. */
+export const BARREL_SWEEP = Math.PI * 1.75;
+export const BARREL_LOOP_R = 150;
+/** Brush a barrel and it rocks: five seconds on the clock (barrel 15 + explorer 24, and a hair). */
+export const BARREL_KNOCK_R = 42;
+export const BARREL_PENALTY = 5;
+/** Seconds (penalties included) for 3 and 2 stars. */
+export const BARREL_STAR_TIMES: [number, number] = [14, 21];
+
+/* --- Hide and Seek (all over the homestead) ------------------------------------------------ */
+
+/** Home base: beside the treehouse, on the chicken-run side. */
+export const HOME_BASE = { x: 1262, y: 984 };
+export const SEEK_ROUNDS = 3;
+/** How close you have to get to find them. */
+export const SEEK_FIND_R = 58;
+/** Seconds added to the total for each time you ask Axel to sniff them out. */
+export const SNIFF_COST = 15;
+/** Total seconds (sniffs included) for 3 and 2 stars. */
+export const SEEK_STAR_TIMES: [number, number] = [80, 140];
+
+export interface HideSpot {
+  id: string;
+  /** "Found Jay {where}!" */
+  where: string;
+  x: number;
+  y: number;
+}
+
+/** Hiding places spread right across the property, from the paddocks to the creek woods. */
+export const HIDE_SPOTS: HideSpot[] = [
+  { id: 'creekShed', where: 'behind the creek shed', x: 486, y: 2168 },
+  { id: 'hay', where: 'between the round bales', x: 1896, y: 2408 },
+  { id: 'arenaBarrel', where: 'crouched behind a barrel in the arena', x: 1932, y: 1968 },
+  { id: 'truck', where: "behind Grandpa's truck", x: 1878, y: 366 },
+  { id: 'farmStand', where: 'under the farm stand', x: 598, y: 172 },
+  { id: 'whiteShed', where: 'round the back of the white shed', x: 376, y: 1208 },
+  { id: 'paddock', where: 'out in the north-west paddock', x: 150, y: 300 },
+  { id: 'bigTree', where: 'behind the big tree on the front lawn', x: 1150, y: 236 },
+  { id: 'eastShed', where: 'behind the red shed by the arena', x: 1606, y: 1392 },
+  { id: 'corral', where: 'in the kitten corral', x: 1320, y: 2566 },
+  { id: 'lights', where: 'under the string lights', x: 1700, y: 2978 },
+  { id: 'creekWoods', where: 'deep in the creek woods', x: 312, y: 2440 },
+  { id: 'scarecrow', where: 'pretending to be the scarecrow', x: 904, y: 1224 },
+  { id: 'doghouse', where: 'squeezed in behind the doghouse', x: 536, y: 1046 },
+];
+
+/* --- Hat Day and the little things -------------------------------------------------------- */
+
+/** On the front lawn under the big tree, where the family gathers for Hat Day. */
+export const HAT_LAWN = { x: 1210, y: 452 };
+
+/** A fire ant mound by the footpath. Stand on it and find out. */
+export const FIRE_ANTS = { x: 1150, y: 1384, r: 20 };

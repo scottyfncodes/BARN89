@@ -292,6 +292,191 @@ function drawHeadwear(ctx: Ctx, hat: HatKind, L: PersonLook, hx: number, hy: num
       ellipse(ctx, hx, hy - 14.5, 2.6, 2.6);
       fillStroke(ctx, '#f2f2ee', 1);
       break;
+    case 'boonie':
+      // The field hat: a soft canvas bush hat with a feather in the band.
+      ellipse(ctx, hx, hy - 6, 15, 3.8, -0.05);
+      fillStroke(ctx, '#b9a36f', 1.3);
+      ctx.beginPath();
+      ctx.moveTo(hx - 8.5, hy - 6);
+      ctx.quadraticCurveTo(hx - 8.5, hy - 15, hx, hy - 15);
+      ctx.quadraticCurveTo(hx + 8.5, hy - 15, hx + 8.5, hy - 6);
+      ctx.closePath();
+      fillStroke(ctx, '#c9b47e', 1.3);
+      ctx.fillStyle = '#6f5a36';
+      ctx.fillRect(hx - 8.5, hy - 9, 17, 2.4);
+      ctx.beginPath();
+      ctx.moveTo(hx - 5, hy - 8.5);
+      ctx.quadraticCurveTo(hx - 10, hy - 16, hx - 7, hy - 21);
+      ctx.quadraticCurveTo(hx - 5, hy - 15, hx - 4, hy - 9);
+      fillStroke(ctx, '#3d5f8a', 0.9);
+      break;
+    case 'propeller': {
+      // Grandpa's propeller beanie: quarters of red, yellow, blue and green, and it really spins.
+      const cols = ['#d6333f', '#f2c53d', '#3d7fd6', '#3fae5a'];
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hx, hy - 3);
+        const a0 = Math.PI + (i * Math.PI) / 4;
+        const a1 = a0 + Math.PI / 4;
+        ctx.ellipse(hx, hy - 3, 9.4, 10.5, 0, a0, a1);
+        ctx.closePath();
+        ctx.fillStyle = cols[i];
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 3, 9.4, 10.5, 0, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.fillStyle = C.ink;
+      ctx.fillRect(hx - 0.7, hy - 19, 1.4, 6);
+      const spin = Math.cos(clock * 16);
+      ellipse(ctx, hx, hy - 19, 9 * Math.abs(spin) + 1.2, 1.6);
+      fillStroke(ctx, spin > 0 ? '#f2c53d' : '#d6333f', 1);
+      ellipse(ctx, hx, hy - 19, 1.6, 1.4);
+      fillStroke(ctx, '#3d7fd6', 0.8);
+      break;
+    }
+    case 'chicken': {
+      // Mom's chicken hat: a plush white hen sitting on her head, comb, beak and all.
+      ellipse(ctx, hx - 1, hy - 10, 10.5, 6.5);
+      fillStroke(ctx, '#fbf8f0', 1.4);
+      ctx.beginPath();
+      ctx.moveTo(hx - 10, hy - 12);
+      ctx.lineTo(hx - 15, hy - 18);
+      ctx.lineTo(hx - 9, hy - 15.5);
+      ctx.lineTo(hx - 12, hy - 21);
+      ctx.lineTo(hx - 6, hy - 15);
+      fillStroke(ctx, '#fbf8f0', 1.2);
+      ctx.beginPath();
+      ctx.arc(hx + 7.5, hy - 15, 4.4, 0, Math.PI * 2);
+      fillStroke(ctx, '#fbf8f0', 1.3);
+      ctx.beginPath();
+      ctx.moveTo(hx + 5, hy - 18.5);
+      ctx.quadraticCurveTo(hx + 6, hy - 23, hx + 7.5, hy - 19.5);
+      ctx.quadraticCurveTo(hx + 9, hy - 24, hx + 10, hy - 18.5);
+      fillStroke(ctx, '#d6333f', 1);
+      ctx.beginPath();
+      ctx.moveTo(hx + 11.4, hy - 16);
+      ctx.lineTo(hx + 15, hy - 14.6);
+      ctx.lineTo(hx + 11.4, hy - 13.4);
+      fillStroke(ctx, '#f2b33a', 0.9);
+      ellipse(ctx, hx + 11, hy - 12, 1.2, 1.8);
+      fillStroke(ctx, '#d6333f', 0.7);
+      ctx.beginPath();
+      ctx.arc(hx + 8.6, hy - 15.6, 0.9, 0, Math.PI * 2);
+      ctx.fillStyle = C.ink;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(hx - 5, hy - 11);
+      ctx.quadraticCurveTo(hx, hy - 7, hx + 4, hy - 11);
+      ctx.strokeStyle = 'rgba(59,42,32,0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      break;
+    }
+    case 'antlers': {
+      // Dad's moose antlers on a headband: big, felt and floppy.
+      ctx.beginPath();
+      ctx.arc(hx, hy - 1, 9.6, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 3.2;
+      ctx.stroke();
+      ctx.strokeStyle = '#6e4a2d';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      const wob = Math.sin(clock * 5) * 0.06;
+      for (const s of [-1, 1]) {
+        ctx.save();
+        ctx.translate(hx + s * 6, hy - 9);
+        ctx.rotate(s * (0.35 + wob));
+        ctx.fillStyle = '#c9a26c';
+        ctx.fillRect(-1.4, -5, 2.8, 5.5);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-1.4, -5, 2.8, 5.5);
+        ctx.beginPath();
+        ctx.moveTo(-2, -4);
+        ctx.quadraticCurveTo(s * 2 - 8, -9, -6, -15);
+        ctx.lineTo(-4, -11);
+        ctx.lineTo(-2, -16);
+        ctx.lineTo(0, -11);
+        ctx.lineTo(3, -16);
+        ctx.lineTo(3.5, -11);
+        ctx.lineTo(7, -14);
+        ctx.quadraticCurveTo(7, -7, 2, -4);
+        ctx.closePath();
+        fillStroke(ctx, '#d8b47a', 1.2);
+        ctx.restore();
+      }
+      break;
+    }
+    case 'cone': {
+      // Jay's traffic cone, worn with total confidence.
+      ctx.beginPath();
+      ctx.moveTo(hx - 9.5, hy - 5);
+      ctx.lineTo(hx - 1.5, hy - 27);
+      ctx.lineTo(hx + 1.5, hy - 27);
+      ctx.lineTo(hx + 9.5, hy - 5);
+      ctx.closePath();
+      fillStroke(ctx, '#f0732a', 1.4);
+      ctx.beginPath();
+      ctx.moveTo(hx - 6.4, hy - 13);
+      ctx.lineTo(hx - 4.3, hy - 19);
+      ctx.lineTo(hx + 4.3, hy - 19);
+      ctx.lineTo(hx + 6.4, hy - 13);
+      ctx.closePath();
+      ctx.fillStyle = '#fbf8f0';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(hx - 12, hy - 6.5, 24, 3.6, 1.5);
+      fillStroke(ctx, '#d95a1c', 1.2);
+      break;
+    }
+    case 'kitty': {
+      // Natalie's hat is a barn cat. It chose her. It is not getting down.
+      const swish = Math.sin(clock * 3) * 4;
+      ctx.beginPath();
+      ctx.moveTo(hx - 9, hy - 9);
+      ctx.quadraticCurveTo(hx - 16, hy - 12 + swish * 0.3, hx - 15 + swish * 0.4, hy - 20);
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 3.6;
+      ctx.stroke();
+      ctx.strokeStyle = '#f08a24';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ellipse(ctx, hx - 1, hy - 10, 10, 5.6);
+      fillStroke(ctx, '#f08a24', 1.4);
+      ctx.strokeStyle = '#c4621a';
+      ctx.lineWidth = 1.1;
+      for (const sx of [-6, -2.5, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(hx + sx, hy - 15);
+        ctx.lineTo(hx + sx + 1, hy - 11.5);
+        ctx.stroke();
+      }
+      ellipse(ctx, hx + 8, hy - 13, 5, 4.4);
+      fillStroke(ctx, '#f08a24', 1.3);
+      for (const ex of [5.5, 10]) {
+        ctx.beginPath();
+        ctx.moveTo(hx + ex - 2.4, hy - 15.5);
+        ctx.lineTo(hx + ex, hy - 21);
+        ctx.lineTo(hx + ex + 2.4, hy - 15.8);
+        fillStroke(ctx, '#f08a24', 1.1);
+      }
+      // Eyes shut: very content up there.
+      ctx.strokeStyle = C.ink;
+      ctx.lineWidth = 0.9;
+      for (const ex of [6.8, 10.4]) {
+        ctx.beginPath();
+        ctx.arc(hx + ex, hy - 13.2, 1.1, 0.1, Math.PI - 0.1);
+        ctx.stroke();
+      }
+      ellipse(ctx, hx + 8.8, hy - 11, 0.9, 0.6);
+      ctx.fillStyle = '#e0577a';
+      ctx.fill();
+      break;
+    }
     default:
       break;
   }
