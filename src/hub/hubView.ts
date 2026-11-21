@@ -11,7 +11,7 @@ import type { RideId } from '../content/rides';
 import { drawMotorcycle, drawMower, drawRide, RIDE_SEAT, type MowerPaint } from '../render/vehicles';
 import { WorldView, type Box } from '../render/worldView';
 import { MOTO_PARKED, MOTO_RIDERS, MOWER_PARKED, type MotoSeat, type Npc, type Sport } from './family';
-import { AIR_TIME, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
+import { AIR_TIME, BIG_JUMP, DAD_TRUCK, TRAMPOLINE, type HubEvent, type Homestead } from './homestead';
 import type { Critter } from './critters';
 import { BARREL_LOOP_R, BARREL_START, BARRELS, HAT_LAWN, HUNT_ITEMS, ORNAMENTS, PUDDLES, RACE_COURSE, RACE_GATE_R, RACE_GATES, RACE_START, RAMPS, ROUNDS_TASKS, type OrnamentDef } from './missions';
 import { MOCK_SONGS, VULTURE_ALT } from './wildlife';
@@ -130,6 +130,8 @@ export class HubView extends WorldView {
   }
 
   private dustT = 0;
+  /** Seconds until the next note drifts up off Grandpa while he hums. */
+  private humT = 0;
   private swing = { a: 0, v: 0 };
 
   update(dt: number, mode: 'title' | 'play'): void {
@@ -152,6 +154,18 @@ export class HubView extends WorldView {
     s.v *= Math.exp(-dt * 0.6);
     s.a += s.v * dt;
     this.flashT = Math.max(0, this.flashT - dt);
+    // Grandpa humming: a note drifts up off him now and then.
+    const hum = h.hummer();
+    this.humT -= dt;
+    if (hum && this.humT <= 0) {
+      this.humT = 0.35 + Math.random() * 0.3;
+      const tall = 64 * FAMILY.grandpa.look.scale;
+      this.push({ kind: 'note', x: hum.x + 8 + Math.random() * 6, y: hum.y - tall - 4, vx: 8 + Math.random() * 10, vy: -24, life: 2, max: 2, size: 5.6, color: '#3b2a20', rot: Math.random() * 6 });
+    }
+    // His chihuahuas, beside themselves to see him.
+    if (h.explorer === 'grandpa') {
+      for (const d of h.pups) if (d.heartT > 0 && d.state !== 'inside' && Math.random() < dt * 1.2) this.burst('heart', d.x, d.y - 22, '#ef5d84', 30);
+    }
     this.updateParticles(dt);
   }
 
@@ -190,12 +204,21 @@ export class HubView extends WorldView {
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fill();
       }
+      // Jay doesn't just jump on the trampoline: he flips.
+      const flip = h.explorer === 'jay' && h.bigJumpT > 0 && !riding ? (1 - h.bigJumpT / BIG_JUMP) * Math.PI * 2 * -p.faceX : 0;
+      if (flip) {
+        ctx.save();
+        ctx.translate(px, py - lift - 30);
+        ctx.rotate(flip);
+        ctx.translate(-px, -(py - lift - 30));
+      }
       drawPerson(ctx, me, {
         x: px,
         y: riding ? py - air - RIDE_SEAT[riding] : py - lift,
         faceX: p.faceX,
-        speed01: riding ? 0 : clamp(sp / p.maxSpeed, 0, 1),
-        walkPhase: p.walkPhase * 0.85,
+        // Exploring as Grandpa: standing still is more of a suggestion.
+        speed01: riding ? 0 : h.explorer === 'grandpa' && sp < 5 && lift === 0 ? 0.14 : clamp(sp / p.maxSpeed, 0, 1),
+        walkPhase: h.explorer === 'grandpa' && sp < 5 && !riding ? clock * 7 : p.walkPhase * 0.85,
         clock,
         action: p.throwT > 0 ? 'throw' : riding ? (air > 8 ? 'cheer' : 'point') : h.bigJumpT > 0 ? 'cheer' : 'none',
         actionT: p.throwT / 0.5,
@@ -203,6 +226,7 @@ export class HubView extends WorldView {
         hold: h.mission?.kind === 'rounds' && h.mission.done.has('eggs') && !h.mission.done.has('kitchen') ? 'basket' : null,
         ghost: ghost || !!riding || lift > 0,
       });
+      if (flip) ctx.restore();
       if (riding && !ghost) drawRide(ctx, riding, px, py - air, p.faceX, true, spin);
     };
     const m = h.mission;
@@ -426,8 +450,10 @@ export class HubView extends WorldView {
                 x,
                 y,
                 faceX: n.faceX,
-                speed01: moving ? 0.3 : 0,
-                walkPhase: n.walkPhase,
+                // Grandpa never quite stands still: foot to foot, even mid-conversation.
+                ...(n.who === 'grandpa' && !moving && n.busyT <= 0 && n.spookT <= 0 && !h.gathered
+                  ? { speed01: 0.14, walkPhase: clock * 7 }
+                  : { speed01: moving ? 0.3 : 0, walkPhase: n.walkPhase }),
                 clock: clock + n.home.x,
                 // Tools stay put at the breakfast table.
                 hold: h.gathered ? null : n.hold,
@@ -490,7 +516,8 @@ export class HubView extends WorldView {
           const moving = Math.hypot(d.x - d.px, d.y - d.py) > 0.3;
           const fast = Math.hypot(d.x - d.px, d.y - d.py) > 3.5;
           items.push({
-            y,
+            // Up in the truck bed, they draw over the truck.
+            y: d.inBed ? DAD_TRUCK.y + 3 : y,
             draw: () =>
               drawDog(ctx, d.def, {
                 x,
@@ -501,7 +528,7 @@ export class HubView extends WorldView {
                 clock: clock + d.side,
                 wag: d.wag,
                 ball: d.ball,
-                hat: this.hatsOn.has('dogs') ? (d.def.id === 'axel' ? 'topper' : 'party') : undefined,
+                hat: this.hatsOn.has('dogs') ? (d.def.id === 'axle' ? 'topper' : 'party') : undefined,
               }),
           });
         }
@@ -627,12 +654,28 @@ export class HubView extends WorldView {
               ctx.fillStyle = C.shadow;
               ctx.fill();
               ctx.beginPath();
-              ctx.arc(x, y - 4 - lift, 3.6, 0, Math.PI * 2);
-              ctx.fillStyle = '#d9e64a';
-              ctx.fill();
-              ctx.strokeStyle = C.ink;
-              ctx.lineWidth = 1.1;
-              ctx.stroke();
+              if (b.football) {
+                // A tight spiral: the football points where it's going.
+                const ang = Math.atan2(b.y - b.fromY - 40, b.x - b.fromX);
+                ctx.ellipse(x, y - 4 - lift, 6, 3.6, ang, 0, Math.PI * 2);
+                ctx.fillStyle = '#8a4b2a';
+                ctx.fill();
+                ctx.strokeStyle = C.ink;
+                ctx.lineWidth = 1.1;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - Math.cos(ang) * 2.5, y - 4 - lift - Math.sin(ang) * 2.5);
+                ctx.lineTo(x + Math.cos(ang) * 2.5, y - 4 - lift + Math.sin(ang) * 2.5);
+                ctx.strokeStyle = '#fffaf0';
+                ctx.stroke();
+              } else {
+                ctx.arc(x, y - 4 - lift, 3.6, 0, Math.PI * 2);
+                ctx.fillStyle = '#d9e64a';
+                ctx.fill();
+                ctx.strokeStyle = C.ink;
+                ctx.lineWidth = 1.1;
+                ctx.stroke();
+              }
             },
           });
         }
@@ -661,6 +704,10 @@ export class HubView extends WorldView {
         // A dog barking up the treehouse at the cat that got away.
         for (const d of h.dogs) if (d.state === 'treed' && d.treedT % 0.9 > 0.45) this.bubbleText(ctx, d.x + d.faceX * 12, d.y - 42 * (d.def.size ?? 1), 'WOOF!');
         for (const n of h.npcs) if (n.spookT > 0) this.bubbleText(ctx, n.x, n.y - 64 * FAMILY[n.who].look.scale - 12, 'SNAKE!', C.barnRed);
+        // Grandpa, cheerful as ever (above his name tag).
+        const says = h.grandpaSays;
+        const ga = says ? h.grandpaAt() : null;
+        if (says && ga) this.bubbleText(ctx, ga.x, ga.y - 64 * FAMILY.grandpa.look.scale - (h.explorer === 'grandpa' ? 14 : 36), says.text);
         // The spray, and the smell that follows Annie around after.
         const sk2 = h.skunk;
         if (sk2 && sk2.cloudT >= 0 && sk2.cloudT < 2.4) drawStinkCloud(ctx, sk2.x - sk2.faceX * 14, sk2.y - 12, sk2.cloudT);
@@ -737,7 +784,7 @@ export class HubView extends WorldView {
             c.fillText(m.next < BARRELS.length ? String(m.next + 1) : 'GO', 0, 1);
           });
         } else if (m?.kind === 'seek' && m.sniffT > 0) {
-          // Axel's nose points the way.
+          // Axle's nose points the way.
           this.edgeMarker(ctx, left, top, z, m.spot.x, m.spot.y, this.guideRect, (c) => {
             c.fillStyle = C.ink;
             c.font = '900 15px ui-rounded, system-ui, sans-serif';
@@ -880,7 +927,7 @@ function npcGesture(n: Npc, clock: number): { action: PersonAction; actionT?: nu
 }
 
 /** A skunk, side on: black, a white stripe, and a big tail that goes straight up when it matters. */
-function drawSkunk(ctx: Ctx, x: number, y: number, faceX: number, phase: number, tailUp: boolean, alpha: number): void {
+export function drawSkunk(ctx: Ctx, x: number, y: number, faceX: number, phase: number, tailUp: boolean, alpha: number): void {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
@@ -960,7 +1007,7 @@ function drawStinkCloud(ctx: Ctx, x: number, y: number, t: number): void {
 }
 
 /** Wavy green lines rising off a dog who lost an argument with a skunk. */
-function drawStinkLines(ctx: Ctx, x: number, y: number, clock: number, alpha: number): void {
+export function drawStinkLines(ctx: Ctx, x: number, y: number, clock: number, alpha: number): void {
   ctx.save();
   ctx.globalAlpha = 0.8 * alpha;
   ctx.strokeStyle = '#8fa83e';
@@ -1197,7 +1244,7 @@ export function drawOrnament(ctx: Ctx, o: OrnamentDef, clock: number): void {
   ctx.restore();
 }
 
-function drawPorchTree(ctx: Ctx, x: number, y: number, found: Set<string>, clock: number): void {
+export function drawPorchTree(ctx: Ctx, x: number, y: number, found: Set<string>, clock: number): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.beginPath();

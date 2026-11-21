@@ -1,3 +1,4 @@
+import { PIECES, type Restored } from '../content/blueStar';
 import type { FamilyId, HatKind } from '../content/cast';
 import { cleanNames } from '../content/names';
 import type { BarnPlan } from '../content/sunday';
@@ -53,6 +54,12 @@ export interface SaveData {
   wildlife: string[];
   /** The family has had its Hat Day. */
   hatDay: boolean;
+  /** Eggs Mom has gathered from the hens. Just counted. */
+  eggs: number;
+  /** Furniture restored in the Blue Star workshop, by piece id. Never rewarded, just kept. */
+  restored: Record<string, Restored>;
+  /** Family scrapbook: the day each page was pasted in ("2026-11-09"), by page id. */
+  scrapbook: Record<string, string>;
 }
 
 const KEY = 'barn89.save.v1';
@@ -77,6 +84,9 @@ export function freshSave(): SaveData {
     names: {},
     wildlife: [],
     hatDay: false,
+    eggs: 0,
+    restored: {},
+    scrapbook: {},
   };
 }
 
@@ -128,7 +138,35 @@ export function normalize(raw: unknown): SaveData {
     names: cleanNames(r.names),
     wildlife: arr(r.wildlife),
     hatDay: r.hatDay === true,
+    eggs: typeof r.eggs === 'number' && isFinite(r.eggs) ? Math.max(0, Math.floor(r.eggs)) : 0,
+    restored: cleanRestored(r.restored),
+    scrapbook: cleanDays(r.scrapbook),
   };
+}
+
+/** Keep only well-formed dates ("2026-11-09") keyed by page id. */
+function cleanDays(o: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, v] of Object.entries(o as Record<string, unknown>)) if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out[k] = v;
+  return out;
+}
+
+/** Keep only restored pieces that still exist, with a colour for every part. */
+function cleanRestored(o: unknown): Record<string, Restored> {
+  const out: Record<string, Restored> = {};
+  if (!o || typeof o !== 'object') return out;
+  const hex = (c: unknown) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  for (const [id, v] of Object.entries(o as Record<string, unknown>)) {
+    const def = PIECES.find((p) => p.id === id);
+    const r = v as Partial<Restored> | null;
+    if (!def || !r || !Array.isArray(r.parts) || r.parts.length !== def.parts.length || !r.parts.every(hex)) continue;
+    const st = r.star;
+    const star: [number, number] | null =
+      Array.isArray(st) && st.length === 2 && st.every((n) => typeof n === 'number' && n >= 0 && n <= 1) ? [st[0], st[1]] : null;
+    out[id] = { parts: [...r.parts], star };
+  }
+  return out;
 }
 
 export class SaveStore {

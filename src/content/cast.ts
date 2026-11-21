@@ -50,6 +50,14 @@ export interface PersonLook {
   shorts?: boolean;
   /** Open jacket worn over a tee of this colour. */
   tee?: string;
+  /** A pullover hoodie (the shirt colour): hood bunched at the neck, front pocket, drawstrings. */
+  hoodie?: boolean;
+  /** Always smiling, whatever he's doing. */
+  grin?: boolean;
+  /** Sleeves shoved up past the elbow. */
+  rolledSleeves?: boolean;
+  /** A little swoosh on the shorts, in this colour. */
+  shortsMark?: string;
   /** Stripe down the jacket sleeves. */
   sleeveStripe?: string;
   /** Draw the beard as light stubble. */
@@ -149,11 +157,14 @@ export const FAMILY: Record<FamilyId, FamilyMember> = {
       skin: '#c6936b',
       hair: '#d4d1cb',
       hairStyle: 'short',
-      shirt: '#24242a',
-      tee: '#d9302f',
-      sleeveStripe: '#a9adb3',
-      pants: '#3d4048',
+      // Hoodie with the sleeves shoved up, Nike running shorts, sneakers. Always on the move.
+      shirt: '#2b2c33',
+      grin: true,
+      hoodie: true,
+      rolledSleeves: true,
+      pants: '#1d1d22',
       shorts: true,
+      shortsMark: '#f4f4f2',
       shoes: '#e9e9ea',
       hat: 'none',
       beard: '#d8d4cc',
@@ -168,9 +179,13 @@ export const FAMILY_ORDER: FamilyId[] = ['megan', 'jason', 'jay', 'natalie', 'gr
 export interface DogDef {
   id: string;
   name: string;
-  kind: 'collie' | 'lab' | 'terrier' | 'chihuahua';
+  kind: 'collie' | 'doodleRottie' | 'schnauzerFrenchie' | 'chihuahua';
+  /** What the names screen calls the breed. */
+  breed: string;
   base: string;
   patch: string;
+  /** Optional tan points (brows, muzzle, chest, socks). */
+  points?: string;
   blurb: string;
   /** Drawing scale (1 = medium dog). */
   size?: number;
@@ -178,8 +193,8 @@ export interface DogDef {
 }
 
 export const DOGS: DogDef[] = [
-  { id: 'axel', name: 'Axel', kind: 'terrier', base: '#2b2622', patch: '#f2efe8', size: 0.82, collar: '#2f5fb8', blurb: 'Scruffy, wiry, about twenty-five pounds of nose. Has found every snake on the property.' },
-  { id: 'annie', name: 'Annie', kind: 'lab', base: '#26252a', patch: '#3b393f', size: 1.36, collar: '#8a8f96', blurb: 'Ninety pounds of black Lab. Will lean on you. Will find the chew toy.' },
+  { id: 'axle', name: 'Axle', kind: 'schnauzerFrenchie', breed: 'Mini Schnauzer and French Bulldog', base: '#2b2622', patch: '#f2efe8', size: 0.82, collar: '#2f5fb8', blurb: 'Schnauzer beard, Frenchie bat ears, about twenty-five pounds of nose. Has found every snake on the property.' },
+  { id: 'annie', name: 'Annie', kind: 'doodleRottie', breed: 'Labradoodle and Rottweiler', base: '#26252a', patch: '#3b393f', size: 1.36, collar: '#8a8f96', blurb: 'Ninety pounds of curly black doodle. Will lean on you. Will find the chew toy.' },
 ];
 
 /**
@@ -187,8 +202,8 @@ export const DOGS: DogDef[] = [
  * through the doggie door. Their names are placeholders: rename them in the game (Animal names).
  */
 export const CHIHUAHUAS: DogDef[] = [
-  { id: 'pip', name: 'Pip', kind: 'chihuahua', base: '#1d1b1f', patch: '#4a4248', size: 0.5, collar: '#d9434f', blurb: 'Six pounds. Guards the back yard from everything, loudly.' },
-  { id: 'peanut', name: 'Peanut', kind: 'chihuahua', base: '#232026', patch: '#544a50', size: 0.46, collar: '#3d7fd6', blurb: 'Slightly smaller, slightly louder. First through the doggie door.' },
+  { id: 'pip', name: 'Pip', kind: 'chihuahua', breed: 'Chihuahua', base: '#1d1b1f', patch: '#4a4248', size: 0.5, collar: '#d9434f', blurb: 'Six pounds. Guards the back yard from everything, loudly.' },
+  { id: 'peanut', name: 'Peanut', kind: 'chihuahua', breed: 'Chihuahua', base: '#232026', patch: '#544a50', size: 0.46, collar: '#3d7fd6', blurb: 'Slightly smaller, slightly louder. First through the doggie door.' },
 ];
 
 export interface DonkeyDef {

@@ -7,6 +7,8 @@ import { PERSONALITIES, type Coat, type Personality } from '../games/kitten/kitt
 import { createPlayer, updatePlayer } from '../games/kitten/player';
 import type { Emote, InputState, Player } from '../games/kitten/types';
 import type { PenDef } from '../world/mapTypes';
+import { CHICKEN_RUN } from '../world/ranch';
+import { GRANDPA_BUSY, GRANDPA_CHEER } from '../content/explorers';
 import type { SharedWorld } from '../world/shared';
 import { FamilyLife, MOTO_PARKED, MOTO_RIDERS, NPC_ROUTINES, type MotoSeat, type Npc } from './family';
 import { createCritters, updateCritters, type Critter } from './critters';
@@ -53,7 +55,9 @@ export interface HubDog {
   vy: number;
   faceX: number;
   phase: number;
-  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase' | 'skunk' | 'cat' | 'treed';
+  state: 'follow' | 'fetch' | 'return' | 'rest' | 'sniff' | 'chase' | 'skunk' | 'cat' | 'treed' | 'truck';
+  /** Riding in the back of Dad's truck (state 'truck'), once it's hopped up. */
+  inBed?: boolean;
   /** The cat it's after (state 'cat'), and seconds left barking up the tree ('treed'). */
   chaseCat: string | null;
   treedT: number;
@@ -94,7 +98,7 @@ export interface CatSpot {
 export const TRAMPOLINE = { x: 810, y: 1000, rx: 38, ry: 18, mat: 14 };
 
 /** Seconds a big trampoline jump lasts. */
-const BIG_JUMP = 0.95;
+export const BIG_JUMP = 0.95;
 /** Seconds in the air off a ramp. */
 export const AIR_TIME = 0.62;
 /** How much quicker you go on a road or path. */
@@ -146,6 +150,8 @@ export interface Ball {
   flight: number;
   landed: boolean;
   held: string | null;
+  /** Jay throws a football, not the tennis ball. */
+  football?: boolean;
 }
 
 /** A harmless little garter snake, out in Grandpa's grass. Grandpa disagrees about "harmless". */
@@ -160,7 +166,7 @@ export interface Snake {
   speed: number;
   t: number;
   phase: number;
-  /** Axel's after it: off it goes, quick. */
+  /** Axle's after it: off it goes, quick. */
   fleeing: boolean;
   scared: boolean;
 }
@@ -215,6 +221,9 @@ export type HubAction =
   | { kind: 'task'; label: string; task: string }
   | { kind: 'pickup'; label: string; item: string }
   | { kind: 'sunday'; label: string }
+  | { kind: 'workshop'; label: string }
+  | { kind: 'eggs'; label: string }
+  | { kind: 'truck'; label: string }
   | { kind: 'moto'; label: string }
   | { kind: 'jump'; label: string }
   | { kind: 'hatday'; label: string };
@@ -234,6 +243,10 @@ export type HubEvent =
   | { type: 'huntItem'; id: string; text: string; x: number; y: number; left: number }
   | { type: 'huntReady' }
   | { type: 'sunday' }
+  | { type: 'workshop' }
+  | { type: 'eggs'; n: number }
+  | { type: 'truck'; on: boolean }
+  | { type: 'parade'; count: number }
   | { type: 'moto'; partner: string; ride: boolean }
   | { type: 'raceGo' }
   | { type: 'snake'; x: number; y: number; chased: boolean }
@@ -320,7 +333,7 @@ export interface SeekState {
   /** Seconds left with eyes shut, counting (you can't move). */
   countT: number;
   sniffs: number;
-  /** Seconds left of Axel pointing the way. */
+  /** Seconds left of Axle pointing the way. */
   sniffT: number;
   warmth: 'start' | 'warmer' | 'colder' | 'hot';
   warmT: number;
@@ -358,6 +371,20 @@ const LAWN_DOGS = [
 
 /** The long table under the Barn 89 string lights (see ranch.ts). */
 export const LONG_TABLE = { x: 1670, y: 2890 };
+/** Dad's big white truck beside the main house (see ranch.ts), its tailgate, and the bed. */
+export const DAD_TRUCK = { x: 548, y: 790 };
+const TAILGATE = { x: 548, y: 718 };
+const TRUCK_BED = [
+  { x: 539, y: 752 },
+  { x: 558, y: 768 },
+];
+/** Seconds before the hens have more eggs for Mom. */
+export const EGG_WAIT = 40;
+/** How many barn cats fall in behind Natalie before it counts as a parade. */
+export const PARADE = 3;
+
+/** The half-painted cabinet outside Grandpa's workshop, where the Blue Star workshop starts. */
+export const WORKSHOP = { x: 1792, y: 696 };
 /** Where people sit for Sunday breakfast: three behind the table, the rest in front. */
 const TABLE_SEATS = [
   { x: 1612, y: 2850 },
@@ -389,7 +416,7 @@ const CAT_REST: Record<Personality, [number, number]> = {
 };
 
 /** How long the dogs put up with you standing still before going off to sniff something. */
-const SNIFF_AFTER: Record<string, number> = { axel: 8, annie: 18 };
+const SNIFF_AFTER: Record<string, number> = { axle: 8, annie: 18 };
 
 const PET_LINES: Record<Personality, string[]> = {
   hungry: ['{n} purrs and follows you, just in case you have snacks.', '{n} head-bonks your boots. Snacks were implied.'],
@@ -458,6 +485,8 @@ export class Homestead {
   /** Seconds until a snake might next turn up near Grandpa. */
   snakeT = 35;
   skunk: Skunk | null = null;
+  /** Seconds before places can be discovered (so the welcome isn't talked over). */
+  holdFinds = 0;
   /** Seconds until a skunk might next wander by. */
   skunkT = 70;
   /** Seconds until a dog might next go after a cat. */
@@ -465,6 +494,13 @@ export class Homestead {
   /** Seconds bouncing on the trampoline, and what's left of a big jump. */
   trampT = 0;
   bigJumpT = 0;
+  /** Seconds until the hens have eggs for Mom again. */
+  eggT = 0;
+  /** Grandpa calling out something cheerful: what, and seconds left on the bubble. */
+  grandpaSays: { text: string; t: number } | null = null;
+  private sayT = 6;
+  /** Natalie's cat parade got its toast this visit. */
+  private paraded = false;
   private events: HubEvent[] = [];
   private rng = new Rng(89);
   /** Separate stream for ambient behaviour so it never shifts the games' dice. */
@@ -575,6 +611,21 @@ export class Homestead {
   setExplorer(id: FamilyId): void {
     this.explorer = id;
     this.placeNpcs();
+    // Whatever the last explorer had going (dogs in the truck, a cat parade) ends here.
+    for (const d of this.dogs) if (d.state === 'truck') this.unloadDog(d);
+    for (const c of this.cats) if (c.state === 'follow') c.t = 0;
+  }
+
+  /**
+   * Where Grandpa is, if he's humming right now: out and about, or walking around as the
+   * explorer. He stops to talk to you, to eat, and when there's a snake.
+   */
+  hummer(): Vec | null {
+    if (this.gathered) return null;
+    if (this.explorer === 'grandpa') return this.mission?.kind === 'race' ? null : this.player;
+    const g = this.npcs.find((n) => n.who === 'grandpa');
+    if (!g || g.spookT > 0 || g.attending || g.outing) return null;
+    return g;
   }
 
   private placeNpcs(): void {
@@ -753,13 +804,13 @@ export class Homestead {
     return m?.kind === 'seek' ? (this.npcs.find((n) => n.who === m.hider) ?? null) : null;
   }
 
-  /** Axel sniffs out the hider: he barks and points the way for a few seconds. */
+  /** Axle sniffs out the hider: he barks and points the way for a few seconds. */
   sniff(): void {
     const m = this.mission;
     if (m?.kind !== 'seek' || m.countT > 0) return;
     m.sniffs++;
     m.sniffT = 4.5;
-    const axel = this.dogs.find((d) => d.def.id === 'axel');
+    const axel = this.dogs.find((d) => d.def.id === 'axle');
     if (axel) this.emit({ type: 'bark', x: axel.x, y: axel.y });
   }
 
@@ -792,7 +843,8 @@ export class Homestead {
     const held = (mm?.kind === 'race' && mm.countdown > 0) || (mm?.kind === 'barrels' && mm.countdown > 0) || (mm?.kind === 'seek' && mm.countT > 0);
     // Paths and roads are a little quicker going (races keep everyone on even terms).
     this.onPath = this.isOnPath(p.x, p.y);
-    if (this.mission?.kind !== 'race') p.maxSpeed = this.speedBase * (this.onPath ? PATH_BOOST : 1);
+    // Grandpa walks everywhere like he's late for something.
+    if (this.mission?.kind !== 'race') p.maxSpeed = this.speedBase * (this.onPath ? PATH_BOOST : 1) * (this.explorer === 'grandpa' && !this.ride ? 1.1 : 1);
     if (!wasRiding && !held) updatePlayer(p, input, this.shared.world, dt);
     this.family.update(this.npcs, this.player, dt, this.gathered);
     const ride = this.family.moto;
@@ -811,6 +863,8 @@ export class Homestead {
       this.emit({ type: 'moto', partner: '', ride: false });
     }
     this.updateBall(dt);
+    this.eggT = Math.max(0, this.eggT - dt);
+    this.updateGrandpaSays(dt);
     for (const d of this.dogs) this.updateDog(d, dt);
     this.donkeysNotice();
     for (const d of this.donkeys) this.updateDonkey(d, dt);
@@ -892,6 +946,11 @@ export class Homestead {
     }
     if (!m && dist(p, LONG_TABLE) < 95) return { kind: 'sunday', label: 'Sunday breakfast' };
     if (!m && this.hatDayOpen && dist(p, HAT_LAWN) < 110) return { kind: 'hatday', label: 'Hat Day' };
+    if (!m && this.explorer === 'megan' && dist(p, CHICKEN_RUN) < CHICKEN_RUN.r + 40) return { kind: 'eggs', label: 'Gather eggs' };
+    if (!m && this.explorer === 'jason' && !this.ride && dist(p, DAD_TRUCK) < 90) {
+      return { kind: 'truck', label: this.dogs.some((d) => d.state === 'truck') ? 'Let the dogs out' : 'Load up the dogs' };
+    }
+    if (!m && dist(p, WORKSHOP) < 58) return { kind: 'workshop', label: this.explorer === 'grandpa' ? 'Into the workshop' : 'Paint with Grandpa' };
     if (this.onTrampoline) return { kind: 'jump', label: 'Jump!' };
     // Jason's motorcycle: Natalie and Jason ride it together.
     const moto = this.family.moto;
@@ -915,7 +974,7 @@ export class Homestead {
     if (pup) return { kind: 'pup', label: `Pet ${pup.name}`, pup };
     if (dist(p, this.pen) < this.pen.r + 60) return { kind: 'carrot', label: 'Offer carrot' };
     // Next to someone with a game, the prompt card is the thing to tap.
-    if (!this.nearStation && !this.ball && this.dogs.some((d) => dist(d, p) < 170)) return { kind: 'ball', label: 'Throw ball' };
+    if (!this.nearStation && !this.ball && this.dogs.some((d) => d.state !== 'truck' && dist(d, p) < 170)) return { kind: 'ball', label: this.explorer === 'jay' ? 'Throw a spiral' : 'Throw ball' };
     return null;
   }
 
@@ -975,6 +1034,31 @@ export class Homestead {
       case 'hatday':
         this.emit({ type: 'hatday' });
         break;
+      case 'workshop':
+        this.emit({ type: 'workshop' });
+        break;
+      case 'eggs': {
+        // A few eggs, if the hens have had a minute since last time.
+        const n = this.eggT > 0 ? 0 : 1 + Math.floor(this.life.next() * 4);
+        if (n) this.eggT = EGG_WAIT;
+        this.player.throwT = 0.4;
+        this.emit({ type: 'eggs', n });
+        break;
+      }
+      case 'truck': {
+        const loaded = this.dogs.some((d) => d.state === 'truck');
+        for (const d of this.dogs) {
+          if (loaded) {
+            if (d.state === 'truck') this.unloadDog(d);
+          } else if (d.state !== 'fetch' && d.state !== 'return') {
+            d.state = 'truck';
+            d.inBed = false;
+            d.path = null;
+          }
+        }
+        this.emit({ type: 'truck', on: !loaded });
+        break;
+      }
     }
   }
 
@@ -983,8 +1067,11 @@ export class Homestead {
   private throwBall(): void {
     const p = this.player;
     const dir = fromAngle(p.heading);
-    let tx = p.x + dir.x * 230;
-    let ty = p.y + dir.y * 230;
+    // Jay's spiral goes a good deal further than a tennis ball.
+    const jay = this.explorer === 'jay';
+    const reach = jay ? 400 : 230;
+    let tx = p.x + dir.x * reach;
+    let ty = p.y + dir.y * reach;
     if (!this.shared.nav.isWalkable(tx, ty)) {
       const s = this.shared.nav.nearestWalkable(tx, ty, 10);
       if (s) {
@@ -995,10 +1082,10 @@ export class Homestead {
         ty = p.y;
       }
     }
-    this.ball = { x: tx, y: ty, fromX: p.x, fromY: p.y - 40, t: 0, flight: 0.6, landed: false, held: null };
+    this.ball = { x: tx, y: ty, fromX: p.x, fromY: p.y - 40, t: 0, flight: jay ? 0.95 : 0.6, landed: false, held: null, football: jay };
     p.throwT = 0.5;
     // The closer dog goes for it; the other one gives chase for the fun of it.
-    const sorted = [...this.dogs].sort((a, b) => dist(a, p) - dist(b, p));
+    const sorted = this.dogs.filter((d) => d.state !== 'truck').sort((a, b) => dist(a, p) - dist(b, p));
     sorted[0].state = 'fetch';
     sorted[0].path = null;
     this.emit({ type: 'throw' });
@@ -1093,7 +1180,7 @@ export class Homestead {
         }
       }
     } else if (d.state === 'chase') {
-      // Axel has found another snake.
+      // Axle has found another snake.
       const s = this.snake;
       if (!s) d.state = 'follow';
       else {
@@ -1108,6 +1195,21 @@ export class Homestead {
           this.emit({ type: 'bark', x: d.x, y: d.y });
         }
       }
+    } else if (d.state === 'truck') {
+      // Up into the back of Dad's truck, and sit there wagging until he lets them out.
+      const i = this.dogs.indexOf(d);
+      if (!d.inBed) {
+        sp = this.moveAgent(d, TAILGATE, 300, dt, 11);
+        if (dist(d, TAILGATE) < 16) {
+          d.inBed = true;
+          d.x = d.px = TRUCK_BED[i % 2].x;
+          d.y = d.py = TRUCK_BED[i % 2].y;
+          this.emit({ type: 'bark', x: d.x, y: d.y });
+        }
+      } else d.faceX = p.x >= d.x ? 1 : -1;
+      d.wag = 1;
+      // Wander off far enough and they jump down and come along after all.
+      if (dist(p, DAD_TRUCK) > 420) this.unloadDog(d);
     } else if (d.state === 'fetch') {
       if (!b) d.state = 'follow';
       else if (b.landed) {
@@ -1168,6 +1270,40 @@ export class Homestead {
     if (d.state === 'fetch' || d.state === 'return') d.wag = 1;
   }
 
+  /** Where Grandpa is (the explorer, or out on the place), unless he's busy being scared or eating. */
+  grandpaAt(): Vec | null {
+    if (this.gathered) return null;
+    if (this.explorer === 'grandpa') return this.player;
+    const g = this.npcs.find((n) => n.who === 'grandpa');
+    return g && g.spookT <= 0 && g.outing !== 'race' ? g : null;
+  }
+
+  /** Every so often, within earshot, Grandpa says something cheerful. Stand idle as him and he wants a job. */
+  private updateGrandpaSays(dt: number): void {
+    if (this.grandpaSays) {
+      this.grandpaSays.t -= dt;
+      if (this.grandpaSays.t <= 0) this.grandpaSays = null;
+    }
+    const at = this.grandpaAt();
+    if (!at || this.mission?.kind === 'race' || (this.explorer !== 'grandpa' && dist(at, this.player) > 380)) return;
+    this.sayT -= dt;
+    if (this.sayT > 0) return;
+    this.sayT = this.life.range(9, 16);
+    const lines = this.explorer === 'grandpa' && this.player.idleT > 4 ? GRANDPA_BUSY : GRANDPA_CHEER;
+    this.grandpaSays = { text: lines[Math.floor(this.life.next() * lines.length)], t: 2.6 };
+  }
+
+  /** Down off the tailgate and back to heel. */
+  private unloadDog(d: HubDog): void {
+    if (d.inBed) {
+      d.x = d.px = TAILGATE.x + (this.dogs.indexOf(d) ? 14 : -14);
+      d.y = d.py = TAILGATE.y;
+    }
+    d.inBed = false;
+    d.state = 'follow';
+    d.path = null;
+  }
+
   private startSniff(d: HubDog): void {
     const p = this.player;
     const a = this.life.range(0, Math.PI * 2);
@@ -1196,7 +1332,8 @@ export class Homestead {
     const spot = { x: this.pen.x + Math.cos(ang) * (this.pen.r - 36), y: this.pen.y + Math.sin(ang) * (this.pen.r - 36) };
     const order = [...this.donkeys].sort((a, b) => dist(a, spot) - dist(b, spot));
     // Donkeys are donkeys: sometimes the closest one simply isn't interested.
-    const stubborn = this.rng.next() < (order[0].def.id === 'yoda' ? 0.45 : 0.2);
+    // Except for Mom. They know who feeds them.
+    const stubborn = this.explorer !== 'megan' && this.rng.next() < (order[0].def.id === 'yoda' ? 0.45 : 0.2);
     const chosen = stubborn ? order[1] : order[0];
     if (stubborn) {
       order[0].state = 'sulk';
@@ -1309,11 +1446,11 @@ export class Homestead {
       g.stayT = this.life.range(...g.stop.stay);
       g.target = { ...g.stop.at };
       g.path = null;
-      const axel = this.dogs.find((d) => d.def.id === 'axel');
-      const chased = !!axel && dist(axel, s) < 600 && (axel.state === 'follow' || axel.state === 'rest' || axel.state === 'sniff');
-      if (axel && chased) {
-        axel.state = 'chase';
-        axel.path = null;
+      const axle = this.dogs.find((d) => d.def.id === 'axle');
+      const chased = !!axle && dist(axle, s) < 600 && (axle.state === 'follow' || axle.state === 'rest' || axle.state === 'sniff');
+      if (axle && chased) {
+        axle.state = 'chase';
+        axle.path = null;
       }
       this.emit({ type: 'snake', x: s.x, y: s.y, chased });
     }
@@ -1496,7 +1633,9 @@ export class Homestead {
     const cy = Math.max(b.y0, Math.min(b.y1, p.y));
     const outside = Math.hypot(p.x - cx, p.y - cy);
     let speed = 70;
-    if (outside < 150 && !this.gathered && d.heartT <= 0 && !(d.state === 'sit' && d.t > 0 && dist(d, p) < 44)) {
+    // Grandpa gets no guarding at all: just wagging, and a dance around his feet.
+    const grandpa = this.explorer === 'grandpa';
+    if (outside < 150 && !this.gathered && (d.heartT <= 0 || grandpa) && !(d.state === 'sit' && d.t > 0 && dist(d, p) < 44)) {
       d.state = 'guard';
       speed = 150;
       if (outside < 1) {
@@ -1504,7 +1643,8 @@ export class Homestead {
         d.target = { x: Math.max(b.x0, Math.min(b.x1, p.x + Math.cos(a) * 38)), y: Math.max(b.y0, Math.min(b.y1, p.y + Math.sin(a) * 18 + 8)) };
       } else d.target = { x: Math.max(b.x0, Math.min(b.x1, cx + (i ? 16 : -16))), y: cy };
       d.yapT -= dt;
-      if (d.yapT <= 0) {
+      if (grandpa) d.heartT = Math.max(d.heartT, 0.3);
+      else if (d.yapT <= 0) {
         d.yapT = this.life.range(0.5, 1.4);
         d.yipT = 0.5;
         this.emit({ type: 'yip', x: d.x, y: d.y });
@@ -1578,7 +1718,14 @@ export class Homestead {
     if (c.state === 'follow') {
       c.t -= dt;
       const d = dist(c, p);
-      if (d > 40) this.stepCat(c, p, d > 200 ? 200 : 120, dt);
+      if (this.explorer === 'natalie') {
+        // Natalie's parade: single file behind her, wherever she goes.
+        const k = this.cats.filter((x) => x.state === 'follow').indexOf(c);
+        const back = fromAngle(p.heading + Math.PI, 46 + k * 26);
+        const spot = { x: p.x + back.x, y: p.y + back.y };
+        const ds = dist(c, spot);
+        if (ds > 8) this.stepCat(c, spot, ds > 160 ? 240 : 150, dt);
+      } else if (d > 40) this.stepCat(c, p, d > 200 ? 200 : 120, dt);
       if (c.t <= 0 || d > 420) {
         c.state = 'walk';
         c.target = c.spots[c.spot];
@@ -1604,7 +1751,20 @@ export class Homestead {
     } else if (c.state === 'rest') {
       // Wake up and look around when someone walks by; skittish ones relocate.
       const d = dist(c, p);
-      if (c.personality === 'shy' && c.lift === 0 && d < 50 && Math.hypot(p.vx, p.vy) > 200) {
+      // Every barn cat on the place gets up and follows Natalie when she walks by (stand still to pet one).
+      if (this.explorer === 'natalie' && c.lift === 0 && !c.refuge && d < 64 && Math.hypot(p.vx, p.vy) > 60 && !this.gathered && this.mission?.kind !== 'race') {
+        c.state = 'follow';
+        c.t = 30;
+        c.emote = 'heart';
+        c.emoteT = 0;
+        const n = this.cats.filter((x) => x.state === 'follow').length;
+        if (n >= PARADE && !this.paraded) {
+          this.paraded = true;
+          this.emit({ type: 'parade', count: n });
+        }
+        return;
+      }
+      if (c.personality === 'shy' && this.explorer !== 'natalie' && c.lift === 0 && d < 50 && Math.hypot(p.vx, p.vy) > 200) {
         c.spot = (c.spot + 1) % c.spots.length;
         c.target = c.spots[c.spot];
         c.state = 'walk';
@@ -1931,7 +2091,8 @@ export class Homestead {
         this.emit({ type: 'ornament', id: o.id, x: o.x, y: o.y, count: this.ornaments.size });
       }
     }
-    for (const d of this.map.discoveries) {
+    if (this.holdFinds > 0) this.holdFinds -= dt;
+    else for (const d of this.map.discoveries) {
       if (this.discovered.has(d.id)) continue;
       if (dist(p, d) < d.r) {
         this.discovered.add(d.id);

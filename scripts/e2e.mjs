@@ -9,6 +9,8 @@ import { preview } from 'vite';
 const PORT = 4179;
 const BASE = `http://localhost:${PORT}/`;
 const OUT = 'test-results';
+// HaveAnApp Pulse (anonymous, cookieless usage counts) is the one outside origin the app may call.
+const PULSE = 'https://haveanapp-pulse-collect.vercel.app/';
 mkdirSync(OUT, { recursive: true });
 
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'silent' });
@@ -22,6 +24,7 @@ const check = (name, ok, detail = '') => {
 const browser = await chromium.launch();
 try {
   await portrait();
+  await seasons();
   await landscape();
 } finally {
   await browser.close();
@@ -40,7 +43,7 @@ async function newPage(device) {
   const failedReq = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('request', (r) => !r.url().startsWith(BASE) && !r.url().startsWith('data:') && external.push(r.url()));
+  page.on('request', (r) => !r.url().startsWith(BASE) && !r.url().startsWith('data:') && !r.url().startsWith(PULSE) && external.push(r.url()));
   page.on('response', (r) => r.status() >= 400 && failedReq.push(`${r.status()} ${r.url()}`));
   return { page, ctx, errors, external, failedReq };
 }
@@ -264,17 +267,83 @@ async function portrait() {
   check("the barn's next chapter is remembered", (await b89(page, () => window.__b89.store.data.barnPlan)) === 'dance');
   check('no stars for Sunday', (await b89(page, () => Object.keys(window.__b89.store.data.stars).every((k) => !k.includes('sunday')))));
 
+  // Blue Star workshop: sand, paint and star the cabinet with Grandpa, and it stays out front.
+  await b89(page, () => window.__b89.hub.teleport(1792, 728));
+  await page.waitForTimeout(300);
+  check('the cabinet offers the workshop', /Grandpa|workshop/.test(await page.textContent('#act-label')));
+  await tap(page, '#act-btn');
+  await page.waitForTimeout(400);
+  check('Blue Star workshop opens', (await b89(page, () => window.__b89.game?.challenge)) === 'workshop');
+  const wb = await b89(page, () => { const v = window.__b89.game.view; const p = window.__b89.game.piece; return { x: v.px, y: v.py, w: p.w * v.s, h: p.h * v.s, s: v.s }; });
+  for (let y = wb.y; y <= wb.y + wb.h; y += 7 * wb.s) await drag(page, wb.x - 4, y, wb.w + 8, 0, 10);
+  check('painting covers the cabinet', await b89(page, () => window.__b89.game.game.covered));
+  const db = await b89(page, () => window.__b89.game.view.doneBox());
+  await page.mouse.click(db.x + db.w / 2, db.y + db.h / 2);
+  await page.mouse.click(wb.x + wb.w * 0.7, wb.y + wb.h * 0.3);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${OUT}/p-workshop.png` });
+  await page.mouse.click(db.x + db.w / 2, db.y + db.h / 2);
+  await page.waitForTimeout(500);
+  check('the cabinet goes out front, back on the homestead', (await b89(page, () => window.__b89.mode)) === 'hub' && (await b89(page, () => !!window.__b89.store.data.restored.cabinet?.star)));
+  check('no stars for the workshop', (await b89(page, () => !('workshop' in window.__b89.store.data.stars))));
+
   // Persistence across a reload.
   await page.reload();
   await page.waitForTimeout(600);
   check('progress survives a reload', (await b89(page, () => window.__b89.store.data.stars['woodpile-1'] ?? 0)) >= 1);
+  check('the restored cabinet survives a reload', await b89(page, () => !!window.__b89.store.data.restored.cabinet));
   check('explorer survives a reload', (await b89(page, () => window.__b89.store.data.explorer)) === 'grandpa');
+
+  // Family scrapbook: earned pages are pasted in, announced, and shown with their photos.
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(400);
+  const pages = await b89(page, () => Object.keys(window.__b89.store.data.scrapbook));
+  check('scrapbook pastes in the earned pages', pages.includes('home') && pages.includes('woodpile') && pages.includes('workshop'), pages.join(','));
+  check('menu button shows there is something new', await page.evaluate(() => document.querySelector('#hub-hud [data-open="menu"]').classList.contains('news')));
+  await page.click('#hub-hud [data-open="menu"]');
+  await page.click('#menu-scrapbook');
+  await page.waitForTimeout(300);
+  check('scrapbook opens', await visible(page, '#scrapbook'));
+  const book = await page.evaluate(() => {
+    const got = [...document.querySelectorAll('#scrapbook-pages li.got canvas')];
+    const painted = got.filter((c) => {
+      const d = c.getContext('2d').getImageData(c.width / 2, c.height / 4, 1, 1).data;
+      return d[3] > 0;
+    }).length;
+    return { got: got.length, painted, empty: document.querySelectorAll('#scrapbook-pages li.empty').length };
+  });
+  check('every filled page has its photo', book.got === pages.length && book.painted === book.got, JSON.stringify(book));
+  check('empty pages say how to fill them', book.empty === 17 - pages.length);
+  await page.screenshot({ path: `${OUT}/p-scrapbook.png` });
+  await page.click('#scrapbook [data-close]');
+  await page.click('#menu [data-close]');
+  check('reading the scrapbook clears the dot', !(await page.evaluate(() => document.querySelector('#hub-hud [data-open="menu"]').classList.contains('news'))));
 
   check('page never scrolls', (await page.evaluate(() => window.scrollY + document.documentElement.scrollTop)) === 0);
   check('no horizontal overflow', (await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)));
   check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
-  check('no external network requests', external.length === 0, external.slice(0, 3).join(' '));
+  check('no external network requests besides Pulse', external.length === 0, external.slice(0, 3).join(' '));
   check('no failed requests', failedReq.length === 0, failedReq.slice(0, 3).join(' '));
+  await ctx.close();
+}
+
+async function seasons() {
+  // The real calendar: Christmas Eve after sundown lights the place up without any reward.
+  const { page, ctx, errors } = await newPage(devices['iPhone 13']);
+  await page.goto(`${BASE}?date=2026-12-24T19:00`);
+  await page.waitForTimeout(600);
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(500);
+  const d = await b89(page, () => window.__b89.hubView.decor);
+  check('Christmas Eve evening: lights and snow come on by themselves', d.evening && d.holiday);
+  await page.screenshot({ path: `${OUT}/p-christmas.png` });
+  await page.goto(`${BASE}?date=2026-10-15T11:00`);
+  await page.waitForTimeout(600);
+  await tap(page, '#play-btn');
+  await page.waitForTimeout(500);
+  const o = await b89(page, () => window.__b89.hubView.decor);
+  check('October morning: pumpkins out, no evening, no Christmas', o.touch === 'pumpkins' && !o.evening && !o.holiday);
+  check('seasons: no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
 

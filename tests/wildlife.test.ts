@@ -342,7 +342,7 @@ describe('Hide and Seek', () => {
     expect(h.seekHider()?.who).toBe('natalie');
   });
 
-  it('says warmer and colder, and Axel can sniff them out', () => {
+  it('says warmer and colder, and Axle can sniff them out', () => {
     const h = fresh();
     h.startSeek();
     run(h, 3.2);

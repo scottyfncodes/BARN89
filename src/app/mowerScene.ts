@@ -24,7 +24,7 @@ export class MowerScene implements GameScene {
 
   enter(look: Parameters<GameScene['enter']>[0]): void {
     const c = this.ctx;
-    c.hud.configure({ icon: ICONS.grass, required: `/${Math.round(this.level.target * 100)}%`, label: 'mowed', barTarget: this.level.target });
+    c.hud.configure({ icon: ICONS.grass, required: '%', label: `mowed · goal ${Math.round(this.level.target * 100)}%`, barTarget: this.level.target });
     c.controls.enabled = true;
     c.controls.tapMode = false;
     c.controls.keyMap = {};

@@ -81,8 +81,8 @@ export function hatDayScript(explorer: FamilyId): HatBeat[] {
   };
   for (const who of HAT_ORDER) lines.push(say('narrator', gets[who], { hat: who }));
   lines.push(
-    say('narrator', 'Annie gets a party hat. Axel gets a tiny top hat and wears it better than anyone.', { hat: 'dogs' }),
-    say('megan', 'Everybody squeeze in. Annie, sit. Axel, look at me. One, two, three...'),
+    say('narrator', 'Annie gets a party hat. Axle gets a tiny top hat and wears it better than anyone.', { hat: 'dogs' }),
+    say('megan', 'Everybody squeeze in. Annie, sit. Axle, look at me. One, two, three...'),
     say('narrator', '"BARN 89!"', { photo: true }),
     say(host, `That's going on the fridge. ${explorer === host ? 'Well done, me.' : `Well done, ${you}.`}`),
   );

@@ -1,14 +1,19 @@
+import { pieceDef, type Restored } from '../content/blueStar';
+import type { SeasonTouch } from '../content/seasons';
 import { DONKEYS } from '../content/cast';
 import { clamp, damp, hash2 } from '../core/math';
 import type { BuildingDef, PropDef, RanchMap, TreeDef } from '../world/mapTypes';
 import { drawChicken, drawDonkey } from './animals';
 import { heartPath, star } from './characters';
+import { drawPiece } from './furniture';
 import { C } from './palette';
 import {
   BuildingSprites,
   drawBuilding,
   drawFencePiece,
+  drawPorchFlag,
   drawProp,
+  drawPumpkin,
   drawTree,
   festoonBulbs,
   propIsFlat,
@@ -78,7 +83,24 @@ export interface Decor {
   holiday: boolean;
   /** Board under the old venue sign once the family picks the barn's next chapter. */
   sign?: string | null;
+  /** Furniture restored in the Blue Star workshop, set out front of the shop. */
+  restored?: Record<string, Restored>;
+  /** This month's small decoration (real calendar). */
+  touch?: SeasonTouch;
 }
+
+/** Where the month's decorations go: by the farm stand and on Grandpa's porch steps. */
+const PUMPKINS = [
+  { x: 604, y: 152, s: 1.45 },
+  { x: 620, y: 160, s: 1 },
+  { x: 678, y: 154, s: 1.2 },
+  { x: 1678, y: 708, s: 1.4 },
+  { x: 1664, y: 714, s: 1 },
+];
+const FLAG = { x: 1652, y: 700 };
+
+/** World units per piece unit for restored furniture (the cabinet is 26 wide, like the old prop). */
+const PIECE_SCALE = 0.25;
 
 const HOLIDAY = ['#e2483c', '#3fae5a', '#f2c53d', '#3d7fd6', '#f28aa0'];
 
@@ -447,7 +469,10 @@ export class WorldView {
         items.push({
           y: s.y,
           draw: () => {
-            drawProp(ctx, pr, clock);
+            // The half-painted cabinet, once it's been finished, is drawn the way it was painted.
+            const done = pr.kind === 'cabinet' ? this.decor.restored?.cabinet : undefined;
+            if (done) drawPiece(ctx, pieceDef('cabinet'), done, pr.x, pr.y, PIECE_SCALE);
+            else drawProp(ctx, pr, clock);
             if (pr.kind === 'venueSign' && this.decor.sign) drawSignNote(ctx, pr.x, pr.y, this.decor.sign);
           },
         });
@@ -455,6 +480,19 @@ export class WorldView {
         const fp = s.f;
         items.push({ y: s.y, draw: () => drawFencePiece(ctx, fp) });
       }
+    }
+    // The rest of the restored furniture, set out along the front of the shop.
+    for (const [id, look] of Object.entries(this.decor.restored ?? {})) {
+      const def = pieceDef(id);
+      if (id === 'cabinet' || !def) continue;
+      const at = def.spot;
+      if (at.x < v.x0 - 60 || at.x > v.x1 + 60 || at.y < v.y0 - 60 || at.y > v.y1 + 60) continue;
+      items.push({ y: at.y, draw: () => drawPiece(ctx, def, look, at.x, at.y, PIECE_SCALE) });
+    }
+    if (this.decor.touch === 'pumpkins') {
+      for (const pk of PUMPKINS) if (pk.x > v.x0 - 30 && pk.x < v.x1 + 30 && pk.y > v.y0 - 30 && pk.y < v.y1 + 30) items.push({ y: pk.y, draw: () => drawPumpkin(ctx, pk.x, pk.y, pk.s) });
+    } else if (this.decor.touch === 'flag' && FLAG.x > v.x0 - 60 && FLAG.x < v.x1 + 60 && FLAG.y > v.y0 - 80 && FLAG.y < v.y1 + 40) {
+      items.push({ y: FLAG.y, draw: () => drawPorchFlag(ctx, FLAG.x, FLAG.y, clock, 1.35) });
     }
     if (this.ambient.chickens) this.addChickens(items, v, clock, f);
     if (this.ambient.donkeys) this.addDonkeys(items, v, clock);
@@ -686,15 +724,19 @@ export class WorldView {
           ctx.fillStyle = q.color;
           ctx.fillRect(-q.size, -q.size * 0.35, q.size * 2, q.size * 0.7);
           break;
-        case 'note':
+        case 'note': {
+          // An eighth note; size 3.2 is the small one.
+          const k = q.size / 3.2;
+          const nx = q.x + Math.sin((q.max - q.life) * 4 + (q.rot ?? 0)) * 3;
           ctx.globalAlpha = f;
           ctx.fillStyle = q.color;
           ctx.beginPath();
-          ctx.ellipse(q.x, q.y, 3.2, 2.4, -0.4, 0, Math.PI * 2);
+          ctx.ellipse(nx, q.y, 3.2 * k, 2.4 * k, -0.4, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillRect(q.x + 2, q.y - 11, 1.6, 11);
-          ctx.fillRect(q.x + 2, q.y - 11, 5, 2);
+          ctx.fillRect(nx + 2 * k, q.y - 11 * k, 1.6 * k, 11 * k);
+          ctx.fillRect(nx + 2 * k, q.y - 11 * k, 5 * k, 2 * k);
           break;
+        }
         case 'ring': {
           const r = q.size * (1 - f * f);
           ctx.globalAlpha = f * 0.9;

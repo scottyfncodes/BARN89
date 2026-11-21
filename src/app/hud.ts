@@ -43,6 +43,10 @@ export class Hud {
     return true;
   }
 
+  setLabel(v: string): void {
+    this.set('label', this.label, v);
+  }
+
   setCount(v: string): void {
     this.set('count', this.count, v);
   }

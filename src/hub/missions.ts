@@ -17,7 +17,7 @@ export interface RoundsTask {
 export const ROUNDS_TASKS: RoundsTask[] = [
   { id: 'eggs', label: 'Collect the eggs', short: 'Eggs', verb: 'Collect eggs', x: 1342, y: 1186, done: 'Seven eggs. One suspiciously warm.' },
   { id: 'flowers', label: "Water Grandpa's flowers", short: "Grandpa's flowers", verb: 'Water flowers', x: 1420, y: 648, done: "Grandpa's zinnias say thank you." },
-  { id: 'dogs', label: 'Fill the dog bowls', short: 'Dog bowls', verb: 'Fill bowls', x: 615, y: 1040, done: 'Axel and Annie approve. Annie would like seconds.' },
+  { id: 'dogs', label: 'Fill the dog bowls', short: 'Dog bowls', verb: 'Fill bowls', x: 615, y: 1040, done: 'Axle and Annie approve. Annie would like seconds.' },
   { id: 'donkeys', label: 'Feed the donkeys', short: 'Donkeys', verb: 'Feed donkeys', x: 1305, y: 1722, done: 'Chewy and Yoda hee-haw their thanks.' },
   { id: 'cats', label: 'Feed the barn cats', short: 'Barn cats', verb: 'Feed cats', x: 1670, y: 2790, done: 'Eight bowls. Eight cats. Somehow nine opinions.' },
   { id: 'kitchen', label: 'Eggs to the kitchen', short: 'Eggs to kitchen', verb: 'Drop off eggs', x: 897, y: 932, needs: 'eggs', done: 'Breakfast is saved.' },
@@ -179,7 +179,7 @@ export const HOME_BASE = { x: 1262, y: 984 };
 export const SEEK_ROUNDS = 3;
 /** How close you have to get to find them. */
 export const SEEK_FIND_R = 58;
-/** Seconds added to the total for each time you ask Axel to sniff them out. */
+/** Seconds added to the total for each time you ask Axle to sniff them out. */
 export const SNIFF_COST = 15;
 /** Total seconds (sniffs included) for 3 and 2 stars. */
 export const SEEK_STAR_TIMES: [number, number] = [80, 140];

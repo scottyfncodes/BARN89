@@ -11,6 +11,7 @@ import { PuttScene } from './app/puttScene';
 import { PuzzleScene } from './app/puzzleScene';
 import { PUZZLE_ROUNDS } from './games/puzzle/puzzle';
 import { WoodScene } from './app/woodScene';
+import { WorkshopScene } from './app/workshopScene';
 import { PUTT_ROUNDS } from './games/putt/putt';
 import { Sfx } from './audio/sfx';
 import {
@@ -33,8 +34,13 @@ import {
   type GameId,
 } from './content/activities';
 import { RIDES, rideForRace, rideOf, type RideId } from './content/rides';
+import { PIECES } from './content/blueStar';
+import { greeting, PERKS } from './content/explorers';
 import { CHIHUAHUAS, DOGS, DONKEYS, FAMILY, FAMILY_ORDER, type FamilyId, type HatKind } from './content/cast';
 import { SaveStore } from './core/save';
+import { clockNow, seasonAt } from './content/seasons';
+import { fillPages, PAGES, prettyDay, type PageDef } from './content/scrapbook';
+import { paintPage } from './app/scrapbookView';
 import { BARN_PLAN_LABEL, BARN_PLAN_SIGN, sundayScript, type Beat } from './content/sunday';
 import { PERSONALITIES } from './games/kitten/kittenTypes';
 import { LEVELS } from './games/kitten/levels';
@@ -112,16 +118,21 @@ let hatDayRunning = false;
 /** Seconds until the coyotes next tune up (evenings only). */
 let coyoteT = 25;
 const top = (): string | undefined => stack[stack.length - 1];
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
 
 // --- Cosmetics and decorations ---------------------------------------------------------------
 function decor(): Decor {
   const u = unlockedRewards(store.data);
   const c = store.data.cosmetics;
+  const now = seasonAt(clockNow());
   return {
-    evening: c.evening && u.has('evening'),
+    // Real sundown and real December light the place up on their own; the rewards do it any time.
+    evening: now.dusk || (c.evening && u.has('evening')),
     fixedBulbs: store.data.hunt.done,
-    holiday: c.holiday && u.has('holiday'),
+    holiday: now.christmas || (c.holiday && u.has('holiday')),
+    touch: now.touch,
     sign: store.data.barnPlan ? BARN_PLAN_SIGN[store.data.barnPlan] : null,
+    restored: store.data.restored,
   };
 }
 
@@ -161,6 +172,84 @@ function applyLook(): void {
     hubView.hatsOn.clear();
     if (store.data.hatDay && c.silly) for (const id of [...FAMILY_ORDER, 'dogs']) hubView.hatsOn.add(id);
   }
+  checkScrapbook();
+}
+
+// --- Family scrapbook ------------------------------------------------------------------------
+/** Pages pasted in but not yet announced on the homestead. */
+let pendingPages: PageDef[] = [];
+
+/** Pastes in any page the save has earned since last time, to be announced when it's quiet. */
+function checkScrapbook(): void {
+  const fresh = fillPages(store.data, clockNow());
+  if (!fresh.length) return;
+  store.save();
+  pendingPages.push(...fresh);
+  markNews();
+}
+
+const unreadPages = (): PageDef[] => PAGES.filter((p) => store.data.scrapbook[p.id] && !store.data.seen.includes(`page-${p.id}`));
+
+function markNews(): void {
+  document.querySelector('#hub-hud [data-open="menu"]')?.classList.toggle('news', unreadPages().length > 0);
+}
+
+/** One note for whatever's new, once nothing else is being said and no screen is open. */
+function announcePages(): void {
+  if (!pendingPages.length || mode !== 'hub' || stack.length || toast.busy || hub.mission) return;
+  const [first, ...rest] = pendingPages;
+  pendingPages = [];
+  toast.show(
+    rest.length
+      ? `<b>${rest.length + 1} new pages in the scrapbook</b>${first.title}, ${rest[0].title}${rest.length > 1 ? ' and more' : ''}. They're in the menu.`
+      : `<b>New page in the scrapbook</b>${first.title}. It's in the menu.`,
+    4.2,
+  );
+  sfx.discover();
+  hub.holdFinds = Math.max(hub.holdFinds, 4.6);
+}
+
+function buildScrapbook(): void {
+  const s = store.data;
+  const got = PAGES.filter((p) => s.scrapbook[p.id]);
+  $('scrapbook-sub').textContent = got.length === PAGES.length ? `Every page filled. ${PAGES.length} of ${PAGES.length}.` : `${got.length} of ${PAGES.length} pages filled in.`;
+  const unread = new Set(unreadPages().map((p) => p.id));
+  const ol = $('scrapbook-pages');
+  ol.innerHTML = '';
+  const paint: [HTMLCanvasElement, PageDef][] = [];
+  for (const p of PAGES) {
+    const li = document.createElement('li');
+    const day = s.scrapbook[p.id];
+    if (day) {
+      li.className = 'got';
+      const c = document.createElement('canvas');
+      c.className = 'photo';
+      c.setAttribute('role', 'img');
+      c.setAttribute('aria-label', p.title);
+      const h = document.createElement('h3');
+      h.textContent = p.title;
+      if (unread.has(p.id)) h.insertAdjacentHTML('beforeend', '<span class="new">New</span>');
+      const cap = document.createElement('p');
+      cap.textContent = p.caption(s);
+      const t = document.createElement('time');
+      t.dateTime = day;
+      t.textContent = prettyDay(day);
+      li.append(c, h, cap, t);
+      paint.push([c, p]);
+    } else {
+      li.className = 'empty';
+      li.innerHTML = '<div class="slot" aria-hidden="true"><i></i><i></i><i></i><i></i></div>';
+      const hint = document.createElement('p');
+      hint.textContent = p.hint;
+      li.append(hint);
+    }
+    ol.append(li);
+  }
+  requestAnimationFrame(() => {
+    for (const [c, p] of paint) paintPage(c, p.id, s);
+  });
+  for (const id of unread) store.addTo('seen', `page-${id}`);
+  markNews();
 }
 
 /**
@@ -255,7 +344,7 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // --- Screens ---------------------------------------------------------------------------------
-const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names', 'field'];
+const SCREENS = ['title', 'who', 'intro', 'pause', 'results', 'board', 'rewards', 'map', 'menu', 'herd', 'lockbox', 'notice', 'sunday', 'names', 'scrapbook', 'field'];
 
 function syncScreens(): void {
   document.body.dataset.scene = mode === 'game' && game instanceof WoodScene ? 'woodpile' : mode;
@@ -267,16 +356,19 @@ function syncScreens(): void {
   show($('hud'), mode === 'game' && !resultsUp);
   const m = hub.mission;
   show($('mission'), inHub && !!m && !covered);
+  // Mid-mission the card sits where a wrapped third pill would go, and the guide can wait.
+  show($('hub-wild'), !m);
   show($('prompt'), inHub && !covered && !!hub.nearStation && !m);
   show($('act-btn'), inHub && !covered && !!hub.action);
-  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene)));
-  // Puzzles take raw touches: drag a bale, tap a pipe.
-  controls.pointerMode = mode === 'game' && game instanceof PuzzleScene && !covered && !paused && !resultsUp;
+  controls.enabled = !covered && (mode === 'hub' || (mode === 'game' && !paused && !(game instanceof WoodScene) && !(game instanceof PuzzleScene) && !(game instanceof WorkshopScene)));
+  // Puzzles and the workshop take raw touches: drag a bale, tap a pipe, sand and paint.
+  controls.pointerMode = mode === 'game' && (game instanceof PuzzleScene || game instanceof WorkshopScene) && !covered && !paused && !resultsUp;
   if (covered || mode !== 'game' || paused) {
     hint.set(null);
     if (mode === 'game') controls.reset();
   }
   if (covered && mode === 'hub') controls.reset();
+  if (covered || mode !== 'hub') sfx.setHum(0);
   if ((covered || mode !== 'hub') && motoEngine) {
     sfx.setEngine(-1);
     motoEngine = false;
@@ -294,13 +386,19 @@ function open(id: string): void {
   else if (id === 'herd') buildRoster();
   else if (id === 'names') buildNames();
   else if (id === 'field') buildField();
-  else if (id === 'menu') $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
+  else if (id === 'scrapbook') buildScrapbook();
+  else if (id === 'menu') {
+    $('menu-sub').textContent = `${totalStars(store.data)} of ${MAX_STARS} stars · ${store.data.ornaments.length} of ${ORNAMENT_COUNT} ornaments`;
+    const n = unreadPages().length;
+    $('menu-scrapbook').innerHTML = n ? `Scrapbook <span class="count" aria-label="${n} new">${n}</span>` : 'Scrapbook';
+  }
   syncScreens();
 }
 
 function close(): void {
-  stack.pop();
+  const was = stack.pop();
   if (top() === 'board') buildBoard();
+  if (was === 'scrapbook' && top() === 'menu') $('menu-scrapbook').textContent = 'Scrapbook';
   syncScreens();
   last = performance.now();
 }
@@ -394,7 +492,8 @@ function buildWho(): void {
     const c = document.createElement('canvas');
     b.append(c);
     const t = document.createElement('span');
-    t.innerHTML = `<b>${m.name}</b><small>${m.role}</small>`;
+    // Whoever's picked shows what's theirs alone.
+    t.innerHTML = `<b>${m.name}</b><small>${m.role}</small>${store.data.explorer === id ? `<small class="perk">${PERKS[id]}</small>` : ''}`;
     b.append(t);
     b.addEventListener('click', () => {
       sfx.click();
@@ -429,9 +528,16 @@ function enterHub(): void {
   sfx.startMusic();
   playT = 0;
   syncScreens();
+  markNews();
+  const note = seasonAt(clockNow()).note;
   if (!store.data.seen.includes('welcome')) {
     store.addTo('seen', 'welcome');
     toast.show('<b>Welcome to Barn 89!</b>Walk up to anyone in a glowing ring to play with them.', 5);
+    hub.holdFinds = 5.4;
+  } else if (note && store.addTo('seen', note.key)) {
+    toast.show(`<b>${note.title}</b>${note.text}`, 4.6);
+    hub.holdFinds = 5;
+    checkScrapbook();
   }
 }
 
@@ -469,6 +575,7 @@ $('erase-btn').addEventListener('click', () => {
 
 function onHubEvent(e: HubEvent): void {
   hubView.handleEvent(e);
+  queueMicrotask(checkScrapbook);
   switch (e.type) {
     case 'ornament': {
       sfx.collect();
@@ -555,6 +662,25 @@ function onHubEvent(e: HubEvent): void {
     case 'sunday':
       openSunday();
       break;
+    case 'workshop':
+      startWorkshop();
+      break;
+    case 'eggs':
+      if (e.n) {
+        sfx.collect();
+        store.data.eggs += e.n;
+        store.save();
+        toast.show(`<b>${e.n === 1 ? 'One egg' : `${e.n} eggs`}</b>Still warm. That's ${store.data.eggs} gathered so far.`, 2.8);
+      } else toast.show('<b>Nothing yet.</b>The hens are working on it. Give them a minute.', 2.6);
+      break;
+    case 'truck':
+      sfx.bark();
+      toast.show(e.on ? '<b>Load up!</b>Annie and Axle hop in the back. Best seats on the place.' : '<b>Everybody out.</b>Back to heel.', 2.8);
+      break;
+    case 'parade':
+      sfx.meow(1.2);
+      toast.show(`<b>Cat parade!</b>${e.count} barn cats in a line behind Natalie. They'll follow her anywhere.`, 3.6);
+      break;
     case 'splash':
       sfx.splash();
       break;
@@ -583,7 +709,7 @@ function onHubEvent(e: HubEvent): void {
     case 'snake': {
       sfx.oops();
       // Explained once; after that, Grandpa's "SNAKE!" says it all.
-      if (store.addTo('seen', 'snake')) toast.show(`<b>Snake!</b>Grandpa is deathly afraid of snakes.${e.chased ? ' Axel is not.' : ''}`, 3.4);
+      if (store.addTo('seen', 'snake')) toast.show(`<b>Snake!</b>Grandpa is deathly afraid of snakes.${e.chased ? ' Axle is not.' : ''}`, 3.4);
       break;
     }
     case 'raceGo':
@@ -693,7 +819,7 @@ function onHubEvent(e: HubEvent): void {
         sub: `${SEEK_ROUNDS} rounds in ${formatTime(e.seconds)}. "Okay, okay. Your turn to hide," says ${e.who}.`,
         lines: [
           { label: 'Seeking', value: formatTime(e.seconds) },
-          { label: 'Axel sniffed', value: e.sniffs ? `${e.sniffs} (+${e.sniffs * SNIFF_COST}s)` : 'not needed' },
+          { label: 'Axle sniffed', value: e.sniffs ? `${e.sniffs} (+${e.sniffs * SNIFF_COST}s)` : 'not needed' },
         ],
         finished: true,
       });
@@ -717,7 +843,9 @@ function updatePrompt(): void {
     if (a) {
       const who = FAMILY[a.who];
       $('prompt-who').textContent = a.title;
-      $('prompt-line').textContent = hub.explorer === a.who ? `${who.name}, this one is yours. Ready?` : `${who.name}: "${a.line}"`;
+      // Who you are changes how they say hello.
+      const hello = greeting(a.who, hub.explorer);
+      $('prompt-line').textContent = hub.explorer === a.who ? `${who.name}, this one is yours. Ready?` : `${who.name}: "${hello ? `${hello} ` : ''}${a.line}"`;
       const st = activityStars(store.data, a.id);
       $('prompt-stars').innerHTML = `${starSvg(st.got > 0, 14)} ${st.got}/${st.max}`;
       requestAnimationFrame(() => paintPortrait($<HTMLCanvasElement>('prompt-face'), who.look, { wave: true }));
@@ -784,7 +912,7 @@ function updateMissionHud(): void {
     const warm = { start: `${who} is hiding somewhere on the place. Go look!`, warmer: 'Warmer...', colder: 'Colder.', hot: 'Red hot! Check behind things.' }[m.warmth];
     $('mission-body').innerHTML = `<p class="clue">${m.countT > 0 ? `Eyes shut! ${who} is finding somewhere to hide...` : warm}</p>`;
     show($('mission-hint'), m.countT <= 0);
-    $('mission-hint').textContent = m.sniffs ? `Ask Axel (${m.sniffs})` : 'Ask Axel';
+    $('mission-hint').textContent = m.sniffs ? `Ask Axle (${m.sniffs})` : 'Ask Axle';
   } else if (m.kind === 'rounds') {
     $('mission-title').textContent = "Mom's Morning Rounds";
     $('mission-body').innerHTML = `<ol class="chores">${ROUNDS_TASKS.map((t, i) => `<li class="${m.done.has(t.id) ? 'done' : t.needs && !m.done.has(t.needs) ? 'wait' : ''}"><span>${i + 1}</span>${t.short}</li>`).join('')}</ol>`;
@@ -806,7 +934,7 @@ $('mission-hint').addEventListener('click', () => {
   lastMission = '';
   if (hub.mission?.kind === 'seek') {
     hub.sniff();
-    toast.show(`<b>Axel's on it.</b>Follow the arrow. Adds ${SNIFF_COST} seconds.`, 2.4);
+    toast.show(`<b>Axle's on it.</b>Follow the arrow. Adds ${SNIFF_COST} seconds.`, 2.4);
     return;
   }
   hub.useHint();
@@ -857,6 +985,10 @@ function hubFrame(dt: number): void {
     if (motoOn) sfx.setEngine(0.5);
     else if (motoEngine) sfx.setEngine(-1);
     motoEngine = motoOn;
+    // Grandpa's humming, louder the closer you are (and right there when you're him).
+    const hum = hub.hummer();
+    const near = hum ? Math.hypot(hum.x - hub.player.x, hum.y - hub.player.y) : Infinity;
+    sfx.setHum(hub.explorer === 'grandpa' ? (hum ? 0.75 : 0) : clamp01(1 - (near - 60) / 300));
     updatePrompt();
     updateMissionHud();
     // Back at Grandpa's with everything: open the lockbox.
@@ -1119,6 +1251,17 @@ $('lock-open').addEventListener('click', () => {
 });
 
 // --- Activity board, rewards, map -----------------------------------------------------------
+/** Star rows for the open challenges, then one chip saying how many are still to come. */
+function chalChips(chs: readonly { id: string; name: string }[]): string {
+  const s = store.data;
+  const open = chs.filter((ch) => isUnlocked(s, ch.id));
+  const shut = chs.length - open.length;
+  return (
+    open.map((ch) => `<span class="chal" title="${ch.name}">${starRow(s.stars[ch.id] ?? 0, 3, 13)}</span>`).join('') +
+    (shut ? `<span class="chal locked">${shut} more to unlock</span>` : '')
+  );
+}
+
 function buildBoard(): void {
   const s = store.data;
   buildHatDay();
@@ -1134,9 +1277,7 @@ function buildBoard(): void {
     const best = Math.max(0, ...a.challenges.map((ch) => s.best[ch.id] ?? 0));
     const info = document.createElement('div');
     info.className = 'board-info';
-    info.innerHTML = `<b>${a.title}</b><small>with ${who.name}</small><span class="chals">${a.challenges
-      .map((ch) => `<span class="chal ${isUnlocked(s, ch.id) ? '' : 'locked'}" title="${ch.name}">${isUnlocked(s, ch.id) ? starRow(s.stars[ch.id] ?? 0, 3, 13) : 'Locked'}</span>`)
-      .join('')}</span>${best ? `<small>Best score ${best}</small>` : ''}`;
+    info.innerHTML = `<b>${a.title}</b><small>with ${who.name}</small><span class="chals">${chalChips(a.challenges)}</span>${best ? `<small>Best score ${best}</small>` : ''}`;
     const b = document.createElement('button');
     b.className = 'go-btn';
     b.textContent = st.got ? 'Play' : 'Try it';
@@ -1154,7 +1295,8 @@ function buildBoard(): void {
     `<li><b>${s.pets.length}/${CAT_COUNT}</b> barn cats petted</li>`,
     `<li><b>${s.discoveries.length}/${shared.map.discoveries.length}</b> places discovered</li>`,
     `<li><b>${s.wildlife.length}/${SPECIES_COUNT}</b> wild animals in the field guide</li>`,
-    `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys</li>`,
+    `<li><b>${s.fetches}</b> fetches · <b>${s.carrots}</b> carrots for the donkeys · <b>${s.eggs}</b> eggs gathered by Mom</li>`,
+    `<li><b>${Object.keys(s.restored).length}/${PIECES.length}</b> pieces restored in the Blue Star workshop</li>`,
     `<li><b>Sunday at the Barn</b> ${s.barnPlan ? `Next chapter: ${BARN_PLAN_LABEL[s.barnPlan].toLowerCase()}.` : 'Pull up a chair at the long table under the string lights, whenever you like.'}</li>`,
   ].join('');
 }
@@ -1510,6 +1652,48 @@ function makeScene(id: string): GameScene | null {
 
 let currentChallenge = '';
 
+// --- Blue Star workshop ----------------------------------------------------------------------
+// Grandpa's garage under the blue star. Unhurried and unrewarded: what you finish stays out front.
+const WORKSHOP_HOWTO = [
+  '<b>Drag</b> over the piece to sand off the old finish, back to bare wood.',
+  'Tap a <b>paint can</b> to pick a color, then drag to paint. Switch colors whenever you like.',
+  '<b>Tap</b> where the blue star should go.',
+  'No clock, and nothing to get wrong. When it is done it goes out front of the shop.',
+];
+
+function startWorkshop(): void {
+  const done = store.data.restored;
+  const left = PIECES.filter((p) => !done[p.id]);
+  // Once every piece is done, any of them can be painted again.
+  const piece = left[0] ?? PIECES[Math.floor(Math.random() * PIECES.length)];
+  const lastOne = left.length === 1 && left[0] === piece;
+  currentChallenge = '';
+  returnSpot = { x: hub.player.x, y: hub.player.y };
+  stack.length = 0;
+  resultsUp = false;
+  paused = false;
+  cheerFor = null;
+  toast.clear();
+  reveal();
+  game?.exit();
+  game = new WorkshopScene(ctx, piece, lastOne);
+  mode = 'game';
+  syncScreens();
+  game.enter({ cosmetics: store.data.cosmetics, decor: decor(), insetTop: insetTop() });
+  resize();
+  acc = 0;
+  last = performance.now();
+  sfx.startMusic();
+}
+
+function finishWorkshop(scene: WorkshopScene): void {
+  store.data.restored[scene.piece.id] = scene.restored();
+  store.save();
+  cheerFor = 'grandpa';
+  leaveGame();
+  toast.show(`<b>${scene.piece.name}</b>It's out front of the Blue Star shop now, for good.`, 4.5);
+}
+
 function startChallenge(id: string): void {
   const c = challengeDef(id);
   if (!isUnlocked(store.data, id)) return;
@@ -1601,9 +1785,9 @@ function leaveGame(): void {
   mode = 'hub';
   stack.length = 0;
   // Back where they set off from. Chores and the hunt already happen out on the homestead.
-  if (wasMinigame && c) {
-    const a = activity(c.game);
-    const spot = returnSpot ?? { x: a.station.x, y: a.station.y + 70 };
+  if (wasMinigame && (c || returnSpot)) {
+    const a = c ? activity(c.game) : null;
+    const spot = returnSpot ?? { x: a!.station.x, y: a!.station.y + 70 };
     hub.teleport(spot.x, spot.y);
   }
   returnSpot = null;
@@ -1640,6 +1824,10 @@ $('quit-btn').addEventListener('click', () => {
 });
 $('howto-btn').addEventListener('click', () => {
   sfx.click();
+  if (!currentChallenge) {
+    notice('Blue Star workshop', `<ul class="howto">${WORKSHOP_HOWTO.map((l) => `<li>${l}</li>`).join('')}</ul>`, 'Got it');
+    return;
+  }
   const c = challengeDef(currentChallenge);
   notice(activity(c.game).title, `<ul class="howto">${HOWTO[c.game].map((l) => `<li>${l}</li>`).join('')}</ul>`, 'Got it');
 });
@@ -1739,11 +1927,19 @@ window.addEventListener('pagehide', () => pauseGame());
 
 // --- Main loop -------------------------------------------------------------------------------
 let warmed = false;
+let seasonT = 30;
 const hero = $<HTMLCanvasElement>('hero');
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   toast.update(dt);
+  announcePages();
+  // Sundown can arrive mid-visit: look at the clock again now and then.
+  seasonT -= dt;
+  if (seasonT <= 0) {
+    seasonT = 30;
+    if (mode === 'hub') hubView.decor = decor();
+  }
 
   if (mode === 'game' && game) {
     const running = !paused && !resultsUp && !stack.length;
@@ -1756,6 +1952,12 @@ function frame(now: number): void {
         steps++;
       }
       if (steps === 6) acc = 0;
+      if (game instanceof WorkshopScene && game.isComplete()) {
+        // Straight back out to the homestead: no results card, nothing scored.
+        finishWorkshop(game);
+        requestAnimationFrame(frame);
+        return;
+      }
       if (game.isComplete()) showResults(game.challenge, game.result());
     }
     game.frame(dt, running ? acc / STEP : 1, !running && !resultsUp);
@@ -1799,6 +2001,7 @@ requestAnimationFrame(frame);
     return [...stack];
   },
   startChallenge,
+  startWorkshop,
   enterHub,
   pauseGame,
   resumeGame,

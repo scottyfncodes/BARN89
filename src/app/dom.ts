@@ -28,6 +28,8 @@ export const ICONS = {
 /** Small toast at the top of the screen. */
 export class Toast {
   private t = 0;
+  /** Seconds since the last toast went away. */
+  private idle = 1;
   constructor(private readonly el: HTMLElement) {}
 
   show(html: string, seconds = 3.2): void {
@@ -36,10 +38,21 @@ export class Toast {
     this.t = seconds;
   }
 
+  /** Something is showing, or only just went (leave a breath before the next). */
+  get busy(): boolean {
+    return this.t > 0 || this.idle < 0.6;
+  }
+
   update(dt: number): void {
-    if (this.t <= 0) return;
+    if (this.t <= 0) {
+      this.idle += dt;
+      return;
+    }
     this.t -= dt;
-    if (this.t <= 0) this.el.classList.remove('show');
+    if (this.t <= 0) {
+      this.idle = 0;
+      this.el.classList.remove('show');
+    }
   }
 
   clear(): void {

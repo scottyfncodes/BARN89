@@ -19,7 +19,7 @@ export const NAMEABLE: NameableAnimal[] = [
 
 /** Named by the family: shown on the names screen, not editable. */
 export const NAMED_BY_FAMILY: { id: string; name: string; what: string }[] = [
-  ...DOGS.map((d) => ({ id: d.id, name: d.name, what: d.kind === 'lab' ? 'Black Lab' : 'Terrier' })),
+  ...DOGS.map((d) => ({ id: d.id, name: d.name, what: d.breed })),
   ...DONKEYS.map((d) => ({ id: d.id, name: d.name, what: 'Donkey' })),
 ];
 
